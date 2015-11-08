@@ -8,7 +8,7 @@
  * @author    曾建凯 <janpoem@163.com>
  */
 
-namespace Ke\Core;
+namespace Ke;
 
 /**
  * Uri类
