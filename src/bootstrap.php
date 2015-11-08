@@ -7,6 +7,6 @@
  * @author    曾建凯 <janpoem@163.com>
  */
 
-require 'Ke/Core/Bootstrap.php';
+require 'Ke/Bootstrap.php';
 
-\Ke\Core\Bootstrap::start();
+\Ke\Bootstrap::start();
