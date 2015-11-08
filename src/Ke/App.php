@@ -73,7 +73,7 @@ class App
 			$cls = KE_APP_CLASS;
 			if (class_exists($cls, true)) {
 				if (!is_subclass_of($cls, static::class))
-					throw new Exception('无效的App类');
+					throw new Exception('Invalid app class {class}', ['class' => $cls]);
 			} else {
 				$cls = static::class;
 			}

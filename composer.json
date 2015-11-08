@@ -1,0 +1,7 @@
+{
+  "name": "kephp/core",
+  "description": "The core library about kephp framework.",
+  "require": {
+    "php": ">=5.5.0"
+  }
+}

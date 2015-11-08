@@ -10,6 +10,11 @@
 
 namespace Ke;
 
+/**
+ * 自动加载类的接口，用于在这个Class被加载时，附加执行onLoadClass接口（只对Ke\ClassLoader有效）
+ *
+ * @package Ke
+ */
 interface AutoLoadClassImpl
 {
 
@@ -43,3 +48,4 @@ interface OutputImpl
 
 	public function output();
 }
+
