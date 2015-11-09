@@ -326,10 +326,10 @@ function import($path)
  * 加载项目配置，这个函数类似import，但是需要传入一个$app实例，用于朝加载的配置文件暴露$app对象。
  *
  * @param string       $path
- * @param \Ke\Core\App $app
+ * @param \Ke\App $app
  * @return bool|mixed
  */
-function importWithApp($path, \Ke\Core\App $app)
+function importWithApp($path, \Ke\App $app)
 {
 	if (is_file($path) && is_readable($path))
 		return require $path;

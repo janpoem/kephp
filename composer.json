@@ -1,6 +1,18 @@
 {
   "name": "kephp/core",
   "description": "The core library about kephp framework.",
+  "homepage": "http://kephp.com",
+  "license": ["Apache License"],
+  "authors": [
+    {
+      "name": "Jiankai Zeng",
+      "homepage": "http://git.oschina.net/janpoem"
+    },
+    {
+      "name": "Wanling Zhang",
+      "homepage": "http://git.oschina.net/easyzhang"
+    }
+  ],
   "require": {
     "php": ">=5.5.0"
   }

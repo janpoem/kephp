@@ -9,10 +9,18 @@
  */
 
 return [
-	'Ke\\Core\\App'          => __DIR__ . '/Ke/Core/App.php',
-	'Ke\\Core\\Bootstrap'    => __DIR__ . '/Ke/Core/Bootstrap.php',
-	'Ke\\Core\\ClassLoader'  => __DIR__ . '/Ke/Core/ClassLoader.php',
-	'Ke\\Core\\Exception'    => __DIR__ . '/Ke/Core/Exception.php',
-	'Ke\\Core\\OutputBuffer' => __DIR__ . '/Ke/Core/OutputBuffer.php',
-	'Ke\\Core\\Uri'          => __DIR__ . '/Ke/Core/Uri.php',
+	'Ke\\App'                  => __DIR__ . '/Ke/App.php',
+	'Ke\\Bootstrap'            => __DIR__ . '/Ke/Bootstrap.php',
+	'Ke\\DataRegistry'         => __DIR__ . '/Ke/DataRegistry.php',
+	'Ke\\ClassLoader'          => __DIR__ . '/Ke/ClassLoader.php',
+	'Ke\\Exception'            => __DIR__ . '/Ke/Exception.php',
+	'Ke\\OutputBuffer'         => __DIR__ . '/Ke/OutputBuffer.php',
+	'Ke\\Uri'                  => __DIR__ . '/Ke/Uri.php',
+	'Ke\\Logging\\Log'         => __DIR__ . '/Ke/Logging/Log.php',
+	'Ke\\Logging\\LogLevel'    => __DIR__ . '/Ke/Logging/Log.php',
+	'Ke\\Logging\\LogContext'  => __DIR__ . '/Ke/Logging/LogContext.php',
+	'Ke\\Logging\\LoggerImpl'  => __DIR__ . '/Ke/Logging/LoggerImpl.php',
+	'Ke\\Logging\\LoggerOps'   => __DIR__ . '/Ke/Logging/LoggerImpl.php',
+	'Ke\\Logging\\LoggerAward' => __DIR__ . '/Ke/Logging/LoggerImpl.php',
+	'Ke\\Logging\\BaseLogger'  => __DIR__ . '/Ke/Logging/BaseLogger.php',
 ];

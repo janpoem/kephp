@@ -52,6 +52,9 @@ class App
 	/** @var string http的路径前缀 */
 	public $httpBase = null;
 
+	/** @var bool 是否开启了HTTP REWRITE */
+	public $httpRewrite = true;
+
 	/** @var string http的验证字段 */
 	public $httpSecurityField = null;
 
@@ -106,11 +109,10 @@ class App
 
 		// Uri预备
 		Uri::prepare();
-
 		$env = $this->detectEnv();
 		if (empty($env)) {
-			if (isset($this->servers[KE_REQUEST_HOST]))
-				$env = $this->servers[KE_REQUEST_HOST];
+			if (isset($this->servers[$_SERVER['SERVER_NAME']]))
+				$env = $this->servers[$_SERVER['SERVER_NAME']];
 		}
 		// 最后，再次严格的检查一次环境，确保不会出现这三个以外的环境声明
 		if ($env !== KE_DEVELOPMENT && $env !== KE_TEST)
@@ -130,6 +132,7 @@ class App
 				$this->httpBase = purgePath($this->httpBase, KE_PATH_DOT_REMOVE, KE_PATH_LEFT_REMAIN, '/');
 			}
 			define('KE_HTTP_BASE', $this->httpBase);
+			define('KE_HTTP_REWRITE', $this->httpRewrite);
 		}
 
 		/////////////////////////////////////////////////////////////////////////////

@@ -15,6 +15,7 @@ defined('KE_BOOTSTRAP') || define('KE_BOOTSTRAP', microtime());
 /** KePHP类库的根路径 */
 define('KE_LIB', dirname(dirname(__DIR__)));
 
+
 // 加载必须的类
 require __DIR__ . '/Base.php';
 require __DIR__ . '/Interfaces.php';

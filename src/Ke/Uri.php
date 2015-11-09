@@ -45,6 +45,8 @@ class Uri
 
 	private static $filterPaths = [];
 
+	private static $current = null;
+
 	/** @var array 已知的协议、端口号 */
 	private static $stdPorts = [
 		'http'  => 80,
@@ -202,6 +204,21 @@ class Uri
 	}
 
 	/**
+	 * @return static
+	 */
+	public static function current()
+	{
+		if (!isset(self::$current)) {
+			self::$current = new static([
+				'scheme' => KE_REQUEST_SCHEME,
+				'host'   => KE_REQUEST_HOST,
+				'uri'    => KE_REQUEST_URI,
+			]);
+		}
+		return self::$current;
+	}
+
+	/**
 	 * Uri构建函数
 	 *
 	 * @param Uri|string|array|object $uri 传入的uri数据，可以是一个URi的实例，也可以是一个字符串、数组或对象。
@@ -250,6 +267,9 @@ class Uri
 			$input = get_object_vars($input);
 		}
 		if (isset($input['uri'])) {
+//			$input = array_merge($input, parse_url($input['uri']));
+//			unset($input['uri']);
+//			return $this->setData($input, $mergeQuery);
 			$uri = $input['uri'];
 			unset($input['uri']);
 			return $this->setData($input, $mergeQuery)->setData($uri, $mergeQuery);
@@ -257,6 +277,10 @@ class Uri
 		$isMergeQuery = !empty($mergeQuery);
 		if ($mergeQuery === true || $mergeQuery === false) {
 			$isMergeQuery = $mergeQuery;
+			if ($mergeQuery === false) {
+				if (!isset($input['query']))
+					$input['query'] = [];
+			}
 			$mergeQuery = null;
 		}
 
@@ -308,7 +332,7 @@ class Uri
 			}
 		}
 
-		if (!empty($input['query'])) {
+		if (isset($input['query'])) {
 			$query = $input['query'];
 			if (empty($query)) {
 				$query = [];
@@ -317,7 +341,7 @@ class Uri
 				if ($type === KE_OBJ) {
 					$query = get_object_vars($query);
 				}
-				if ($type === KE_ARY) {
+				elseif ($type === KE_ARY) {
 					// @todo 严格来说，当query为一个数组的时候，应该循环遍历，并执行key, value的urlencode
 				} else {
 					// 强制转为字符串类型
@@ -330,21 +354,30 @@ class Uri
 			}
 			// 合并query，先合并
 			$isChangeQuery = false;
-			if (empty($this->queryData)) {
-				if (!empty($query)) {
-					$isChangeQuery = true;
-					$this->queryData = $query;
-				}
-			} elseif ($this->queryData !== $query) {
+
+			if ($this->queryData !== $query) {
 				$isChangeQuery = true;
 				if ($isMergeQuery)
 					$this->queryData = array_merge($this->queryData, $query);
 				else
 					$this->queryData = $query;
 			}
+
+//			if (empty($this->queryData)) {
+//				if (!empty($query)) {
+//					$isChangeQuery = true;
+//					$this->queryData = $query;
+//				}
+//			} elseif ($this->queryData !== $query) {
+//				$isChangeQuery = true;
+//				if ($isMergeQuery)
+//					$this->queryData = array_merge($this->queryData, $query);
+//				else
+//					$this->queryData = $query;
+//			}
 			if ($isChangeQuery) {
 				if (empty($this->queryData))
-					$index['query'] = '';
+					$input['query'] = '';
 				else
 					$input['query'] = http_build_query($this->queryData);
 			}
@@ -361,7 +394,7 @@ class Uri
 		}
 
 		if (isset($mergeQuery)) {
-			$this->setData(['query' => $mergeQuery], true);
+			$this->setData(['query' => $mergeQuery]);
 		}
 
 		return $this;
@@ -520,7 +553,7 @@ class Uri
 		return $this->setData(['path' => $path]);
 	}
 
-	public function setQueryData($query, $mergeQuery = null)
+	public function setQuery($query, $mergeQuery = null)
 	{
 		return $this->setData(['query' => $query], $mergeQuery);
 	}
