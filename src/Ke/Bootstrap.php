@@ -108,7 +108,6 @@ class Bootstrap
 		define('KE_APP_NS_PATH', empty($appNsPath) ? KE_APP_SRC : KE_APP_SRC . DIRECTORY_SEPARATOR . $appNsPath);
 
 		// 默认没有加载这个ComposerLoader
-		$composerLoader = false;
 		if (isset($_KE['COMPOSER_AUTOLOAD']) && !empty($_KE['COMPOSER_AUTOLOAD'])) {
 			$composerLoader = import(KE_APP_COMPOSER . '/autoload.php');
 			if ($composerLoader !== false)
@@ -116,7 +115,7 @@ class Bootstrap
 		}
 
 		// 加载了composer的loader，且仍强调需要APP_AUTOLOAD
-		if ($composerLoader === false || !empty($_KE['APP_AUTOLOAD'])) {
+		if (!isset($_KE['APP_AUTOLOAD']) || !empty($_KE['APP_AUTOLOAD'])) {
 			ClassLoader::newLoader('app', [
 				'dir'     => KE_APP_SRC,
 				'prepend' => true,

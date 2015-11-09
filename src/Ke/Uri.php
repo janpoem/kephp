@@ -154,7 +154,7 @@ class Uri
 		if (self::$isPrepare === true)
 			return false;
 		self::$isPrepare = true;
-		$ptcVer = substr($_SERVER['SERVER_PROTOCOL'], strpos($_SERVER['SERVER_PROTOCOL'], '/') + 1);
+		$ptcVer = null;
 		$query = [];
 		if (PHP_SAPI === 'cli') {
 			$_SERVER['REQUEST_SCHEME'] = 'cli';
@@ -169,6 +169,7 @@ class Uri
 			$path = '/' . KE_APP_DIR . $path;
 			$_SERVER['REQUEST_URI'] = $path;
 		} else {
+			$ptcVer = substr($_SERVER['SERVER_PROTOCOL'], strpos($_SERVER['SERVER_PROTOCOL'], '/') + 1);
 			if (!isset($_SERVER['REQUEST_SCHEME'])) {
 				$_SERVER['REQUEST_SCHEME'] = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
 			} else {
