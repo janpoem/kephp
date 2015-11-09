@@ -19,8 +19,8 @@ return [
 	'Ke\\Logging\\Log'         => __DIR__ . '/Ke/Logging/Log.php',
 	'Ke\\Logging\\LogLevel'    => __DIR__ . '/Ke/Logging/Log.php',
 	'Ke\\Logging\\LogContext'  => __DIR__ . '/Ke/Logging/LogContext.php',
-	'Ke\\Logging\\LoggerImpl'  => __DIR__ . '/Ke/Logging/LoggerImpl.php',
-	'Ke\\Logging\\LoggerOps'   => __DIR__ . '/Ke/Logging/LoggerImpl.php',
-	'Ke\\Logging\\LoggerAward' => __DIR__ . '/Ke/Logging/LoggerImpl.php',
-	'Ke\\Logging\\BaseLogger'  => __DIR__ . '/Ke/Logging/BaseLogger.php',
+	'Ke\\Logging\\LoggerImpl'  => __DIR__ . '/Ke/Logging/Logger.php',
+	'Ke\\Logging\\LoggerOps'   => __DIR__ . '/Ke/Logging/Logger.php',
+	'Ke\\Logging\\LoggerAward' => __DIR__ . '/Ke/Logging/Logger.php',
+	'Ke\\Logging\\BaseLogger'  => __DIR__ . '/Ke/Logging/Logger.php',
 ];

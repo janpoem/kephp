@@ -1,9 +1,11 @@
 <?php
 /**
- * Created by PhpStorm.
- * User: Janpoem
- * Date: 2015/11/8
- * Time: 20:12
+ * KePHP, Keep PHP easy!
+ *
+ * @license   http://www.apache.org/licenses/LICENSE-2.0
+ * @copyright Copyright 2015 KePHP Authors All Rights Reserved
+ * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp-core )
+ * @author    曾建凯 <janpoem@163.com>
  */
 
 namespace Ke\Logging;
@@ -20,7 +22,22 @@ use Exception as PhpException;
 interface LoggerImpl
 {
 
-	public function getLoggerName();
+	/**
+	 * @param $config
+	 * @return LoggerImpl
+	 */
+	public function configure($config);
+
+	/**
+	 * @param $level
+	 * @return bool
+	 */
+	public function isLog($level);
+
+	/**
+	 * @return bool
+	 */
+	public function isDebug();
 
 	/**
 	 * @param mixed      $level
@@ -96,20 +113,48 @@ interface LoggerImpl
 trait LoggerOps
 {
 
-	protected $loggerName = null;
+	/** @var bool|array */
+	private $config = false;
 
-	public function setLoggerName($name)
+	private $handle = null;
+
+	private $file = null;
+
+	protected function initConfig()
 	{
-		if (!empty($name) && is_string($name))
-			$this->loggerName = $name;
+		$this->config = Log::read();
+	}
+
+	public function configure($config)
+	{
+		if ($this->config === false)
+			$this->initConfig();
+		if (!is_array($config)) {
+			$config = (array)$config;
+		}
+		if (!empty($config))
+			$this->config = array_merge($this->config, $config);
+		if (isset($this->config['handle']) && is_callable($this->config['handle'])) {
+			$this->handle = $this->config['handle'];
+		}
+		elseif (!empty($this->config['file']) && is_string($this->config['file'])) {
+			$this->file = $this->config['file'];
+		}
 		return $this;
 	}
 
-	public function getLoggerName()
+	public function isLog($level)
 	{
-		if (isset($this->loggerName))
-			return $this->loggerName;
-		return static::class;
+		if ($this->config === false)
+			$this->initConfig();
+		return $level >= $this->config['level'] || (isset($this->config['levels'][$level]) && $this->config['levels'][$level]);
+	}
+
+	public function isDebug()
+	{
+		if ($this->config === false)
+			$this->initConfig();
+		return !empty($this->config['debug']);
 	}
 
 	/**
@@ -124,17 +169,30 @@ trait LoggerOps
 	 */
 	public function log($level, $message, array $params = null)
 	{
-		$loggerName = $this->getLoggerName();
-		$config = Log::getConfig($loggerName);
-		if ($level >= $config['level'] || (isset($config['levels'][$level]) && $config['levels'][$level])) {
+		if ($this->isLog($level) && (isset($this->handle) || isset($this->file))) {
+			$row = [
+				Log::IDX_FORMAT    => Log::getFormatId($this->config['format']),
+				Log::IDX_MICROTIME => microtime(true),
+				Log::IDX_LEVEL     => $level,
+				Log::IDX_MESSAGE   => '',
+				Log::IDX_PARAMS    => $params,
+				Log::IDX_DEBUG     => null,
+			];
 			$debug = null;
 			if ($message instanceof PhpException) {
-				$debug = $message;
-				$message = $debug->getMessage();
-			} elseif (!empty($config['debug'])) {
-				$debug = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+				$row[Log::IDX_MESSAGE] = $message->getMessage();
+				$row[Log::IDX_DEBUG] = $message;
+			} else {
+				$row[Log::IDX_MESSAGE] = (string)$message;
+				if ($this->isDebug()) {
+					$row[Log::IDX_DEBUG] = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+				}
 			}
-			LogContext::push($level, $message, $params, $debug, $config['format'], $config['file'], $config['handle']);
+			if (isset($this->handle)) {
+				call_user_func($this->handle, Log::prepareLog($row));
+			} else {
+				LogBuffer::push($this->file, $row);
+			}
 		}
 		return $this;
 	}
@@ -224,8 +282,6 @@ trait LoggerAward
 
 	private static $logger = null;
 
-	private static $loggerName = null;
-
 	public static function getLogger()
 	{
 		if (!isset(self::$logger))
@@ -233,16 +289,8 @@ trait LoggerAward
 		return self::$logger;
 	}
 
-	public static function setLoggerName($name)
-	{
-		if (!empty($name) && is_string($name))
-			self::$loggerName = $name;
-	}
-
 	public static function getLoggerName()
 	{
-		if (isset(self::$loggerName))
-			return self::$loggerName;
 		return static::class;
 	}
 
@@ -282,4 +330,11 @@ trait LoggerAward
 	{
 		return static::log(LogLevel::FATAL, $message, $params);
 	}
+}
+
+class BaseLogger implements LoggerImpl
+{
+
+	use LoggerOps;
+
 }

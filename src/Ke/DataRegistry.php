@@ -53,7 +53,7 @@ class DataRegistry implements AutoLoadClassImpl
 
 	public static function mkName($name = null)
 	{
-		if (empty($name))
+		if (empty($name) && $name !== '0' && $name !== 0 && $name !== 0.00)
 			$name = static::getDefaultName();
 		return $name;
 	}
@@ -119,6 +119,16 @@ class DataRegistry implements AutoLoadClassImpl
 		$domain = static::getDomain();
 		return isset(self::$storage[$domain]) ? self::$storage[$domain] : false;
 	}
+
+//	public static function &referenceData()
+//	{
+//		$ref = null;
+//		$domain = static::getDomain();
+//		if (isset(self::$storage[$domain])) {
+//			$ref = &self::$storage[$domain];
+//		}
+//		return $ref;
+//	}
 
 	public static function getAllData()
 	{
