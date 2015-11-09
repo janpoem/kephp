@@ -154,7 +154,7 @@ const KE_APP_MODE = '/';
  * 当前项目的根目录的路径
  * @defined Ke/Core/Bootstrap.php
  */
-const KE_APP = '/';
+const KE_APP_ROOT = '/';
 /**
  * 当前项目的网站目录的路径
  * @defined Ke/Core/Bootstrap.php

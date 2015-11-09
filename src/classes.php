@@ -23,4 +23,6 @@ return [
 	'Ke\\Logging\\LoggerOps'   => __DIR__ . '/Ke/Logging/LoggerImpl.php',
 	'Ke\\Logging\\LoggerAward' => __DIR__ . '/Ke/Logging/LoggerImpl.php',
 	'Ke\\Logging\\BaseLogger'  => __DIR__ . '/Ke/Logging/BaseLogger.php',
+	'Ke\\Cli\\Cli'             => __DIR__ . '/Ke/Cli/Cli.php',
+	'Ke\\Cli\\Args'            => __DIR__ . '/Ke/Cli/Args.php',
 ];

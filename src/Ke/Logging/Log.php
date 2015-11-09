@@ -53,15 +53,20 @@ class Log extends DataRegistry
 	public static function getLogger($name = null)
 	{
 		$name = static::mkName($name);
-//		$config = static::getConfig($name);
 		$class = BaseLogger::class;
 
 		if (isset(self::$loggers[$name]))
 			return self::$loggers[$name];
-//
-//		if (!static::isDefine($name)) {
-//			throw new Exception('Undefined log config {name}!', ['name' => $name]);
-//		}
+
+		$config = static::getConfig($name);
+		if (isset($config['class'])) {
+			if (!is_string($config['class']) ||
+				class_exists($config['class'], true) ||
+				!is_subclass_of($config['class'], LoggerImpl::class)
+			) {
+				throw new Exception('Invalid logger class in config {name}', ['name' => $name]);
+			}
+		}
 
 		self::$loggers[$name] = new $class($name);
 

@@ -33,19 +33,21 @@ interface ContextImpl
 }
 
 
-interface InputImpl
-{
-
-	public function setData($data);
-
-	public function getData();
-}
-
-interface OutputImpl
-{
-
-	public function isOutput();
-
-	public function output();
-}
-
+//
+//
+//interface InputImpl
+//{
+//
+//	public function setData($data);
+//
+//	public function getData();
+//}
+//
+//interface OutputImpl
+//{
+//
+//	public function isOutput();
+//
+//	public function output();
+//}
+//
