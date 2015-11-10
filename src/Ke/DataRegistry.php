@@ -18,6 +18,10 @@ namespace Ke;
 class DataRegistry implements AutoLoadClassImpl
 {
 
+	const IDX_TYPE = 0;
+
+	const IDX_DATA = 0;
+
 	private static $storage = [];
 
 	private static $types = [];
@@ -30,10 +34,14 @@ class DataRegistry implements AutoLoadClassImpl
 
 	public static function onLoadClass($class, $path)
 	{
-		$default = static::getDefaultData();
-		if ($default !== false) {
-			static::define(null, $default);
-		}
+		$domain = static::getDomain();
+		if (!isset(self::$storage[$domain]))
+			self::$storage[$domain] = [];
+		static::autoFill(self::$storage[$domain]);
+	}
+
+	protected static function autoFill(array &$storage)
+	{
 	}
 
 	public static function getDomain()

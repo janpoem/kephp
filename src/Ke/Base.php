@@ -12,6 +12,8 @@
 // Common.php#1 常量定义
 ///////////////////////////////////////////////////////////////////////////////
 
+const DS = DIRECTORY_SEPARATOR;
+
 const KE_VERSION = '1.0.0';
 
 /** KE_APP_ENV:开发环境 */
@@ -21,9 +23,9 @@ const KE_TEST = 'test';
 /** KE_APP_ENV:开发环境 */
 const KE_PRODUCTION = 'production';
 /** KE_APP_MODE:WEB模式 */
-const KE_WEB = 'web';
+const KE_WEB_MODE = 'web';
 /** KE_APP_MODE:CLI模式 */
-const KE_CLI = 'cli';
+const KE_CLI_MODE = 'cli';
 
 // PHP变量类型的字面值，即为gettype方法返回的结果
 /** 字符串类型 */
@@ -531,3 +533,9 @@ function getPhpErrorStr($code)
 		default:                    return "Unknown error#$code"; break;
 	}
 }
+
+function remainAppRoot($path)
+{
+	return str_replace([KE_APP, '\\'], ['/' . KE_APP_DIR, '/'], $path);
+}
+

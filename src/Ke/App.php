@@ -95,20 +95,9 @@ class App
 
 		$method = 'on';
 
-		// CLI模式下的兼容
-		if (KE_APP_MODE === KE_CLI) {
-			// 先尝试加载环境配置文件，这个文件以后会扩展成为json格式，以装载更多的信息
-			$envFile = KE_APP_ROOT . '/env';
-			if (is_file($envFile) && is_readable($envFile)) {
-				$_SERVER['SERVER_NAME'] = trim(file_get_contents($envFile));
-			}
-		}
-
 		// 加载公共配置数据
-		importWithApp(KE_APP_CONF . '/common.php', $this);
+		importWithApp(KE_CONF . '/common.php', $this);
 
-		// Uri预备
-		Uri::prepare();
 		$env = $this->detectEnv();
 		if (empty($env)) {
 			if (isset($this->servers[$_SERVER['SERVER_NAME']]))
@@ -122,17 +111,17 @@ class App
 		$method .= $env;
 
 		// 加载当前环境相关的配置数据
-		importWithApp(KE_APP_CONF . '/' . KE_APP_ENV . '.php', $this);
+		importWithApp(KE_CONF . '/' . KE_APP_ENV . '.php', $this);
 
-		if (KE_APP_MODE === KE_WEB) {
-			$_SERVER['SCRIPT_NAME'] = purgePath($_SERVER['SCRIPT_NAME'], KE_PATH_DOT_REMOVE, KE_PATH_LEFT_REMAIN, '/');
+		if (KE_APP_MODE === KE_WEB_MODE) {
 			if (empty($this->httpBase)) {
 				$this->httpBase = comparePath(KE_REQUEST_PATH, $_SERVER['SCRIPT_NAME'], '/');
 			} elseif ($this->httpBase !== '/') {
+				// 这个httpBase，是用户的输入的，就可能会出现各种奇怪的东西，就要用路径净化大招
 				$this->httpBase = purgePath($this->httpBase, KE_PATH_DOT_REMOVE, KE_PATH_LEFT_REMAIN, '/');
 			}
 			define('KE_HTTP_BASE', $this->httpBase);
-			define('KE_HTTP_REWRITE', $this->httpRewrite);
+			define('KE_HTTP_REWRITE', (bool)$this->httpRewrite);
 		}
 
 		/////////////////////////////////////////////////////////////////////////////
@@ -143,7 +132,7 @@ class App
 			$this->name = KE_APP_DIR;
 
 		// 一个App的完整摘要
-		$summary = sprintf('%s(%s,%s,%s)', $this->name, KE_APP_ENV, KE_REQUEST_HOST, KE_APP_ROOT);
+		$summary = sprintf('%s(%s,%s,%s)', $this->name, KE_APP_ENV, KE_REQUEST_HOST, KE_APP);
 
 		// 项目的hash，基于完整摘要生成，而非基于用户设置的项目名称
 		// hash，主要用于服务器缓存识别不同的项目时使用
@@ -226,8 +215,14 @@ class App
 	protected function onExiting()
 	{
 		$err = $this->getLastError();
-		if (!empty($err))
-			$this->echoError($err, 500);
+		if (!empty($err)) {
+			var_dump($err);
+			// 如果最终还是有错，不能直接调用echoError，
+			// 而是要触发错误，以确保将错误处理交给适合的上下文环境来处理。
+//			trigger_error($err['message'], E_ERROR);
+//			throw new Exception(getPhpErrorStr($err['type']) . ' - ' . $err['message']);
+//			var_dump($err);
+		}
 	}
 
 	/**
@@ -317,12 +312,12 @@ class App
 		if (isset($error['file']) && KE_APP_ENV !== KE_DEVELOPMENT) {
 			$error['file'] = $this->remainAppPath($error['file']);
 		}
-		if (KE_APP_MODE === KE_WEB) {
+		if (KE_APP_MODE === KE_WEB_MODE) {
 			header("{$_SERVER['SERVER_PROTOCOL']} {$code}", true, $code);
 			$output = '';
 			$tpl = '<h1>An error occurred</h1><table><tr><th>Error Type</th><td>{type}</td></tr><tr><th>Message</th><td>{message}</td></tr><tr><th>File</th><td>{file}</td></tr><tr><th>Line</th><td>{line}</td></tr>';
 			if (KE_APP_ENV === KE_DEVELOPMENT) {
-				$output = OutputBuffer::getInstance()->getFunctionBuffer('app_debug', function() {
+				$output = OutputBuffer::getInstance()->getFunctionBuffer('app_debug', function () {
 					echo '<tr><th>Debug</th><td><pre>';
 					debug_print_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
 					echo '<pre></td></tr>';
@@ -337,7 +332,7 @@ class App
 
 	public function remainAppPath($path)
 	{
-		return str_replace([KE_APP_ROOT, '\\'], ['/' . KE_APP_DIR, '/'], $path);
+		return str_replace([KE_APP, '\\'], ['/' . KE_APP_DIR, '/'], $path);
 	}
 }
 

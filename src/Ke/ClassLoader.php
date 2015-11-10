@@ -63,26 +63,24 @@ class ClassLoader
 	 */
 	public static function getLoader($name = null)
 	{
-		if (empty($name))
-			$name = 'app';
 		if (!isset(self::$loaders[$name]))
 			throw new Exception('Undefined class loader {name}!', ['name' => $name]);
 		return self::$loaders[$name];
 	}
 
-	public static function hasLoader($name)
+	public static function exists($name)
 	{
 		return isset(self::$loaders[$name]);
 	}
 
 	public static function addLoader($name, $loader)
 	{
-		if (empty($name))
-			$name = 'app';
-		if (!isset(self::$loaders[$name]) && is_object($loader)) {
-			self::$loaders[$name] = $loader;
-		}
-		throw new Exception('The class loader should be an object!');
+		if (isset(self::$loaders[$name]))
+			throw new Exception('The class loader named {name} has been defined!', ['name' => $name]);
+		if (!is_object($loader))
+			throw new Exception('The class loader should be an object!');
+		self::$loaders[$name] = $loader;
+		return $loader;
 	}
 
 	/**
@@ -93,8 +91,6 @@ class ClassLoader
 	 */
 	public static function newLoader($name, array $options)
 	{
-		if (empty($name))
-			$name = 'app';
 		if (isset(self::$loaders[$name]))
 			throw new Exception('The class loader "{name}" has been defined.', ['name' => $name]);
 		self::$loaders[$name] = new static($options);
@@ -329,6 +325,8 @@ class ClassLoader
 					if (is_subclass_of($class, AutoLoadClassImpl::class))
 						call_user_func([$class, 'onLoadClass'], $class, $path);
 					// 这里预留一个空间，这里会加入一些接口的实现
+				} elseif (trait_exists($class, false)) {
+
 				} else {
 					// 如果类不存在，将其记录下来，因为PSR的规范，loadClass不应该抛出异常或错误
 					$status = self::UNDEFINED;

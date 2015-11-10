@@ -163,7 +163,7 @@ class Uri
 			if (empty($_SERVER['HTTP_HOST']))
 				$_SERVER['HTTP_HOST'] = $_SERVER['SERVER_NAME'];
 			// @todo cli的queryString即为执行时的参数，具体为：$_SERVER['argv'] 1 .. n => $query，后续会增加
-			$path = substr(KE_SCRIPT_PATH, strlen(KE_APP_ROOT));
+			$path = substr(KE_SCRIPT_PATH, strlen(KE_APP));
 			if (KE_IS_WIN)
 				$path = str_replace('\\', '/', $path);
 			$path = '/' . KE_APP_DIR . $path;
@@ -192,6 +192,10 @@ class Uri
 				parse_str($parse['query'], $query);
 			$_SERVER['QUERY_STRING'] = empty($query) ? '' : http_build_query($query, null, '&', PHP_QUERY_RFC3986);
 			$_SERVER['REQUEST_URI'] = $path . (empty($_SERVER['QUERY_STRING']) ? '' : '?' . $_SERVER['QUERY_STRING']);
+			// 这个只在HTTP模式有用，这个SCRIPT_NAME可能会出现/aa///bb，但一定不会出现/../aabb/./
+			// 所以这里只亮小路径过滤，而不用大路径过滤方法
+			// 而且他也是HTTP的路径，也符合
+			$_SERVER['SCRIPT_NAME'] = static::filterPath($_SERVER['SCRIPT_NAME']);
 		}
 
 		self::$purgePaths[$path] = 1;

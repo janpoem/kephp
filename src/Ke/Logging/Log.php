@@ -21,45 +21,21 @@ use Ke\Exception;
 class Log extends DataRegistry
 {
 
-	const IDX_FORMAT = 0;
+	const DEFAULT_NAME = 'global';
 
-	const IDX_MICROTIME = 1;
+	const DEFAULT_FORMAT = '[Y/m/d h:i:s ms][level:class][method:relativeUri]traceFileBlock env: message params';
 
-	const IDX_LEVEL = 2;
-
-	const IDX_MESSAGE = 3;
-
-	const IDX_PARAMS = 4;
-
-	const IDX_DEBUG = 5;
-
-	const DEFAULT_FORMAT = '[level][year/month/day hour:minute:second microtime][method:relativeUri][file:line] env - message debug params';
+	const DEFAULT_LEVEL = LogLevel::NOTICE;
 
 	protected static $domain = 'log.settings';
 
-	protected static $defaultData = [
-		'level'  => LogLevel::NOTICE,    // 记录的最低级别
-		'levels' => [],                  // 记录的级别的枚举
-		'debug'  => false,               // 是否debug，debug会占用比较多的php运行时内存
-		'format' => null,                // 基础的格式
-		'file'   => null,                // 日志输出文件
-		'handle' => null,                // 日志输出接管函数
-	];
+	protected static $defaultName = self::DEFAULT_NAME;
 
-	private static $baseVars = [
-		'datetime'    => 0,
-		'env'         => '',
-		'scheme'      => '',
-		'host'        => '',
-		'uri'         => '',
-		'relativeUri' => '',
-		'method'      => '',
-		'file'        => '',
-		'line'        => '',
-		'br'          => PHP_EOL,
-	];
+	private static $baseVars = false;
 
-	private static $formats = [];
+	private static $formats = [
+		0 => self::DEFAULT_FORMAT,
+	];
 
 	private static $loggers = [];
 
@@ -80,50 +56,42 @@ class Log extends DataRegistry
 	 */
 	public static function getLogger($name = null)
 	{
-		// 取得logger实际的loggerName
-		$name = static::getRealName($name);
-		$class = BaseLogger::class;
-
-		if (isset(self::$loggers[$name]))
-			return self::$loggers[$name];
-
-		$config = static::getConfig($name);
-		if ($config instanceof LoggerImpl) {
-			self::$loggers[$name] = $config;
+		if (static::isDefine($name)) {
+			$access = $name;
+			$config = static::getConfig($name);
 		} else {
-			if (isset($config['class']) && is_string($config['class']) && $config['class'] !== $class) {
-				if (class_exists($config['class'], true) ||
-					!is_subclass_of($config['class'], LoggerImpl::class)
-				) {
-					throw new Exception('Invalid logger class in config {name}', ['name' => $name]);
-				} else {
-					$class = $config['class'];
-				}
+			$access = static::getDefaultName();
+			$config = static::getConfig($access);
+		}
+
+		if (isset(self::$loggers[$access]))
+			return self::$loggers[$access];
+
+		if ($config instanceof LoggerImpl) {
+			self::$loggers[$access] = $config;
+			return self::$loggers[$access];
+		}
+
+		$class = BaseLogger::class;
+		if (isset($config['class']) && is_string($config['class']) && $config['class'] !== $class) {
+			if (class_exists($config['class'], true) && is_subclass_of($config['class'], LoggerImpl::class)) {
+				$class = $config['class'];
 				unset($config['class']);
+			} else {
+				throw new Exception('Invalid logger class in config {name}', ['name' => $name]);
 			}
 		}
 
-		/** @var LoggerImpl $logger */
-		$logger = new $class();
-		$logger->configure($config);
-		self::$loggers[$name] = $logger;
-
+		self::$loggers[$name] = new $class($config);
 		return self::$loggers[$name];
 	}
 
-	public static function getRealName($name)
+	public static function getConfig($name = null)
 	{
 		if (empty($name))
-			return static::getDefaultName();
-		if (static::isDefine($name))
-			return $name;
-		return static::getDefaultName();
-	}
-
-	public static function getConfig($name)
-	{
-		if (static::isDefine($name)) {
-			$config = static::read($name);
+			$name = static::getDefaultName();
+		$config = static::read($name);
+		if (!empty($config)) {
 			if ($config instanceof LoggerImpl) {
 				return $config;
 			}
@@ -133,9 +101,11 @@ class Log extends DataRegistry
 			} elseif ($type !== KE_ARY) {
 				$config = (array)$config;
 			}
-			return $config;
+			$config['name'] = $name;
+		} else {
+			$config = [];
 		}
-		return [];
+		return $config;
 	}
 
 	public static function getFormatId($format)
@@ -155,6 +125,11 @@ class Log extends DataRegistry
 		}
 	}
 
+	public static function hasFormatId($id)
+	{
+		return isset(self::$formats[$id]);
+	}
+
 	public static function getFormat($id)
 	{
 		if (isset(self::$formats[$id]))
@@ -164,22 +139,33 @@ class Log extends DataRegistry
 
 	public static function getBaseVars()
 	{
-		if (self::$baseVars['datetime'] === 0) {
-			self::$baseVars['env'] = KE_APP_ENV;
-			self::$baseVars['scheme'] = KE_REQUEST_SCHEME;
-			self::$baseVars['host'] = KE_REQUEST_HOST;
-			self::$baseVars['method'] = PHP_SAPI === 'cli' ? 'CLI' : $_SERVER['REQUEST_METHOD'];
-			self::$baseVars['uri'] = KE_REQUEST_URI;
-
-			$uri = substr(KE_REQUEST_URI, strlen(KE_HTTP_BASE));
-			if (empty($uri))
-				$uri = '/';
-			elseif (isset($uri[0]) && $uri[0] !== '/')
-				$uri = '/' . $uri;
-			self::$baseVars['relativeUri'] = $uri;
-
+		if (self::$baseVars === false) {
+			self::$baseVars = [
+				'datetime'       => 0,
+				'env'            => KE_APP_ENV,
+				'scheme'         => KE_REQUEST_SCHEME,
+				'host'           => KE_REQUEST_HOST,
+				'uri'            => KE_REQUEST_URI,
+				'relativeUri'    => '',
+				'method'         => PHP_SAPI === 'cli' ? 'CLI' : $_SERVER['REQUEST_METHOD'],
+				'file'           => '',
+				'line'           => '',
+				'br'             => PHP_EOL,
+				'traceFile'      => '',
+				'traceFileBlock' => '',
+			];
+			if (KE_APP_MODE === KE_CLI_MODE) {
+				self::$baseVars['relativeUri'] = KE_SCRIPT_FILE;
+			} else {
+				$uri = substr(KE_REQUEST_URI, strlen(KE_HTTP_BASE));
+				if (empty($uri))
+					$uri = '/';
+				elseif (isset($uri[0]) && $uri[0] !== '/')
+					$uri = '/' . $uri;
+				self::$baseVars['relativeUri'] = $uri;
+			}
 			$now = time();
-			$dtKeys = ['year', 'month', 'day', 'hour', 'minute', 'second'];
+			$dtKeys = ['Y', 'm', 'd', 'h', 'i', 's'];
 			$dtFields = array_combine($dtKeys, explode('|', date('Y|m|d|h|i|s', $now)));
 			self::$baseVars += $dtFields;
 			self::$baseVars['datetime'] = $now;
@@ -187,93 +173,87 @@ class Log extends DataRegistry
 		return self::$baseVars;
 	}
 
-	public static function prepareLog(array $row, $returnLog = false)
+	public static function prepareLog(array &$raw, $returnLog = false)
 	{
-		$vars = static::getBaseVars();
-		$formatId = $row[self::IDX_FORMAT];
-		if (!isset(self::$formats[$formatId]))
-			return false;
-		// format
-//		$format = self::$formats[$formatId];
-		// microtime
-		$vars['microtime'] = str_pad(round($row[self::IDX_MICROTIME] - (int)$row[self::IDX_MICROTIME], 6), 8, ' ', STR_PAD_RIGHT);
-		$vars['millitime'] = str_pad(intval($vars['microtime'] * 1000), 6, ' ', STR_PAD_RIGHT);
-		// level
-		$vars['level'] = LogLevel::getName($row[self::IDX_LEVEL]);
-		// message
-		$vars['message'] = trim($row[self::IDX_MESSAGE]);
-		// params
-		$vars['params'] = '';
-		if (!empty($row[self::IDX_PARAMS])) {
-			foreach ($row[self::IDX_PARAMS] as $key => $item) {
-				$vars['params'] .= PHP_EOL . $key . ' => ' . print_r($item, true);
+		if (!isset($raw['prepared']))
+			$raw['prepared'] = false;
+		if (!$raw['prepared']) {
+			$raw = array_merge(static::getBaseVars(), $raw);
+			// microtime
+			$microtime = $raw['ms'] - (int)$raw['ms'];
+			$raw['ms'] = str_pad(round($microtime, 6), 8, ' ', STR_PAD_RIGHT);
+			// level
+			$raw['level'] = LogLevel::getName($raw['level']);
+			// message
+			$raw['message'] = trim($raw['message']);
+			// params
+			if (!empty($raw['params'])) {
+				$params = $raw['params'];
+				$raw['params'] = '';
+				foreach ($params as $key => $item) {
+					$raw['params'] .= PHP_EOL . $key . ' => ' . print_r($item, true);
+				}
 			}
-		}
-		// file, line, debug
-		$debug = $row[self::IDX_DEBUG];
-		if ($debug instanceof \Exception) {
-			$vars['file'] = $debug->getFile();
-			$vars['line'] = $debug->getLine();
-			$vars['debug'] = '';
-		} elseif (is_array($debug) && !empty($debug)) {
-			$last = $debug[count($debug) - 1];
-			$vars['file'] = $last['file'];
-			$vars['line'] = $last['line'];
-			$vars['debug'] = '';
+			// file, line, debug
+			if (!empty($raw['debug'])) {
+				$debug = $raw['debug'];
+				if ($debug instanceof \Exception) {
+					$raw['file'] = $debug->getFile();
+					$raw['line'] = $debug->getLine();
+					$raw['debug'] = '';
+				} elseif (is_array($debug) && !empty($debug)) {
+					$last = $debug[count($debug) - 1];
+					$raw['file'] = $last['file'];
+					$raw['line'] = $last['line'];
+					$raw['debug'] = '';
+				}
+				$raw['traceFile'] = $raw['file'] . ':' . $raw['line'];
+				$raw['traceFileBlock'] = '[' . $raw['traceFile'] . ']';
+			}
+			$raw['log'] = false;
+			$raw['prepared'] = true;
 		}
 		if (!$returnLog) {
-			$vars['formatId'] = $formatId;
-			return $vars;
+			return $raw;
 		} else {
-			return trim(strtr(self::$formats[$formatId], $vars));
+			if ($raw['log'] === false) {
+				$format = self::$formats[$raw['format']];
+				$raw['log'] = trim(strtr($format, $raw));
+			}
+			return $raw['log'];
 		}
 	}
-}
 
-class LogLevel
-{
-
-	/** 什么都不输出 */
-	const NONE = 999999;
-
-	/** 调试输出 - 最低级别，为开发过程中，为了调试特定的变量而输出 */
-	const DEBUG = 10;
-
-	/** 基本信息 - 低等级的标记信息 */
-	const INFO = 20;
-
-	/** 标志性信息 - 用于输出一些运行过程中的标志性信息 */
-	const NOTICE = 30;
-
-	/** 警告 - 比较重要，但不影响整体运行 */
-	const WARN = 40;
-
-	/** 出错了，但程序仍然可以继续运行 */
-	const ERROR = 50;
-
-	/** 致命性错误，应用程序将退出正常运行 */
-	const FATAL = 60;
-
-	/** 全部 */
-	const ALL = -1;
-
-	private static $levels = [
-		self::DEBUG  => 'DEBUG',
-		self::INFO   => 'INFO',
-		self::NOTICE => 'NOTICE',
-		self::WARN   => 'WARN',
-		self::ERROR  => 'ERROR',
-		self::FATAL  => 'FATAL',
-	];
-
-	/**
-	 * 获取日志级别的名称
-	 *
-	 * @param int $level
-	 * @return string
-	 */
-	public static function getName($level)
-	{
-		return isset(self::$levels[$level]) ? self::$levels[$level] : 'UNKNOWN';
+	public static function mkRawLog(
+		$level = self::DEFAULT_LEVEL,
+		$message = '',
+		array $params = null,
+		$isDebug = false,
+		$format = 0,
+		$name = self::DEFAULT_NAME,
+		$class = null
+	) {
+		$raw = [
+			'prepared' => false,
+			'format'   => $format,
+			'name'     => $name,
+			'class'    => $class,
+			'level'    => $level,
+			'ms'       => microtime(true),
+			'message'  => '',
+			'params'   => $params,
+			'debug'    => null,
+		];
+		if ($message instanceof \Exception) {
+			$class = get_class($message);
+			$raw['message'] = $class . ' - ' . $message->getMessage();
+			$raw['debug'] = $message;
+		} else {
+			$raw['message'] = (string)$message;
+			if ($isDebug) {
+				$raw['debug'] = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+			}
+		}
+		return $raw;
 	}
 }

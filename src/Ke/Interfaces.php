@@ -25,29 +25,48 @@ interface AutoLoadClassImpl
 interface ContextImpl
 {
 
-	public function setInput($input);
+	/**
+	 * @return ContextImpl
+	 */
+	public static function context();
 
+	/**
+	 * @param InputImpl $input
+	 * @return ContextImpl
+	 */
+	public function setInput(InputImpl $input);
+
+	/**
+	 * @return InputImpl
+	 */
 	public function getInput();
+
+	/**
+	 * @param OutputImpl $output
+	 * @return ContextImpl
+	 */
+	public function setOutput(OutputImpl $output);
+
+	/**
+	 * @return InputImpl
+	 */
+	public function getOutput();
+}
+
+interface InputImpl
+{
+
+	public function setData($input);
+
+	public function getData();
+}
+
+
+interface OutputImpl
+{
+
+	public function isOutput();
 
 	public function output();
 }
 
-
-//
-//
-//interface InputImpl
-//{
-//
-//	public function setData($data);
-//
-//	public function getData();
-//}
-//
-//interface OutputImpl
-//{
-//
-//	public function isOutput();
-//
-//	public function output();
-//}
-//

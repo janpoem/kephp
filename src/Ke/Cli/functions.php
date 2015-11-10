@@ -9,7 +9,7 @@
 
 $args = new \Ke\Cli\Args([
 	'hello_world',
-	'-d', KE_APP_ROOT,
+	'-d', KE_APP,
 	'--class=Hello',
 ]);
 

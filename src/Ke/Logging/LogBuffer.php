@@ -10,6 +10,7 @@
 
 namespace Ke\Logging;
 
+
 class LogBuffer
 {
 

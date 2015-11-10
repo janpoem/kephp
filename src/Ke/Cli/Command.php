@@ -12,11 +12,7 @@ namespace Ke\Cli;
 class Command
 {
 
-	protected $guide = [
-		0 => [
-			'field' => 'command',
-		],
-	];
+	protected $guide = [];
 
 	protected $args = [];
 }

@@ -154,27 +154,27 @@ const KE_APP_MODE = '/';
  * 当前项目的根目录的路径
  * @defined Ke/Core/Bootstrap.php
  */
-const KE_APP_ROOT = '/';
+const KE_APP = '/';
 /**
  * 当前项目的网站目录的路径
  * @defined Ke/Core/Bootstrap.php
  */
-const KE_APP_WEB = '/';
+const KE_WEB = '/';
 /**
  * 当前项目的源代码目录的路径
  * @defined Ke/Core/Bootstrap.php
  */
-const KE_APP_SRC = '/';
+const KE_SRC = '/';
 /**
  * 当前项目的配置文件目录的路径
  * @defined Ke/Core/Bootstrap.php
  */
-const KE_APP_CONF = '/';
+const KE_CONF = '/';
 /**
  * 当前项目的Composer的路径
  * @defined Ke/Core/Bootstrap.php
  */
-const KE_APP_COMPOSER = '/';
+const KE_COMPOSER = '/';
 /**
  * 当前项目的APP类的类名
  * @defined Ke/Core/Bootstrap.php
@@ -264,17 +264,18 @@ const KE_HTTP_SECURITY_SALT = '';
 global $_KE;
 
 $_KE = [
-	'APP'               => null,
-	'APP_CLASS'         => null,
-	'APP_LOCALE'        => 'en_US',
-	'APP_AUTOLOAD'      => true,
-	'SRC_PATH'          => null,
-	'SRC_DIR'           => 'src',
-	'WEB_PATH'          => null,
-	'WEB_DIR'           => 'public',
-	'CONF_PATH'         => null,
-	'CONF_DIR'          => 'config',
-	'COMPOSER_PATH'     => null,
-	'COMPOSER_DIR'      => 'vendor',
-	'COMPOSER_AUTOLOAD' => false,
+	'APP_PATH'            => null,
+	'APP_CLASS'           => null,
+	'APP_LOCALE'          => 'en_US',
+	'SRC_PATH'            => null,
+	'SRC_DIR'             => 'src',
+	'WEB_PATH'            => null,
+	'WEB_DIR'             => 'public',
+	'CONF_PATH'           => null,
+	'CONF_DIR'            => 'config',
+	'COMPOSER_PATH'       => null,
+	'COMPOSER_DIR'        => 'vendor',
+	// loader switch
+	'USE_KE_LOADER'       => true,
+	'USE_COMPOSER_LOADER' => false,
 ];

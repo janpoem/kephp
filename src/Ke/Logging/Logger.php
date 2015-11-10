@@ -10,8 +10,6 @@
 
 namespace Ke\Logging;
 
-use Exception as PhpException;
-
 /**
  * 日志记录器接口
  *
@@ -27,6 +25,13 @@ interface LoggerImpl
 	 * @return LoggerImpl
 	 */
 	public function configure($config);
+
+	/**
+	 * 取得当前日志记录器的配置数据，必须返回一个数组格式
+	 *
+	 * @return array
+	 */
+	public function getConfig();
 
 	/**
 	 * @param $level
@@ -113,48 +118,115 @@ interface LoggerImpl
 trait LoggerOps
 {
 
-	/** @var bool|array */
-	private $config = false;
+	/** @var bool 记录器是否初始化 */
+	private $loggerInit = false;
 
-	private $handle = null;
+	private $loggerConfig = [
+		'name'   => Log::DEFAULT_NAME,
+		'level'  => Log::DEFAULT_LEVEL,
+		'levels' => [],
+		'debug'  => false,
+		'handle' => null,
+		'file'   => null,
+		'format' => 0,
+	];
 
-	private $file = null;
-
-	protected function initConfig()
+	protected function initLogger($config = null)
 	{
-		$this->config = Log::read();
+		// 先取得全局的配置信息，并写入当前Logger
+		$this->configure($this->loggerConfig['name']);
+		// 再根据传入的config
+		if (isset($config))
+			$this->configure($config);
+		$this->loggerInit = true;
 	}
 
 	public function configure($config)
 	{
-		if ($this->config === false)
-			$this->initConfig();
-		if (!is_array($config)) {
-			$config = (array)$config;
+		if (empty($config))
+			return $this;
+		$type = gettype($config);
+		// 字符串类型，表示从全局Log管理器中，取得相应的配置信息
+		if ($type === KE_STR) {
+			$name = $config;
+			$config = Log::getConfig($name);
+		} elseif ($type === KE_OBJ) {
+			$name = get_class($config);
+			$config = Log::getConfig($name);
+		} elseif ($type !== KE_ARY) {
+			$config = null;
 		}
-		if (!empty($config))
-			$this->config = array_merge($this->config, $config);
-		if (isset($this->config['handle']) && is_callable($this->config['handle'])) {
-			$this->handle = $this->config['handle'];
+
+		// 数据过滤一下
+		if (isset($config['handle'])) {
+			// handle：必须是一个可callable的函数
+			if (!is_callable($config['handle']))
+				$config['handle'] = null;
 		}
-		elseif (!empty($this->config['file']) && is_string($this->config['file'])) {
-			$this->file = $this->config['file'];
+		if (isset($config['file'])) {
+			// file：必须是一个非空的字符串类型
+			// 如果和当前设定的文件一样，则不写入
+			if (empty($config['file']) || !is_string($config['file'])) {
+				$config['file'] = null;
+			} elseif ($config['file'] === $this->loggerConfig['file']) {
+				unset($config['file']);
+			}
+		}
+		if (isset($config['level'])) {
+			if (!is_numeric($config['level']))
+				unset($config['level']);
+		}
+		if (isset($config['levels'])) {
+			// levels采取手工的方式过滤，不进入array_merge的流程
+			// 这里主要是为了确保多次写入的levels可以合并存在，
+			// 一般来说，指定了level就足以满足正常需求，一旦需要指定特殊的levels，意味着必须针对性的做输出，
+			// 而且这种针对性，可能会手动调用 `$logger->configure(['levels' => [LogLevel::WARN]])`
+			// 所以levels，兼容最多条件的输入为好
+			if (!is_array($config['levels']))
+				$config['levels'] = (array)$config['levels'];
+			foreach ($config['levels'] as $level) {
+				$this->loggerConfig['levels'][$level] = true;
+			}
+			unset($config['levels']);
+		}
+		if (isset($config['debug'])) {
+			$config['debug'] = (bool)$config['debug'];
+		}
+		if (isset($config['format'])) {
+			// 我们并不想记录字符串格式的format，包括在朝外部的传递log数据的时候，也不希望将字符串格式的format来传递，这样需要太多的内存
+			// 所以，这里的format实际上是一个整形的id，通过Log来全局管理format，并返回对应的id。
+			if (is_numeric($config['format'])) { // 传入format id
+				if (!Log::hasFormatId($config['format']))
+					unset($config['format']);
+			} else { // 传入指定的format
+				if (empty($config['format']) || !is_string($config['format'])) {
+					$config['format'] = null;
+				} else {
+					$config['format'] = Log::getFormatId($config['format']);
+				}
+			}
+		}
+
+		// 过滤了$config数据以后，再次检查一次，为空不写入
+		if (!empty($config)) {
+			$this->loggerConfig = array_merge($this->loggerConfig, $config);
 		}
 		return $this;
 	}
 
+	public function getConfig()
+	{
+		return $this->loggerConfig;
+	}
+
 	public function isLog($level)
 	{
-		if ($this->config === false)
-			$this->initConfig();
-		return $level >= $this->config['level'] || (isset($this->config['levels'][$level]) && $this->config['levels'][$level]);
+		return $level >= $this->loggerConfig['level'] || isset($this->loggerConfig['levels'][$level]);
 	}
 
 	public function isDebug()
 	{
-		if ($this->config === false)
-			$this->initConfig();
-		return !empty($this->config['debug']);
+		return $this->loggerConfig['debug'];
 	}
 
 	/**
@@ -169,32 +241,30 @@ trait LoggerOps
 	 */
 	public function log($level, $message, array $params = null)
 	{
-		if ($this->isLog($level) && (isset($this->handle) || isset($this->file))) {
-			$row = [
-				Log::IDX_FORMAT    => Log::getFormatId($this->config['format']),
-				Log::IDX_MICROTIME => microtime(true),
-				Log::IDX_LEVEL     => $level,
-				Log::IDX_MESSAGE   => '',
-				Log::IDX_PARAMS    => $params,
-				Log::IDX_DEBUG     => null,
-			];
-			$debug = null;
-			if ($message instanceof PhpException) {
-				$row[Log::IDX_MESSAGE] = $message->getMessage();
-				$row[Log::IDX_DEBUG] = $message;
-			} else {
-				$row[Log::IDX_MESSAGE] = (string)$message;
-				if ($this->isDebug()) {
-					$row[Log::IDX_DEBUG] = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-				}
-			}
-			if (isset($this->handle)) {
-				call_user_func($this->handle, Log::prepareLog($row));
-			} else {
-				LogBuffer::push($this->file, $row);
-			}
+		// 必须确保，每个logger都被正确的初始化
+		if (!$this->loggerInit)
+			$this->initLogger(static::class);
+		if ($this->isLog($level)) {
+			$log = Log::mkRawLog(
+				$level,
+				$message,
+				$params,
+				$this->loggerConfig['debug'],
+				$this->loggerConfig['format'],
+				$this->loggerConfig['name'],
+				static::class
+			);
+			$this->onLogging($log);
+			if (isset($this->loggerConfig['handle']))
+				call_user_func_array($this->loggerConfig['handle'], [&$log]);
+			if (isset($this->loggerConfig['file']))
+				LogBuffer::push($this->loggerConfig['file'], $log);
 		}
 		return $this;
+	}
+
+	protected function onLogging(array &$log)
+	{
 	}
 
 	/**
@@ -280,13 +350,13 @@ trait LoggerOps
 trait LoggerAward
 {
 
-	private static $logger = null;
+	private static $staticLogger = null;
 
 	public static function getLogger()
 	{
-		if (!isset(self::$logger))
-			self::$logger = Log::getLogger(static::getLoggerName());
-		return self::$logger;
+		if (!isset(self::$staticLogger))
+			self::$staticLogger = Log::getLogger(static::getLoggerName());
+		return self::$staticLogger;
 	}
 
 	public static function getLoggerName()
@@ -296,9 +366,9 @@ trait LoggerAward
 
 	public static function log($level, $message, array $params = null)
 	{
-		if (!isset(self::$logger))
-			self::$logger = static::getLogger();
-		return self::$logger->log($level, $message, $params);
+		if (!isset(self::$staticLogger))
+			self::$staticLogger = static::getLogger();
+		return self::$staticLogger->log($level, $message, $params);
 	}
 
 	public static function debug($message, array $params = null)
@@ -337,4 +407,13 @@ class BaseLogger implements LoggerImpl
 
 	use LoggerOps;
 
+	public function __construct($config = null)
+	{
+		$this->initLogger($config);
+		$this->onConstruct();
+	}
+
+	protected function onConstruct()
+	{
+	}
 }
