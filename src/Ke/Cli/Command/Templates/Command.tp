@@ -1,0 +1,40 @@
+<?php
+/**
+ * Kephp command file
+ *
+ * Command: {command}
+ * Class  : {class}
+ * Path   : {path}
+ * Usage  : php kephp.php {command}
+ * Create : {datetime}
+ */
+
+namespace {namespace};
+
+use Ke\Cli\Command;
+use Ke\Cli\Console;
+use Ke\Cli\Argv;
+
+class {class} extends Command
+{
+
+	protected $name = '{command}';
+
+    protected $description = '';
+
+    protected $guide = [
+//      'field' => [ 'type'  => KE_STR, 'default' => '', 'shortcut' => 'f' ],
+    ];
+
+	protected function onConstruct(Console $console, Argv $argv)
+	{
+		// todo: Command preparing ...
+	}
+
+	protected function onExecute(Console $console, Argv $argv)
+	{
+		// todo: Command executing ...
+		$console->writeln('Executing command {command}!');
+	}
+}
+
