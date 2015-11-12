@@ -9,9 +9,15 @@
 namespace Ke\Cli\Command;
 
 use Ke\Cli\Command;
+use Ke\Cli\Console;
+use Ke\Cli\Argv;
 
-class newapp extends Command
+class NewApp extends Command
 {
+
+	protected $name = 'new_app';
+
+	protected $description = 'Create a new application with kephp!';
 
 	protected $guide = [
 		'name' => [
@@ -24,8 +30,8 @@ class newapp extends Command
 		],
 	];
 
-	public function execute()
+	protected function onExecute(Console $console, Argv $argv)
 	{
-		$this->console->info('hello world');
+		// TODO: Implement onExecute() method.
 	}
 }
