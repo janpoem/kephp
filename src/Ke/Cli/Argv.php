@@ -12,50 +12,40 @@ use Ke\Exception;
 use Ke\InputImpl;
 
 /**
- * 命令行的参数
+ * 命令行的参数列表
  *
  * @package Ke\Cli
  */
-class Args implements InputImpl
+class Argv implements InputImpl
 {
 
 	private static $current = null;
-
-	protected $data = [];
 
 	protected $file = '';
 
 	protected $command = '';
 
+	protected $data = [];
+
 	public static function current()
 	{
 		if (!isset(self::$current)) {
-			$args = [];
-			if (isset($_SERVER['argv'])) {
-				$args = $_SERVER['argv'];
-				array_shift($args);
-			}
-			self::$current = new static($args);
-			self::$current->file = KE_SCRIPT_FILE;
+			$_SERVER['argv'][0] = KE_SCRIPT_FILE;
+			self::$current = new static();
+			self::$current->setRawData($_SERVER['argv']);
 		}
 		return self::$current;
 	}
 
-	public function __construct($input = null)
-	{
-		if (isset($input))
-			$this->setData($input);
-	}
-
-	public function setData($input)
+	public function setRawData($input)
 	{
 		$type = gettype($input);
 		if ($type === KE_STR) {
 			$type = KE_ARY;
 			$input = explode(' ', $input);
 		} elseif ($type === KE_OBJ) {
-			$type = KE_ARY;
-			$input = get_object_vars($input);
+			// 一个对象无法做有效的转换
+			return $this;
 		}
 
 		if (empty($input) || $type !== KE_ARY)
@@ -91,10 +81,27 @@ class Args implements InputImpl
 			$naturalIndex++;
 			if ($naturalIndex === 0) {
 				$this->command = $item;
+			} elseif ($naturalIndex === 1) {
+				$this->command = $item;
 			} else {
 				$this->data[] = $item;
 			}
 		}
+		return $this;
+	}
+
+	public function setData($input)
+	{
+		$type = gettype($input);
+		if ($type === KE_STR) {
+			$type = KE_ARY;
+			parse_str($input, $input);
+		} elseif ($type === KE_OBJ) {
+			$type = KE_ARY;
+			$input = get_object_vars($input);
+		}
+		if (!empty($input) && $type === KE_ARY)
+			$this->data = $input;
 		return $this;
 	}
 
@@ -103,42 +110,52 @@ class Args implements InputImpl
 		return $this->data;
 	}
 
-//	public function __get($field)
-//	{
-//		if ($field === 'command')
-//			return $this->command;
-//		elseif ($field === 'file')
-//			return $this->file;
-//		return null;
-//	}
+	public function __get($field)
+	{
+		return isset($this->data[$field]) ? $this->data[$field] : null;
+	}
+
+	public function __set($field, $value)
+	{
+		return $this->data[$field] = $value;
+	}
 
 	public function getCommand()
 	{
 		return $this->command;
 	}
 
-	public function getCommands()
+	public function mkCommands()
 	{
 		$result = [];
 		if (empty($this->command))
 			return $result;
-		$base = str_replace(['\\', '-', '.'], ['/', '_', '_'], trim($this->command, KE_PATH_NOISE));
-		$result[] = $base;
+		$base = str_replace([/*'\\',*/
+		                     '-',
+		                     '.',
+		], [/*'/',*/
+		    '_',
+		    '_',
+		], trim($this->command, KE_PATH_NOISE));
+		$result[$base] = $base;
 		$lower = strtolower($this->command);
-		if ($lower !== $this->command)
-			$result[] = $lower;
+		if (!isset($result[$lower]))
+			$result[$lower] = $lower;
+		$lowerNoUnder = str_replace('_', '', $lower);
+		if (!isset($result[$lowerNoUnder]))
+			$result[$lowerNoUnder] = $lowerNoUnder;
 		// 这里暂时这么处理
-		$camelCase = preg_replace_callback('#([\-\_\/\.])([a-z])#', function($matches) {
-			if ($matches[1] === '/')
+		$camelCase = preg_replace_callback('#([\-\_\/\.\\\\])([a-z])#', function ($matches) {
+			if ($matches[1] === '/' || $matches[1] === '\\')
 				return strtoupper($matches[0]);
 			else
 				return '_' . strtoupper($matches[2]);
 		}, ucfirst($lower));
-		if ($camelCase !== $this->command)
-			$result[] = $camelCase;
+		if (!isset($result[$camelCase]))
+			$result[$camelCase] = $camelCase;
 		$camelCaseNoUnder = str_replace('_', '', $camelCase);
-		if ($camelCaseNoUnder !== $this->command)
-			$result[] = $camelCaseNoUnder;
+		if (!isset($result[$camelCaseNoUnder]))
+			$result[$camelCaseNoUnder] = $camelCaseNoUnder;
 		return $result;
 	}
 

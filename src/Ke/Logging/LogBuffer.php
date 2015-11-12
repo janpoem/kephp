@@ -62,10 +62,15 @@ class LogBuffer
 				$buffer .= Log::prepareLog($row, true) . PHP_EOL;
 			}
 			if (!empty($buffer)) {
-				$dir = dirname($file);
-				if (!is_dir($dir))
-					mkdir($dir, 0755, true);
-				file_put_contents($file, $buffer, FILE_APPEND);
+				if ($file === 'php://stderr' || $file === 'php://stdout') {
+					$file = false;
+				}
+				else {
+					$dir = dirname($file);
+					if (!is_dir($dir))
+						mkdir($dir, 0755, true);
+					file_put_contents($file, $buffer, FILE_APPEND);
+				}
 			}
 		}
 		self::$buffers = null;

@@ -28,7 +28,7 @@ interface ContextImpl
 	/**
 	 * @return ContextImpl
 	 */
-	public static function context();
+	public static function getContext();
 
 	/**
 	 * @param InputImpl $input

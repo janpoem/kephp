@@ -10,9 +10,11 @@ namespace Ke\Cli;
 
 use Ke\App;
 use Ke\ContextImpl;
+use Ke\Exception;
 use Ke\InputImpl;
 use Ke\Logging\Log;
-use Ke\Logging\LoggerAward;
+use Ke\Logging\LogBuffer;
+use Ke\Logging\LogLevel;
 use Ke\OutputBuffer;
 use Ke\Logging\LoggerOps;
 use Ke\OutputImpl;
@@ -23,12 +25,12 @@ use Ke\OutputImpl;
  *
  * @package Ke\Cli
  */
-class Cli implements ContextImpl
+class Console implements ContextImpl
 {
 
 	use LoggerOps;
 
-	/** @var Cli */
+	/** @var Console */
 	private static $context = null;
 
 	/** @var \Ke\App */
@@ -37,26 +39,26 @@ class Cli implements ContextImpl
 	/** @var \Ke\OutputBuffer */
 	public $ob = null;
 
-	/** @var Args */
-	public $args = null;
+	/** @var Argv */
+	public $argv = null;
 
 	/** @var Writer */
 	public $writer = null;
 
-	public static function context()
+	public static function getContext()
 	{
 		if (!isset(self::$context))
 			self::$context = new static();
 		return self::$context;
 	}
 
-	public function __construct(Args $args = null)
+	public function __construct(Argv $argv = null)
 	{
-		if (!isset($args))
-			$args = Args::current();
+		if (!isset($argv))
+			$argv = Argv::current();
 		$this->app = App::getApp();
 		$this->ob = OutputBuffer::getInstance()->start('cli');
-		$this->setInput($args);
+		$this->setInput($argv);
 		if (!isset(self::$context))
 			self::$context = $this;
 		$this->initLogger('cli');
@@ -92,13 +94,13 @@ class Cli implements ContextImpl
 
 	public function setInput(InputImpl $input)
 	{
-		$this->args = $input;
+		$this->argv = $input;
 		return $this;
 	}
 
 	public function getInput()
 	{
-		return $this->args;
+		return $this->argv;
 	}
 
 	public function setOutput(OutputImpl $output)
@@ -120,30 +122,52 @@ class Cli implements ContextImpl
 
 	public function writeln()
 	{
-		$args = func_get_args();
-		$args[] = PHP_EOL;
-		call_user_func_array([$this->writer, 'output'], $args);
+		call_user_func_array([$this->writer, 'output'], func_get_args());
+		echo PHP_EOL;
 		return $this;
 	}
 
-	public function findCommand(Args $args = null)
+	/**
+	 * @param Argv|null $argv
+	 * @return Command
+	 * @throws Exception
+	 */
+	public function detectCommand(Argv $argv = null)
 	{
-		if (!isset($args))
-			$args = $this->args;
-		$path = null;
-		foreach ($args->getCommands() as $command) {
-			$temp = __DIR__ . DS . 'Command' . DS . $command . '.php';
-			$this->writeln($temp);
-			if (is_file($temp)) {
-				$path = $temp;
-				break;
+		if (!isset($argv))
+			$argv = $this->argv;
+		$dirs = [
+			'Ke\\Cli\\Command'  => __DIR__ . DS . 'Command',
+			KE_APP_NS . '\\Cli' => KE_APP_NS_PATH . DS . 'Cli',
+		];
+		$class = '';
+		$path = '';
+		foreach ($dirs as $ns => $dir) {
+			foreach ($argv->mkCommands() as $command) {
+				$path = $dir . DS . $command . '.php';
+				if (is_file($path)) {
+					$class = $ns . '\\' . $command;
+					break;
+				}
 			}
-			$temp = KE_APP_NS_PATH . DS . 'Cli' . DS . $command . '.php';
-			$this->writeln($temp);
+			if (!empty($class))
+				break;
 		}
+		$command = $argv->getCommand();
+		if (empty($class)) {
+			throw new Exception('No command detected about "{cmd}"!', ['cmd' => $command]);
+		}
+		$this->info('Detecting "' . $command . '" to class "' . $class . '"!');
+		require $path;
+		if (!class_exists($class, false))
+			throw new Exception('Undefined command class {class}!', ['class' => $class]);
+		if (!is_subclass_of($class, Command::class))
+			throw new Exception('Command class {class} doest not extend with {parent}!', ['class'  => $class,
+			                                                                              'parent' => Command::class,
+			]);
+		/** @var Command $cmd */
+		return new $class($argv);
 	}
 
-	public function execute($command)
-	{
-	}
+
 }

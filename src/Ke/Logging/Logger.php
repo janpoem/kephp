@@ -122,13 +122,14 @@ trait LoggerOps
 	private $loggerInit = false;
 
 	private $loggerConfig = [
-		'name'   => Log::DEFAULT_NAME,
-		'level'  => Log::DEFAULT_LEVEL,
-		'levels' => [],
-		'debug'  => false,
-		'handle' => null,
-		'file'   => null,
-		'format' => 0,
+		'name'     => Log::DEFAULT_NAME,
+		'level'    => Log::DEFAULT_LEVEL,
+		'levels'   => [],
+		'debug'    => false,
+		'handle'   => null,
+		'file'     => null,
+		'fileType' => false,
+		'format'   => 0,
 	];
 
 	protected function initLogger($config = null)
@@ -166,10 +167,18 @@ trait LoggerOps
 		if (isset($config['file'])) {
 			// file：必须是一个非空的字符串类型
 			// 如果和当前设定的文件一样，则不写入
-			if (empty($config['file']) || !is_string($config['file'])) {
+			if (empty($config['file'])) {
 				$config['file'] = null;
 			} elseif ($config['file'] === $this->loggerConfig['file']) {
 				unset($config['file']);
+			} else {
+				if (is_string($config['file'])) {
+					$config['fileType'] = KE_STR;
+				} elseif (is_array($config['file'])) {
+					$config['fileType'] = KE_ARY;
+				} else {
+					unset($config['file'], $config['fileType']);
+				}
 			}
 		}
 		if (isset($config['level'])) {
@@ -229,6 +238,19 @@ trait LoggerOps
 		return $this->loggerConfig['debug'];
 	}
 
+	public function getLogFile($level)
+	{
+		if ($this->loggerConfig['fileType'] === false)
+			return false;
+		if ($this->loggerConfig['fileType'] === KE_STR && $this->isLog($level))
+			return $this->loggerConfig['file'];
+		if ($this->loggerConfig['fileType'] === KE_ARY) {
+			if (!empty($this->loggerConfig['file'][$level]))
+				return $this->loggerConfig['file'][$level];
+		}
+		return false;
+	}
+
 	/**
 	 * 日志记录的抽象接口实现
 	 * LoggerOps本身并不知道、也不限定一个Logger要如何去记录日志，只是假设一个Logger有一个log的接口
@@ -244,7 +266,8 @@ trait LoggerOps
 		// 必须确保，每个logger都被正确的初始化
 		if (!$this->loggerInit)
 			$this->initLogger(static::class);
-		if ($this->isLog($level)) {
+		$logFile = $this->getLogFile($level);
+		if ($this->isLog($level) || !empty($logFile)) {
 			$log = Log::mkRawLog(
 				$level,
 				$message,
@@ -257,8 +280,8 @@ trait LoggerOps
 			$this->onLogging($log);
 			if (isset($this->loggerConfig['handle']))
 				call_user_func_array($this->loggerConfig['handle'], [&$log]);
-			if (isset($this->loggerConfig['file']))
-				LogBuffer::push($this->loggerConfig['file'], $log);
+			if (!empty($logFile))
+				LogBuffer::push($logFile, $log);
 		}
 		return $this;
 	}

@@ -23,7 +23,7 @@ class Log extends DataRegistry
 
 	const DEFAULT_NAME = 'global';
 
-	const DEFAULT_FORMAT = '[Y/m/d h:i:s ms][level:class][method:relativeUri]traceFileBlock env: message params';
+	const DEFAULT_FORMAT = '[Y/m/d h:i:s ms][levelName:class][method:relativeUri]traceFileBlock env: message params';
 
 	const DEFAULT_LEVEL = LogLevel::NOTICE;
 
@@ -183,7 +183,7 @@ class Log extends DataRegistry
 			$microtime = $raw['ms'] - (int)$raw['ms'];
 			$raw['ms'] = str_pad(round($microtime, 6), 8, ' ', STR_PAD_RIGHT);
 			// level
-			$raw['level'] = LogLevel::getName($raw['level']);
+			$raw['levelName'] = LogLevel::getName($raw['level']);
 			// message
 			$raw['message'] = trim($raw['message']);
 			// params

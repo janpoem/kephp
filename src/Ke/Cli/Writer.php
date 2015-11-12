@@ -22,8 +22,10 @@ class Writer implements OutputImpl
 	public function output()
 	{
 		$args = func_get_args();
-		foreach ($args as $arg) {
+		foreach ($args as $i => $arg) {
 			print_r($arg);
+			if ($i < count($args))
+				echo ' ';
 		}
 	}
 }

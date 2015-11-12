@@ -7,7 +7,7 @@
  */
 
 
-$args = new \Ke\Cli\Args([
+$args = new \Ke\Cli\Argv([
 	'hello_world',
 	'-d', KE_APP,
 	'--class=Hello',
