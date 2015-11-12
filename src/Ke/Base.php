@@ -470,7 +470,7 @@ function equals($old, $new)
 	}
 }
 
-const KE_SUB_REGEX = '#\{([^\{\}]+)\}#';
+const KE_SUB_REGEX = '#\{([^\{\}\r\n]+)\}#';
 
 /**
  * 字符串替换函数，命名源自mootools的String.substitute

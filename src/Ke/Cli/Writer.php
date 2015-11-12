@@ -9,6 +9,7 @@
 namespace Ke\Cli;
 
 
+use Ke\OutputBuffer;
 use Ke\OutputImpl;
 
 class Writer implements OutputImpl
@@ -21,11 +22,12 @@ class Writer implements OutputImpl
 
 	public function output()
 	{
-		$args = func_get_args();
-		foreach ($args as $i => $arg) {
-			print_r($arg);
-			if ($i < count($args))
-				echo ' ';
+		$buffer = '';
+		foreach (func_get_args() as $index => $arg) {
+			$buffer .= print_r($arg, true);
+			if ($arg !== PHP_EOL)
+				$buffer .= ' ';
 		}
+		fwrite(STDOUT, $buffer);
 	}
 }

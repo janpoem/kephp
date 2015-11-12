@@ -37,7 +37,7 @@ class Console implements ContextImpl
 	public $app = null;
 
 	/** @var \Ke\OutputBuffer */
-	public $ob = null;
+//	public $ob = null;
 
 	/** @var Argv */
 	public $argv = null;
@@ -57,7 +57,7 @@ class Console implements ContextImpl
 		if (!isset($argv))
 			$argv = Argv::current();
 		$this->app = App::getApp();
-		$this->ob = OutputBuffer::getInstance()->start('cli');
+//		$this->ob = OutputBuffer::getInstance()->start('cli');
 		$this->setInput($argv);
 		if (!isset(self::$context))
 			self::$context = $this;
@@ -123,7 +123,7 @@ class Console implements ContextImpl
 	public function writeln()
 	{
 		call_user_func_array([$this->writer, 'output'], func_get_args());
-		echo PHP_EOL;
+		$this->write(PHP_EOL);
 		return $this;
 	}
 
@@ -143,10 +143,10 @@ class Console implements ContextImpl
 		$class = '';
 		$path = '';
 		foreach ($dirs as $ns => $dir) {
-			foreach ($argv->mkCommands() as $command) {
+			foreach ($this->mkCommands($argv->getCommand()) as $command) {
 				$path = $dir . DS . $command . '.php';
 				if (is_file($path)) {
-					$class = $ns . '\\' . $command;
+					$class = $ns . '\\' . str_replace('/', '\\', $command);
 					break;
 				}
 			}
@@ -162,12 +162,47 @@ class Console implements ContextImpl
 		if (!class_exists($class, false))
 			throw new Exception('Undefined command class {class}!', ['class' => $class]);
 		if (!is_subclass_of($class, Command::class))
-			throw new Exception('Command class {class} doest not extend with {parent}!', ['class'  => $class,
-			                                                                              'parent' => Command::class,
+			throw new Exception('Command class {class} doest not extend with {parent}!', [
+				'class'  => $class,
+				'parent' => Command::class,
 			]);
 		/** @var Command $cmd */
 		return new $class($argv);
 	}
 
-
+	public function mkCommands($command)
+	{
+		$result = [];
+		if (empty($command))
+			return $result;
+		$base = str_replace([
+			'\\',
+			'-',
+			'.',
+		], [
+			'/',
+			'_',
+			'_',
+		], trim($command, KE_PATH_NOISE));
+		$result[$base] = $base;
+		$lower = strtolower($command);
+		if (!isset($result[$lower]))
+			$result[$lower] = $lower;
+		$lowerNoUnder = str_replace('_', '', $lower);
+		if (!isset($result[$lowerNoUnder]))
+			$result[$lowerNoUnder] = $lowerNoUnder;
+		// 这里暂时这么处理
+		$camelCase = preg_replace_callback('#([\-\_\/\.\\\\])([a-z])#', function ($matches) {
+			if ($matches[1] === '/' || $matches[1] === '\\')
+				return strtoupper($matches[0]);
+			else
+				return '_' . strtoupper($matches[2]);
+		}, ucfirst($lower));
+		if (!isset($result[$camelCase]))
+			$result[$camelCase] = $camelCase;
+		$camelCaseNoUnder = str_replace('_', '', $camelCase);
+		if (!isset($result[$camelCaseNoUnder]))
+			$result[$camelCaseNoUnder] = $camelCaseNoUnder;
+		return $result;
+	}
 }

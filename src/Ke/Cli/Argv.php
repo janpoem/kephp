@@ -125,40 +125,6 @@ class Argv implements InputImpl
 		return $this->command;
 	}
 
-	public function mkCommands()
-	{
-		$result = [];
-		if (empty($this->command))
-			return $result;
-		$base = str_replace([/*'\\',*/
-		                     '-',
-		                     '.',
-		], [/*'/',*/
-		    '_',
-		    '_',
-		], trim($this->command, KE_PATH_NOISE));
-		$result[$base] = $base;
-		$lower = strtolower($this->command);
-		if (!isset($result[$lower]))
-			$result[$lower] = $lower;
-		$lowerNoUnder = str_replace('_', '', $lower);
-		if (!isset($result[$lowerNoUnder]))
-			$result[$lowerNoUnder] = $lowerNoUnder;
-		// 这里暂时这么处理
-		$camelCase = preg_replace_callback('#([\-\_\/\.\\\\])([a-z])#', function ($matches) {
-			if ($matches[1] === '/' || $matches[1] === '\\')
-				return strtoupper($matches[0]);
-			else
-				return '_' . strtoupper($matches[2]);
-		}, ucfirst($lower));
-		if (!isset($result[$camelCase]))
-			$result[$camelCase] = $camelCase;
-		$camelCaseNoUnder = str_replace('_', '', $camelCase);
-		if (!isset($result[$camelCaseNoUnder]))
-			$result[$camelCaseNoUnder] = $camelCaseNoUnder;
-		return $result;
-	}
-
 	public function getFile()
 	{
 		return empty($this->file) ? false : $this->file;

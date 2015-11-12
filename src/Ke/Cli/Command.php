@@ -9,7 +9,7 @@
 namespace Ke\Cli;
 
 
-class Command
+abstract class Command
 {
 
 	private static $defaultTypes = [
@@ -31,6 +31,10 @@ class Command
 
 	private $isInitGuide = false;
 
+	protected $name = '';
+
+	protected $description = '';
+
 	/** @var Console */
 	protected $console = null;
 
@@ -41,7 +45,7 @@ class Command
 
 	protected $allowTypes = null;
 
-	public function __construct(Argv $argv)
+	final public function __construct(Argv $argv = null)
 	{
 		$this->console = Console::getContext();
 		if (empty($this->allowTypes) || !is_array($this->allowTypes))
@@ -50,16 +54,11 @@ class Command
 			$this->allowTypes = array_merge($this->allowTypes, self::$defaultTypes);
 		$this->argv = $argv;
 		$this->initGuide($this->argv);
-		$this->onConstruct();
+		$this->onConstruct($this->console, $this->argv);
 	}
 
-	protected function onConstruct()
+	protected function onConstruct(Console $console, Argv $argv)
 	{
-	}
-
-	protected function initOptions(array $options)
-	{
-
 	}
 
 	protected function initGuide(Argv $argv = null)
@@ -73,7 +72,7 @@ class Command
 		if (isset($argv))
 			$data = $argv->getData();
 		if (empty($this->guide))
-			$this->console->warn('Command class "' . get_class($this) . '" argv guide is empty!');
+			$this->console->info('Command class "' . get_class($this) . '" argv guide is empty!');
 		foreach ($this->guide as $name => $options) {
 			$name = trim((string)$name, '-');
 			$type = KE_STR;
@@ -238,8 +237,79 @@ class Command
 		return $this->guide;
 	}
 
-	public function execute()
+	final public function execute()
 	{
+		$data = $this->argv->getData();
+		if (empty($data) || isset($data['help'])) {
+			$this->showHelp();
+		} else {
+			$this->onExecute($this->console, $this->argv);
+		}
 		return $this;
 	}
+
+	public function showHelp()
+	{
+		$class = static::class;
+		if (empty($this->name)) {
+			$pos = strrpos($class, '\\');
+			if ($pos === false)
+				$this->name = $class;
+			else
+				$this->name = substr($class, $pos + 1);
+		}
+		$this->console->writeln($this->name, "($class)");
+		$this->showGuideArgs();
+		if (!empty($this->description)) {
+			$this->console->writeln();
+			if (is_array($this->description)) {
+				$this->console->writeln(implode(PHP_EOL, $this->description));
+			} else {
+				$this->console->writeln($this->description);
+			}
+		}
+		return $this;
+	}
+
+	public function showGuideArgs()
+	{
+		if (!$this->isInitGuide)
+			$this->initGuide();
+		if (empty($this->guide)) {
+			$this->console->writeln('This commands does not have any arguments!');
+			return $this;
+		}
+
+		$guide = [];
+		$merge = [];
+		$numberFields = [];
+		foreach ($this->guide as $name => $options) {
+			if (is_numeric($options['field'])) {
+				$guide[$name] = $options;
+				$numberFields[$name] = $options['field'];
+			} else {
+				$merge[$name] = $options;
+			}
+		}
+		array_multisort($numberFields, SORT_ASC, SORT_NUMERIC, $guide);
+		$guide = array_merge($guide, $merge);
+		///////////////////////////////
+		$prefix = 'usage: php ' . KE_SCRIPT_FILE . ' ' . $this->name;
+		$this->console->write($prefix);
+		$padding = str_repeat(' ', strlen('usages:'));
+		foreach ($guide as $name => $options) {
+			if (is_numeric($options['field'])) {
+				$this->console->write("<{$name}>");
+			} else {
+				$field = "--{$options['field']}";
+				if (!empty($options['shortcut']))
+					$field .= '|-' . $options['shortcut'];
+				$this->console->write("{$field}=<{$name}>");
+			}
+		}
+		return $this;
+	}
+
+
+	abstract protected function onExecute(Console $console, Argv $argv);
 }
