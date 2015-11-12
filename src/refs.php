@@ -186,6 +186,8 @@ const KE_APP_CLASS = '/';
  */
 const KE_APP_NS = '/';
 
+const KE_APP_NS_PATH = '/';
+
 /**
  * 项目运行环境
  * @defined Ke/Core/App.php
