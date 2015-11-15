@@ -49,6 +49,16 @@ class App
 	/** @var string 编码 */
 	public $encoding = 'UTF-8';
 
+	/**
+	 * 编码顺序，值类型应该数组格式，或者以逗号分隔的字符串类型
+	 *
+	 * 'GBK,GB2312,CP936'
+	 * ['GBK', 'GB2312', 'CP936']
+	 *
+	 * @var string|array
+	 */
+	public $encodingOrder = ['GBK', 'GB2312'];
+
 	/** @var string http的路径前缀 */
 	public $httpBase = null;
 
@@ -172,6 +182,22 @@ class App
 		// 检查httpCharset
 		if (empty($this->encoding) || false === @mb_encoding_aliases($this->encoding))
 			$this->encoding = 'UTF-8';
+
+		if (!empty($this->encodingOrder)) {
+			if (is_string($this->encodingOrder))
+				$this->encodingOrder = explode(',', $this->encodingOrder);
+			if (is_array($this->encodingOrder)) {
+				$list = ['ASCII'];
+				foreach ($this->encodingOrder as $encoding) {
+					$encoding = strtoupper(trim($encoding));
+					if (empty($encoding) || $encoding === 'ASCII' || $encoding === $this->encoding)
+						continue;
+					$list[] = $encoding;
+				}
+				$list[] = $this->encoding;
+				mb_detect_order($list);
+			}
+		}
 
 		// 时区
 		if (empty($this->timezone) || false === @date_default_timezone_set($this->timezone)) {

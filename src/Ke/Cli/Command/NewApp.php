@@ -8,30 +8,35 @@
 
 namespace Ke\Cli\Command;
 
-use Ke\Cli\Command;
-use Ke\Cli\Console;
-use Ke\Cli\Argv;
+use Ke\Cli\ReflectionCommand;
 
-class NewApp extends Command
+/**
+ * Class NewApp
+ * @package Ke\Cli\Command
+ */
+class NewApp extends ReflectionCommand
 {
 
-	protected $name = 'new_app';
+	protected static $commandName = 'new_app';
 
-	protected $description = 'Create a new application with kephp!';
+	protected static $commandDescription = 'Create a new application with kephp!';
 
-	protected $guide = [
-		'name' => [
-			'field' => 0,
-			'type'  => KE_STR,
-		],
-		'dir'  => [
-			'type'     => 'dir',
-			'shortcut' => 'd',
-		],
-	];
+	/**
+	 * @type string
+	 * @require true
+	 * @field 1
+	 */
+	protected $appName = '';
 
-	protected function onExecute(Console $console, Argv $argv)
+	/**
+	 * @type dir
+	 * @require true
+	 * @shortcut d
+	 */
+	protected $dir = false;
+
+	protected function onExecute(\Ke\Cli\Console $console, $argv = null)
 	{
-		// TODO: Implement onExecute() method.
+		var_dump($argv);
 	}
 }

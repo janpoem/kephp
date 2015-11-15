@@ -9,21 +9,24 @@
 namespace Ke\Cli;
 
 use Ke\App;
-use Ke\ContextImpl;
 use Ke\Exception;
+
+use Ke\ContextImpl;
 use Ke\InputImpl;
-use Ke\Logging\Log;
-use Ke\Logging\LogBuffer;
-use Ke\Logging\LogLevel;
-use Ke\OutputBuffer;
-use Ke\Logging\LoggerOps;
 use Ke\OutputImpl;
+
+use Ke\Logging\Log;
+use Ke\Logging\LoggerOps;
+
 
 /**
  * CLI命令行的上下文环境
  *
  *
  * @package Ke\Cli
+ * @property \Ke\App          $app
+ * @property Writer|InputImpl $output
+ * @property Argv|OutputImpl  $input
  */
 class Console implements ContextImpl
 {
@@ -33,39 +36,78 @@ class Console implements ContextImpl
 	/** @var Console */
 	private static $context = null;
 
-	/** @var \Ke\App */
-	public $app = null;
+	private static $defaultScopes = null;
 
-	/** @var \Ke\OutputBuffer */
-//	public $ob = null;
+	/** @var \Ke\App */
+	private $app = null;
 
 	/** @var Argv */
-	public $argv = null;
+	private $argv = null;
 
 	/** @var Writer */
-	public $writer = null;
+	private $writer = null;
 
-	public static function getContext()
+	private $scopes = null;
+
+	public static function getContext($argv = null)
 	{
-		if (!isset(self::$context))
-			self::$context = new static();
+		if (!isset(self::$context)) {
+			self::$context = new static($argv);
+		}
 		return self::$context;
 	}
 
-	public function __construct(Argv $argv = null)
+	public static function getDefaultScopes()
 	{
-		if (!isset($argv))
-			$argv = Argv::current();
-		$this->app = App::getApp();
-//		$this->ob = OutputBuffer::getInstance()->start('cli');
-		$this->setInput($argv);
+		if (!isset(self::$defaultScopes)) {
+			$appNs = empty(KE_APP_NS) ? 'Cli' : KE_APP_NS . '\\Cli';
+			self::$defaultScopes = [
+				$appNs             => KE_APP_NS_PATH . DS . 'Cli',
+				'Ke\\Cli\\Command' => __DIR__ . DS . 'Command',
+			];
+		}
+		return self::$defaultScopes;
+	}
+
+	final public function __construct(Argv $argv = null)
+	{
+		// 绑定当前的默认的上下文环境实例
 		if (!isset(self::$context))
 			self::$context = $this;
+		// 取出默认的命令行的有效范围
+		$this->scopes = static::getDefaultScopes();
+		// 初始化日志配置
 		$this->initLogger('cli');
 		// 将错误和异常处理，从App中接管过来。
 		set_error_handler([$this, 'errorHandle']);
 		set_exception_handler([$this, 'exceptionHandle']);
-		$this->setOutput(new Writer());
+		if (isset($argv)) {
+			$this->setInput($argv);
+		}
+		$this->onConstruct();
+	}
+
+	protected function onConstruct()
+	{
+	}
+
+	public function __get($field)
+	{
+		if ($field === 'app') {
+			if (!isset($this->app))
+				$this->app = App::getApp();
+			return $this->app;
+		} elseif ($field === 'output') {
+			if (!isset($this->writer))
+				$this->getOutput();
+			return $this->writer;
+		} elseif ($field === 'input') {
+			if (!isset($this->argv))
+				$this->getInput();
+			return $this->argv;
+		} else {
+			return isset($this->{$field}) ? $this->{$field} : false;
+		}
 	}
 
 	/**
@@ -100,6 +142,8 @@ class Console implements ContextImpl
 
 	public function getInput()
 	{
+		if (!isset($this->argv))
+			$this->argv = Argv::current();
 		return $this->argv;
 	}
 
@@ -111,19 +155,24 @@ class Console implements ContextImpl
 
 	public function getOutput()
 	{
+		if (!isset($this->writer))
+			$this->writer = new Writer($this);
 		return $this->writer;
 	}
 
 	public function write()
 	{
-		call_user_func_array([$this->writer, 'output'], func_get_args());
+		if (!isset($this->writer))
+			$this->getOutput();
+		$this->writer->output(implode(' ', func_get_args()));
 		return $this;
 	}
 
 	public function writeln()
 	{
-		call_user_func_array([$this->writer, 'output'], func_get_args());
-		$this->write(PHP_EOL);
+		if (!isset($this->writer))
+			$this->getOutput();
+		$this->writer->output(implode(' ', func_get_args()), true);
 		return $this;
 	}
 
@@ -135,15 +184,13 @@ class Console implements ContextImpl
 	public function detectCommand(Argv $argv = null)
 	{
 		if (!isset($argv))
-			$argv = $this->argv;
-		$dirs = [
-			'Ke\\Cli\\Command'  => __DIR__ . DS . 'Command',
-			KE_APP_NS . '\\Cli' => KE_APP_NS_PATH . DS . 'Cli',
-		];
+			$argv = $this->getInput();
+		if (empty($argv[0]))
+			throw new Exception('No command found in argv.');
 		$class = '';
 		$path = '';
-		foreach ($dirs as $ns => $dir) {
-			foreach ($this->mkCommands($argv->getCommand()) as $command) {
+		foreach ($this->scopes as $ns => $dir) {
+			foreach ($this->mkCommands($argv[0]) as $command) {
 				$path = $dir . DS . $command . '.php';
 				if (is_file($path)) {
 					$class = $ns . '\\' . str_replace('/', '\\', $command);
@@ -153,11 +200,10 @@ class Console implements ContextImpl
 			if (!empty($class))
 				break;
 		}
-		$command = $argv->getCommand();
 		if (empty($class)) {
-			throw new Exception('No command detected about "{cmd}"!', ['cmd' => $command]);
+			throw new Exception('No command detected about "{command}"!', ['command' => $argv[0]]);
 		}
-		$this->info('Detecting "' . $command . '" to class "' . $class . '"!');
+		$this->info('Detecting "' . $argv[0] . '" to class "' . $class . '"!');
 		require $path;
 		if (!class_exists($class, false))
 			throw new Exception('Undefined command class {class}!', ['class' => $class]);

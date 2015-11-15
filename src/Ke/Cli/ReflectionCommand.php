@@ -1,0 +1,48 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: Janpoem
+ * Date: 2015/11/15
+ * Time: 16:27
+ */
+
+namespace Ke\Cli;
+
+
+abstract class ReflectionCommand extends Command
+{
+
+	const REGEX_DOC = '#@(type|require|default|field|shortcut)(?:[\r\n]|[\s\t]+([^\r\n]+))#';
+
+	protected static function loadColumns()
+	{
+		$columns = self::$columns;
+		$ref = new \ReflectionClass(static::class);
+		$props = $ref->getProperties();
+		foreach ($props as $prop) {
+			if ($prop->isStatic())
+				continue;
+			$name = $prop->getName();
+			if (isset(self::$columns[$name]))
+				continue;
+			$doc = $prop->getDocComment();
+			if (empty($doc))
+				continue;
+			$isMatch = preg_match_all(self::REGEX_DOC, $doc, $matches, PREG_SET_ORDER);
+			if (!$isMatch)
+				continue;
+			$rename = preg_replace_callback('#([A-Z])#', function($m) {
+				return '-' . strtolower($m[1]);
+			}, $name);
+			$column = [];
+			foreach ($matches as $match) {
+				$column[$match[1]] = isset($match[2]) ? $match[2] : null;
+			}
+			if (!isset($column['field']) || strlen($column['field']) <= 0) {
+				$column['field'] = $rename;
+			}
+			$columns[$rename] = $column;
+		}
+		return $columns;
+	}
+}

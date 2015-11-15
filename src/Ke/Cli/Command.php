@@ -12,166 +12,116 @@ namespace Ke\Cli;
 abstract class Command
 {
 
-	private static $defaultTypes = [
-		KE_NULL    => true,
-		KE_BOOL    => true,
-		KE_INT     => true,
-		KE_FLOAT   => true,
-		KE_STR     => true,
-		//		KE_ARY,
-		'dir'      => true,
-		'dirs'     => true,
-		'file'     => true,
-		'files'    => true,
-		'realpath' => true,
-		'json'     => true,
-		'any'      => true,
-		'concat'   => true,
+	private static $initCommands = [];
+
+	protected static $commandName = '';
+
+	protected static $commandDescription = '';
+
+	protected static $commandUsage = null;
+
+	protected static $columns = [
+		'command' => [
+			'type'    => KE_STR,
+			'default' => '',
+			'field'   => 0,
+		],
+		'help'    => [
+			'shortcut' => 'h',
+			'type'     => 'single',
+			'default'  => false,
+		],
 	];
 
-	private $isInitGuide = false;
+	protected static $columnMaps = [];
 
-	protected $name = '';
+	protected static $defaultValues = [];
 
-	protected $description = '';
-
-	/** @var Console */
-	protected $console = null;
-
-	protected $guide = [];
-
-	/** @var Argv */
-	protected $argv = null;
-
-	protected $allowTypes = null;
-
-	final public function __construct(Argv $argv = null)
+	public static function init()
 	{
-		$this->console = Console::getContext();
-		if (empty($this->allowTypes) || !is_array($this->allowTypes))
-			$this->allowTypes = self::$defaultTypes;
-		else
-			$this->allowTypes = array_merge($this->allowTypes, self::$defaultTypes);
-		$this->argv = $argv;
-		$this->initGuide($this->argv);
-		$this->onConstruct($this->console, $this->argv);
+		if (!isset(self::$initCommands[static::class])) {
+			static::initColumns(static::loadColumns());
+			self::$initCommands[static::class] = true;
+		}
 	}
 
-	protected function onConstruct(Console $console, Argv $argv)
+	protected static function loadColumns()
 	{
+		return array_merge(self::$columns, static::$columns);
 	}
 
-	protected function initGuide(Argv $argv = null)
+	protected static function initColumns(array $inputColumns = null)
 	{
-		if ($this->isInitGuide)
-			return $this;
-		$this->isInitGuide = true;
-		$data = false;
-		$newData = [];
-		$used = [];
-		if (isset($argv))
-			$data = $argv->getData();
-		if (empty($this->guide))
-			$this->console->info('Command class "' . get_class($this) . '" argv guide is empty!');
-		foreach ($this->guide as $name => $options) {
-			$name = trim((string)$name, '-');
-			$type = KE_STR;
-			$typeHandle = [$this, 'verifyTypeValue'];
-			if (isset($options['type']) && isset($this->allowTypes[$options['type']])) {
-				if (!empty($this->allowTypes[$options['type']])) {
-					$type = $options['type'];
-					$handle = $this->allowTypes[$options['type']];
-					if (is_string($handle) && is_callable([$this, $handle])) {
-						$typeHandle = [$this, $handle];
-					}
-				}
-			}
+		if (empty($inputColumns))
+			return;
+		$columns = [];
+		$maps = static::$columnMaps;
+		$defaultValues = static::$defaultValues;
+		foreach ($inputColumns as $name => $options) {
+			$field = trim((string)$name, '-_.');
+			$name = camelcase($name);
+			if (empty($name) || isset($columns[$name]) || is_numeric($name))
+				continue;
+			$type = isset($options['type']) ? $options['type'] : KE_STR;
 			$default = isset($options['default']) ? $options['default'] : null;
-			$field = [
-				'type'     => '',
-				'default'  => $default,
-				'field'    => '',
+			$column = [
+				'name'     => $name,
+				'field'    => $field,
 				'shortcut' => false,
+				'type'     => $type,
+				'default'  => $default,
 				'args'     => [],
+				'require'  => !empty($options['require']),
 			];
-			if (!empty($options['single'])) {
-				$field['type'] = KE_BOOL;
-				$field['default'] = $default;
-			} else {
-				if ($type === 'concat' || $type === 'dirs' || $type === 'files') {
-					if (isset($field['spr']))
-						$field['args'][0] = $field['spr'];
-				}
-				$field['type'] = $type;
-				$field['default'] = $default;
+			if ($type === 'concat' || $type === 'dirs' || $type === 'files') {
+				if (isset($column['spr']))
+					$column['args'][0] = $column['spr'];
+				else
+					$column['args'][0] = ',';
 			}
-			$hasField = false;
+			$column['type'] = $type;
+			$column['default'] = $default;
+
 			if (isset($options['field'])) {
 				if (is_numeric($options['field']) && $options['field'] >= 0) {
-					$options['field'] = (int)$options['field'];
-					$hasField = true;
+					$column['field'] = (int)$options['field'];
 				} elseif (!empty($options['field']) && is_string($options['field'])) {
-					$options['field'] = trim($options['field'], '-');
-					if (!empty($options['field']))
-						$hasField = true;
+					$column['field'] = trim($options['field'], '-_');
+					if (empty($options['field']) || !is_string($column['field']))
+						$column['field'] = $field;
 				}
 			}
-			if (!$hasField) {
-				$options['field'] = preg_replace_callback('#([A-Z])#', function ($matches) {
-					return '-' . strtolower($matches[1]);
-				}, $name);
-			}
-			$field['field'] = $options['field'];
 			if (!empty($options['shortcut']) && is_string($options['shortcut'])) {
-				$options['shortcut'] = trim(strtolower($options['shortcut']), '-');
+				$column['shortcut'] = trim(strtolower($options['shortcut']), '-');
 			}
-			if (empty($options['shortcut']) || !is_string($options['shortcut'])) {
-				$options['shortcut'] = false;
+			if (empty($column['shortcut']) || !is_string($column['shortcut'])) {
+				$column['shortcut'] = false;
 			}
-			$field['shortcut'] = $options['shortcut'];
-			$field['default'] = call_user_func($typeHandle, $field['type'], $field['default'], $field['args']);
-			$this->guide[$name] = $field;
-
-			// 顺便过滤argv的数据
-			if (isset($argv) && !empty($data)) {
-				$hasValue = true;
-				$newData[$name] = $field['default'];
-				if (isset($field['field']) && isset($data[$field['field']])) {
-					$newData[$name] = $data[$field['field']];
-					$used[$field['field']] = 1;
-				} elseif (isset($field['shortcut']) && isset($data[$field['shortcut']])) {
-					$newData[$name] = $data[$field['shortcut']];
-					$used[$field['shortcut']] = 1;
-				} else {
-					$hasValue = false;
-				}
-				if ($hasValue) {
-					$newData[$name] = call_user_func($typeHandle, $field['type'], $newData[$name], $field['args']);
-				}
-			}
+//				$column['shortcut'] = $options['shortcut'];
+			$defaultValues[$name] = $column['default'] = static::verifyValue($column['type'], $column['default'], $column);
+			$columns[$name] = $column;
+//			$maps[$column['name']] = $name;
+			$maps[$column['field']] = $name;
+			if ($column['shortcut'] !== false)
+				$maps[$column['shortcut']] = $name;
+//				$this->{$name} = $column['default'];
 		}
-
-		if (isset($argv) && !empty($data)) {
-			$diff = array_diff_key($data, $used);
-			foreach ($diff as $field => $value) {
-				if (is_string($field))
-					$field = trim($field, '-');
-				if (!isset($newData[$field]))
-					$newData[$field] = $this->verifyTypeValue('any', $value);
-			}
-			if (!empty($newData))
-				$this->argv->setData($newData);
-		}
-		return $this;
+		static::$columns = &$columns;
+		static::$columnMaps = &$maps;
+		static::$defaultValues = &$defaultValues;
 	}
 
-	protected function verifyTypeValue($type, $value, array $args = null)
+	public static function verifyValue($type, $value = null, array $column = [])
 	{
 		if ($type === KE_STR) {
 			return (string)$value;
-		} elseif ($type === KE_BOOL) {
+		} elseif ($type === KE_BOOL || $type === 'single') {
 			if ($value === 'false' || $value === '0' || $value === 0 || $value === 0.00)
-				return true;
+				return false;
+			if (strtolower($value) === 'off')
+				return false;
+			if ($type === 'single' && $value === '')
+				return !$column['default'];
 			return (bool)$value;
 		} elseif ($type === KE_INT) {
 			return (int)$value;
@@ -200,18 +150,18 @@ abstract class Command
 		} elseif ($type === 'json') {
 			$decode = json_decode($value, true);
 			return $decode;
-		} elseif (($type === 'concat' || $type === 'dirs' || $type === 'files') && isset($args[0])) {
+		} elseif (($type === 'concat' || $type === 'dirs' || $type === 'files') && isset($column['args'][0])) {
 			if (empty($value))
 				return [];
-			$value = explode($args[0], $value);
+			$value = explode($column['args'][0], $value);
 			$value = array_filter($value); // 过滤空值
 			if ($type === 'dirs') {
 				foreach ($value as & $item) {
-					$item = $this->verifyTypeValue($item, 'dir', $args);
+					$item = static::verifyValue($item, 'dir', $column);
 				}
 			} elseif ($type === 'files') {
 				foreach ($value as & $item) {
-					$item = $this->verifyTypeValue($item, 'file', $args);
+					$item = static::verifyValue($item, 'file', $column);
 				}
 			}
 			return $value;
@@ -230,86 +180,171 @@ abstract class Command
 		}
 	}
 
-	public function getGuide()
+	public static function getColumns()
 	{
-		if (!$this->isInitGuide)
-			$this->initGuide();
-		return $this->guide;
+		if (!isset(self::$initCommands[static::class]))
+			static::init();
+		return static::$columns;
 	}
 
-	final public function execute()
+	public static function getDefaultColumn($field)
 	{
-		$data = $this->argv->getData();
-		if (empty($data) || isset($data['help'])) {
-			$this->showHelp();
-		} else {
-			$this->onExecute($this->console, $this->argv);
-		}
-		return $this;
+		return [
+			'name'    => camelcase($field),
+			'field'   => $field,
+			'type'    => 'any',
+			'default' => null,
+			'args'    => [],
+		];
 	}
 
-	public function showHelp()
+	public static function getName()
 	{
-		$class = static::class;
-		if (empty($this->name)) {
+		if (empty(static::$commandName)) {
+			$class = static::class;
+			$name = $class;
 			$pos = strrpos($class, '\\');
-			if ($pos === false)
-				$this->name = $class;
-			else
-				$this->name = substr($class, $pos + 1);
-		}
-		$this->console->writeln($this->name, "($class)");
-		$this->showGuideArgs();
-		if (!empty($this->description)) {
-			$this->console->writeln();
-			if (is_array($this->description)) {
-				$this->console->writeln(implode(PHP_EOL, $this->description));
-			} else {
-				$this->console->writeln($this->description);
+			if ($pos !== false) {
+				$name = substr($class, $pos + 1);
 			}
+			$name = strtolower($name);
+			static::$commandName = &$name;
 		}
-		return $this;
+		return static::$commandName;
 	}
 
-	public function showGuideArgs()
+	public static function getUsage()
 	{
-		if (!$this->isInitGuide)
-			$this->initGuide();
-		if (empty($this->guide)) {
-			$this->console->writeln('This commands does not have any arguments!');
-			return $this;
+		if (empty(static::$commandUsage)) {
+			$usage = 'usage: php ' . (PHP_SAPI === KE_CLI_MODE ? KE_SCRIPT_FILE : 'ke.php') . ' ' . static::getName();
+			$total = $length = strlen($usage);
+			$padding = str_repeat(' ', $length);
+			$sortIndex = [];
+			$sortColumns = [];
+			$unsortColumns = [];
+			foreach (static::getColumns() as $name => $column) {
+				if ($column['require']) {
+					$sortIndex[$name] = $column['field'];
+					$sortColumns[$name] = $column;
+				} else
+					$unsortColumns[$name] = $column;
+			}
+			array_multisort($sortIndex, SORT_ASC, SORT_STRING, $sortColumns);
+			foreach (array_merge($sortColumns, $unsortColumns) as $name => $column) {
+				if ($name === 'command' || $name === 'help')
+					continue;
+				if (!empty($column['hide']))
+					continue;
+				if (is_numeric($column['field'])) {
+					$temp = "<{$name}>";
+				} else {
+					$field = "--{$column['field']}";
+					if (!empty($column['shortcut']))
+						$field .= '|-' . $column['shortcut'];
+					if ($column['type'] === 'single')
+						$temp = "{$field}";
+					else
+						$temp = "{$field}=<{$name}>";
+				}
+				if (!$column['require'])
+					$temp = "[$temp]";
+				$tempLength = strlen($temp) + 1;
+				if ($total + $tempLength >= 80) {
+					$usage .= '\\' . PHP_EOL . $padding;
+					$total = $length;
+				} else {
+					$total += $tempLength;
+				}
+				$usage .= ' ' . $temp;
+			}
+			static::$commandUsage = &$usage;
 		}
+		return static::$commandUsage;
+	}
 
-		$guide = [];
-		$merge = [];
-		$numberFields = [];
-		foreach ($this->guide as $name => $options) {
-			if (is_numeric($options['field'])) {
-				$guide[$name] = $options;
-				$numberFields[$name] = $options['field'];
-			} else {
-				$merge[$name] = $options;
-			}
+	public static function showHelp($message = null)
+	{
+		$console = Console::getContext();
+		$console->write(static::getName(), '(' . static::class . ')');
+		if (!empty(static::$commandDescription))
+			$console->write('-', static::$commandDescription);
+		$console->writeln();
+		$console->writeln(static::getUsage());
+		if (!empty($message))
+			$console->writeln($message);
+	}
+
+	private $_argv = null;
+
+	protected $command = null;
+
+	protected $help = false;
+
+	public function __construct($argv = null)
+	{
+		if (!isset(self::$initCommands[static::class]))
+			static::init();
+		$this->assign(static::$defaultValues);
+		if (isset($argv)) {
+			$this->_argv = $argv;
+			$this->assign($argv);
 		}
-		array_multisort($numberFields, SORT_ASC, SORT_NUMERIC, $guide);
-		$guide = array_merge($guide, $merge);
-		///////////////////////////////
-		$prefix = 'usage: php ' . KE_SCRIPT_FILE . ' ' . $this->name;
-		$this->console->write($prefix);
-		$padding = str_repeat(' ', strlen('usages:'));
-		foreach ($guide as $name => $options) {
-			if (is_numeric($options['field'])) {
-				$this->console->write("<{$name}>");
-			} else {
-				$field = "--{$options['field']}";
-				if (!empty($options['shortcut']))
-					$field .= '|-' . $options['shortcut'];
-				$this->console->write("{$field}=<{$name}>");
+		$this->onConstruct(Console::getContext(), $argv);
+	}
+
+	protected function onConstruct(\Ke\Cli\Console $console, $argv = null)
+	{
+	}
+
+	public function assign($key, $value = null)
+	{
+		$type = gettype($key);
+		if ($type === KE_ARY || $type === KE_OBJ) {
+			foreach ($key as $name => $value) {
+				$this->assign($name, $value);
 			}
+		} else {
+			if (isset(static::$columns[$key]))
+				$column = static::$columns[$key];
+			elseif (isset(static::$columnMaps[$key]))
+				$column = static::$columns[static::$columnMaps[$key]];
+			else
+				$column = static::getDefaultColumn($key);
+			$this->{$column['name']} = static::verifyValue($column['type'], $value, $column);
 		}
 		return $this;
 	}
 
+	protected function verifyRequire()
+	{
+		foreach (static::$columns as $name => $column) {
+			if ($column['require']) {
+				if (!isset($this->{$name}) || empty($this->{$name})) {
+					static::showHelp(substitute('Must specify the argument "{field}"', [
+						'command' => static::getName(),
+						'field'   => $name,
+					]));
+					break;
+				}
+			}
+			continue;
+		}
+		return true;
+	}
 
-	abstract protected function onExecute(Console $console, Argv $argv);
+	public function execute($argv = null)
+	{
+		if (isset($argv))
+			$this->assign($argv);
+		else
+			$argv = $this->_argv;
+		if ($this->help) {
+			static::showHelp();
+		} else {
+			$this->verifyRequire();
+			$this->onExecute(Console::getContext(), $argv);
+		}
+	}
+
+	abstract protected function onExecute(\Ke\Cli\Console $console, $argv = null);
 }

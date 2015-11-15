@@ -12,13 +12,13 @@
 namespace {namespace};
 
 use Ke\Cli\Console;
-use Ke\Cli\Command;
+use Ke\Cli\ReflectionCommand;
 
 /**
  * Class {class}
  * @package {namespace}
  */
-class {class} extends Command
+class {class} extends ReflectionCommand
 {
 
 	protected static $commandName = '{command}';
@@ -28,13 +28,13 @@ class {class} extends Command
 	// define fields: type|require|default|field|shortcut
 	//         types: string|integer|double|bool|dir|file|realpath|json|concat|dirs|files|any...
 	// enjoy coding everyday~~
-//	protected $columns = [
-//		'field' => [
-//			'type' => KE_STR,
-//			'field' => 1,
-//			'require' => true,
-//		]
-//	];
+	/**
+	 * @var string
+	 * @type string
+	 * @require true
+	 * @field   1
+	 */
+//	protected $field = '';
 
 //	protected function onConstruct(Console $console, $argv = null)
 //	{

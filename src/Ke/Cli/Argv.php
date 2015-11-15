@@ -8,7 +8,7 @@
 
 namespace Ke\Cli;
 
-use Ke\Exception;
+use ArrayObject;
 use Ke\InputImpl;
 
 /**
@@ -16,44 +16,71 @@ use Ke\InputImpl;
  *
  * @package Ke\Cli
  */
-class Argv implements InputImpl
+class Argv extends ArrayObject implements InputImpl
 {
 
 	private static $current = null;
 
-	protected $file = '';
-
-	protected $command = '';
-
-	protected $data = [];
+	private static $parsedRawArgv = [];
 
 	public static function current()
 	{
 		if (!isset(self::$current)) {
-			$_SERVER['argv'][0] = KE_SCRIPT_FILE;
-			self::$current = new static();
-			self::$current->setRawData($_SERVER['argv']);
+			$argv = isset($_SERVER['argv']) ? $_SERVER['argv'] : [KE_SCRIPT_FILE];
+			array_shift($argv);
+			self::$current = new static(static::parse($argv));
 		}
 		return self::$current;
 	}
 
-	public function setRawData($input)
+	/**
+	 * @param $rawArgv
+	 * @return Argv
+	 */
+	public static function fromRaw($rawArgv)
 	{
-		$type = gettype($input);
+		return new static(static::parse($rawArgv));
+	}
+
+	/**
+	 * 解析原始的命令行参数，转化为一个key->value的数据结构
+	 *
+	 * 初始的参数列表，应该只是数组和字符格式，
+	 * 字符格式：'command --arg1=value1 --arg2=value2'
+	 * 数组格式：['command', '--arg1=value1', '--arg2=value2']
+	 *
+	 * 在以`$_SERVER['argv']`为参数传入时，应该手动移除 0 位的文件。
+	 *
+	 * @param string|array $rawArgv
+	 * @return array
+	 */
+	public static function parse($rawArgv)
+	{
+		$argv = null;
+		$data = [];
+		if (empty($rawArgv))
+			return $data;
+		$type = gettype($rawArgv);
 		if ($type === KE_STR) {
-			$type = KE_ARY;
-			$input = explode(' ', $input);
+			if (isset(self::$parsedRawArgv[$rawArgv]))
+				return self::$parsedRawArgv[$rawArgv];
+			// command --args1=value1
+			$argv = explode(' ', $rawArgv);
 		} elseif ($type === KE_OBJ) {
-			// 一个对象无法做有效的转换
-			return $this;
+			// 一个对象不是做有效的RawArgv
+			return $data;
+		} elseif ($type === KE_ARY) {
+			$key = implode(' ', $rawArgv);
+			if (isset(self::$parsedRawArgv[$key]))
+				return self::$parsedRawArgv[$key];
+			$argv = $rawArgv;
+			$rawArgv = $key;
 		}
-
-		if (empty($input) || $type !== KE_ARY)
-			return $this;
-
+		if (empty($argv))
+			return $data;
 		$inPair = false;
-		$naturalIndex = -1;
-		foreach ($input as $index => $item) {
+		$naturalIndex = -1; // 自然计数索引
+		foreach ($argv as $index => $item) {
 			$item = trim($item);
 			if (preg_match('#^(\-+)([^\=]+)(?:\=(.*))?#', $item, $matches)) {
 				if ($inPair !== false) {
@@ -65,75 +92,70 @@ class Argv implements InputImpl
 //					    $prefix = '--'; // limit -- should in 2 chars
 					$prefix = $matches[2];
 					if (isset($matches[3])) {
-						$this->data[$prefix] = $matches[3];
+						$data[$prefix] = $matches[3];
 					} else {
-						$this->data[$prefix] = '';
+						$data[$prefix] = '';
 						$inPair = $prefix;
 					}
 				}
 				continue;
 			}
 			if ($inPair !== false) {
-				$this->data[$inPair] = $item;
+				$data[$inPair] = $item;
 				$inPair = false;
 				continue;
 			}
 			$naturalIndex++;
-			if ($naturalIndex === 0) {
-				$this->command = $item;
-			} elseif ($naturalIndex === 1) {
-				$this->command = $item;
-			} else {
-				$this->data[] = $item;
-			}
+			$data[] = $item;
 		}
-		return $this;
+		ksort($data, SORT_NATURAL);
+		// 将这个结果记录下来
+		self::$parsedRawArgv[$rawArgv] = $data;
+		return $data;
 	}
 
+	public function __construct(array $input = [])
+	{
+		parent::__construct($input, ArrayObject::ARRAY_AS_PROPS);
+	}
+
+	/**
+	 * 批量绑定数据的操作
+	 *
+	 * Argv只作为命令行参数的存储容器，而不具有数据逻辑，高级的数据过滤，在Command上实现：
+	 *
+	 * Argv => Command => Command->properties (这里存放的是经过过滤后的数据，并且是当前命令所需的参数)
+	 *
+	 * @param string|array|object $input
+	 * @return $this
+	 */
 	public function setData($input)
 	{
 		$type = gettype($input);
 		if ($type === KE_STR) {
+			// arg1=value2&argv2=value2
 			$type = KE_ARY;
 			parse_str($input, $input);
 		} elseif ($type === KE_OBJ) {
+			// 一个对象无法做有效的转换
 			$type = KE_ARY;
 			$input = get_object_vars($input);
 		}
-		if (!empty($input) && $type === KE_ARY)
-			$this->data = $input;
+		if (empty($input) || $type !== KE_ARY)
+			return $this;
+		foreach ($input as $field => $value) {
+			$this[$field] = $value;
+		}
 		return $this;
 	}
 
 	public function getData()
 	{
-		return $this->data;
+		return (array)$this;
 	}
 
-	public function __get($field)
+	public function isEmpty()
 	{
-		return isset($this->data[$field]) ? $this->data[$field] : null;
-	}
-
-	public function __set($field, $value)
-	{
-		return $this->data[$field] = $value;
-	}
-
-	public function getCommand()
-	{
-		return $this->command;
-	}
-
-	public function getFile()
-	{
-		return empty($this->file) ? false : $this->file;
-	}
-
-	public function query($keys, $default = null)
-	{
-		if (isset($this->data[$keys]))
-			return $this->data[$keys];
-		return depthQuery($this->data, $keys, $default);
+		return empty((array)$this);
 	}
 }

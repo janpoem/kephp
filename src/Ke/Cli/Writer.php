@@ -8,26 +8,32 @@
 
 namespace Ke\Cli;
 
-
-use Ke\OutputBuffer;
 use Ke\OutputImpl;
 
 class Writer implements OutputImpl
 {
+
+	protected $buffers = [];
+
+	protected $line = -1;
 
 	public function isOutput()
 	{
 		// TODO: Implement isOutput() method.
 	}
 
-	public function output()
+	public function output($content = null, $isBreakLine = false)
 	{
-		$buffer = '';
-		foreach (func_get_args() as $index => $arg) {
-			$buffer .= print_r($arg, true);
-			if ($arg !== PHP_EOL)
-				$buffer .= ' ';
+		if ($isBreakLine)
+			$content .= PHP_EOL;
+		if (PHP_SAPI === KE_CLI_MODE) {
+			file_put_contents('php://stdout', $content);
+		} else {
+			echo nl2br(htmlentities($content));
 		}
-		fwrite(STDOUT, $buffer);
+	}
+
+	public function send($content = null, $isBreakLine = false)
+	{
 	}
 }

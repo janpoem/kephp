@@ -539,3 +539,21 @@ function remainAppRoot($path)
 	return str_replace([KE_APP, '\\'], ['/' . KE_APP_DIR, '/'], $path);
 }
 
+const KE_ASCII_0 = 48; // 1 => 49
+const KE_ASCII_9 = 57;
+const KE_ASCII_UPPER_A = 65;
+const KE_ASCII_UPPER_Z = 90;
+const KE_ASCII_LOWER_A = 97;
+const KE_ASCII_LOWER_Z = 122;
+
+function camelcase($str, $tokens = ['-', '_', '.'], $first = false)
+{
+	$result = ucwords(str_replace($tokens, ' ', strtolower($str)));
+	$result = str_replace(' ', '', $result);
+	if (isset($result[0]) && !$first) {
+		$code = ord($result[0]);
+		if ($code >= KE_ASCII_UPPER_A && $code <= KE_ASCII_UPPER_Z)
+			$result[0] = strtolower($result[0]);
+	}
+	return $result;
+}
