@@ -9,6 +9,7 @@
  */
 
 return [
+	// 基础类库
 	'Ke\\App'                    => __DIR__ . '/Ke/App.php',
 	'Ke\\Bootstrap'              => __DIR__ . '/Ke/Bootstrap.php',
 	'Ke\\DataRegistry'           => __DIR__ . '/Ke/DataRegistry.php',
@@ -16,6 +17,13 @@ return [
 	'Ke\\Exception'              => __DIR__ . '/Ke/Exception.php',
 	'Ke\\OutputBuffer'           => __DIR__ . '/Ke/OutputBuffer.php',
 	'Ke\\Uri'                    => __DIR__ . '/Ke/Uri.php',
+	// Cli命令环境
+	'Ke\\Cli\\Console'           => __DIR__ . '/Ke/Cli/Console.php',
+	'Ke\\Cli\\Argv'              => __DIR__ . '/Ke/Cli/Argv.php',
+	'Ke\\Cli\\Command'           => __DIR__ . '/Ke/Cli/Command.php',
+	'Ke\\Cli\\ReflectionCommand' => __DIR__ . '/Ke/Cli/ReflectionCommand.php',
+	'Ke\\Cli\\Writer'            => __DIR__ . '/Ke/Cli/Writer.php',
+	// 日志
 	'Ke\\Logging\\Log'           => __DIR__ . '/Ke/Logging/Log.php',
 	'Ke\\Logging\\LogLevel'      => __DIR__ . '/Ke/Logging/LogLevel.php',
 	'Ke\\Logging\\LogBuffer'     => __DIR__ . '/Ke/Logging/LogBuffer.php',
@@ -23,9 +31,7 @@ return [
 	'Ke\\Logging\\LoggerOps'     => __DIR__ . '/Ke/Logging/Logger.php',
 	'Ke\\Logging\\LoggerAward'   => __DIR__ . '/Ke/Logging/Logger.php',
 	'Ke\\Logging\\BaseLogger'    => __DIR__ . '/Ke/Logging/Logger.php',
-	'Ke\\Cli\\Console'           => __DIR__ . '/Ke/Cli/Console.php',
-	'Ke\\Cli\\Argv'              => __DIR__ . '/Ke/Cli/Argv.php',
-	'Ke\\Cli\\Command'           => __DIR__ . '/Ke/Cli/Command.php',
-	'Ke\\Cli\\ReflectionCommand' => __DIR__ . '/Ke/Cli/ReflectionCommand.php',
-	'Ke\\Cli\\Writer'            => __DIR__ . '/Ke/Cli/Writer.php',
+	// 调试
+	'Ke\\Debug\\Benchmark'       => __DIR__ . '/Ke/Debug/Benchmark.php',
+	'Ke\\Debug\\Profiler'        => __DIR__ . '/Ke/Debug/Profiler.php',
 ];

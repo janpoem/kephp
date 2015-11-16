@@ -8,7 +8,7 @@
  * @author    曾建凯 <janpoem@163.com>
  */
 
-namespace Ke;
+namespace Ke\Debug;
 
 /**
  * 程序运行的分析器
