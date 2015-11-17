@@ -83,7 +83,7 @@ const KE_PATH_LEFT_NATIVE = -1;
  * </code>
  *
  * @param string $path 路径名、或文件名
- * @param string $ext 后缀名
+ * @param string $ext  后缀名
  * @return string
  */
 function ext($path, $ext)
@@ -101,10 +101,10 @@ function ext($path, $ext)
 /**
  * 净化一个路径名
  *
- * @param string $path 路径名
- * @param int $dot 点（./../）的处理方式，`KE_PATH_DOT_REMOVE|KE_PATH_DOT_NORMALIZE|KE_PATH_DOT_KEEP`
- * @param int $left 最左边的路径分隔符的处理方式，`KE_PATH_LEFT_TRIM|KE_PATH_LEFT_REMAIN|KE_PATH_LEFT_NATIVE`
- * @param string $spr 分隔符，如果为多个字符，则只会取出第一个字符，比如：`abc => a`，`中国 => 中`
+ * @param string            $path  路径名
+ * @param int               $dot   点（./../）的处理方式，`KE_PATH_DOT_REMOVE|KE_PATH_DOT_NORMALIZE|KE_PATH_DOT_KEEP`
+ * @param int               $left  最左边的路径分隔符的处理方式，`KE_PATH_LEFT_TRIM|KE_PATH_LEFT_REMAIN|KE_PATH_LEFT_NATIVE`
+ * @param string            $spr   分隔符，如果为多个字符，则只会取出第一个字符，比如：`abc => a`，`中国 => 中`
  * @param null|string|array $noise 路径名需要替换为$spr的噪音值
  * @return mixed|string
  */
@@ -114,8 +114,7 @@ function purgePath(
 	$left = KE_PATH_LEFT_NATIVE,
 	$spr = KE_DS_UNIX,
 	$noise = null
-)
-{
+) {
 	// 过滤$spr，基于spr来确定noise
 	if ($spr !== DIRECTORY_SEPARATOR) {
 		$spr = (string)$spr;
@@ -212,10 +211,10 @@ function purgePath(
  * Path::compare('ab-cd-ef-gh-ij', 'ab-cd-ef-gh-abc', null, '-'); // => ab-cd-ef-gh
  * </code>
  *
- * @param string $source
- * @param string $target
+ * @param string      $source
+ * @param string      $target
  * @param null|string $prefix
- * @param string $spr
+ * @param string      $spr
  * @return bool|string
  */
 function comparePath($source, $target, $prefix = null, $spr = KE_DS_UNIX)
@@ -263,10 +262,10 @@ function comparePath($source, $target, $prefix = null, $spr = KE_DS_UNIX)
  * Path::join('C:\', ['a', 'b', 'c', 'd'], Path::SPR_WIN_DIR);
  * </code>
  *
- * @param string $prefix 前缀目录
- * @param null|string|array $path 后续要拼接的目录
- * @param string $spr 目录的分隔符
- * @param string|array $noise 路径名需要替换为$spr的噪音值
+ * @param string            $prefix 前缀目录
+ * @param null|string|array $path   后续要拼接的目录
+ * @param string            $spr    目录的分隔符
+ * @param string|array      $noise  路径名需要替换为$spr的噪音值
  * @return string|array
  */
 function joinPath($prefix, $path = null, $spr = DIRECTORY_SEPARATOR, $noise = null)
@@ -328,7 +327,7 @@ function import($path)
 /**
  * 加载项目配置，这个函数类似import，但是需要传入一个$app实例，用于朝加载的配置文件暴露$app对象。
  *
- * @param string $path
+ * @param string  $path
  * @param \Ke\App $app
  * @return bool|mixed
  */
@@ -351,7 +350,7 @@ function importWithVars($_path, array $_vars = [])
 /**
  * 比较两个时间戳的差值，返回结果单位为微秒
  *
- * @param string $start
+ * @param string      $start
  * @param null|string $end
  * @return float
  */
@@ -367,7 +366,7 @@ function diffMicro($start, $end = null)
 /**
  * 比较两个时间戳的差值，返回结果单位为毫秒
  *
- * @param string $start
+ * @param string      $start
  * @param null|string $end
  * @return float
  */
@@ -392,9 +391,9 @@ function diffMilli($start, $end = null)
  * </code>
  * $keys可以为数组格式，如：array('level1', 'level2');
  *
- * @param array|object $data 数据源
- * @param string|array $keys 查询的keys，字符串格式为：`'key1->key2->0'`，数组格式：`array('key1', 'key2', 0)`
- * @param mixed $default 默认值，当查询的keys的值不存在时，返回该默认值。
+ * @param array|object $data    数据源
+ * @param string|array $keys    查询的keys，字符串格式为：`'key1->key2->0'`，数组格式：`array('key1', 'key2', 0)`
+ * @param mixed        $default 默认值，当查询的keys的值不存在时，返回该默认值。
  * @return mixed
  */
 function depthQuery($data, $keys, $default = null)
@@ -479,9 +478,9 @@ const KE_SUB_REGEX = '#\{([^\{\}\r\n]+)\}#';
  * 原本作为Utils包里面的函数，现在将他提取到Common中。
  *
  * @param string $str
- * @param array $args
+ * @param array  $args
  * @param string $regex
- * @param array $matches
+ * @param array  $matches
  * @return string
  */
 function substitute($str, array $args = [], $regex = KE_SUB_REGEX, array & $matches = [])
@@ -517,50 +516,26 @@ function substitute($str, array $args = [], $regex = KE_SUB_REGEX, array & $matc
 
 function getPhpErrorStr($code)
 {
-	switch ($code) {
-		case E_ERROR:
-			return 'Error';
-			break;
-		case E_WARNING:
-			return 'Warning';
-			break;
-		case E_PARSE:
-			return 'Parse Error';
-			break;
-		case E_NOTICE:
-			return 'Notice';
-			break;
-		case E_CORE_ERROR:
-			return 'Core Error';
-			break;
-		case E_CORE_WARNING:
-			return 'Core Warning';
-			break;
-		case E_COMPILE_ERROR:
-			return 'Compile Error';
-			break;
-		case E_COMPILE_WARNING:
-			return 'Compile Warning';
-			break;
-		case E_USER_ERROR:
-			return 'User Error';
-			break;
-		case E_USER_WARNING:
-			return 'User Warning';
-			break;
-		case E_USER_NOTICE:
-			return 'User Notice';
-			break;
-		case E_STRICT:
-			return 'Strict Notice';
-			break;
-		case E_RECOVERABLE_ERROR:
-			return 'Recoverable Error';
-			break;
-		default:
-			return "Unknown error#$code";
-			break;
+	static $codes;
+	if (!isset($codes)) {
+		$codes = [
+			0                   => 'Unknown',
+			E_ERROR             => 'Error',
+			E_WARNING           => 'Warn',
+			E_PARSE             => 'Parse Error',
+			E_NOTICE            => 'Notice',
+			E_CORE_ERROR        => 'Error(Core)',
+			E_CORE_WARNING      => 'Warn(Core)',
+			E_COMPILE_ERROR     => 'Error(Compile)',
+			E_COMPILE_WARNING   => 'Warn(Compile)',
+			E_USER_ERROR        => 'Error(User)',
+			E_USER_WARNING      => 'Warn(User)',
+			E_USER_NOTICE       => 'Notice(User)',
+			E_STRICT            => 'Strict',
+			E_RECOVERABLE_ERROR => 'Error',
+		];
 	}
+	return isset($codes[$code]) ? $codes[$code] : $codes[0];
 }
 
 function remainAppRoot($path)
@@ -589,7 +564,7 @@ function camelcase($str, $tokens = ['-', '_', '.'], $first = false)
 
 function hyphenate($str, $replace = '-', $first = false)
 {
-	$str = preg_replace_callback('#([A-Z])#', function($matches) use ($replace) {
+	$str = preg_replace_callback('#([A-Z])#', function ($matches) use ($replace) {
 		return $replace . strtolower($matches[1]);
 	}, (string)$str);
 	if (!$first)
