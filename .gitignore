@@ -3,3 +3,4 @@ tests/
 public/
 .htaccess/
 .logs/
+/nbproject/private/
