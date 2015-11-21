@@ -9,6 +9,7 @@
 namespace Ke\Adm\Adapter;
 
 use Ke\Adm\Exception;
+use Ke\Adm\Query\SqlQuery;
 
 class PdoMySQL extends PdoAbs
 {
@@ -36,21 +37,39 @@ class PdoMySQL extends PdoAbs
 
 	public function find($conditions, array $params = null)
 	{
-		$sql = null;
-		$query = $this->mkSelectQuery($conditions, $sql, $params);
-//		if (!empty($conditions)) {
-//
-//			if (is_array($conditions))
-//
-//			else
-//				throw new Exception(Exception::INVALID_CONDITIONS, [$this->remote, static::class]);
-//		}
+		if (empty($conditions))
+			throw new Exception(Exception::INVALID_CONDITIONS, [$this->remote, static::class]);
+		if ($conditions instanceof SqlQuery) {
+			$query = $conditions->mkSelectQuery();
+		} else {
+			$type = gettype($conditions);
+			if ($type === KE_OBJ) {
+				$type = KE_ARY;
+				$conditions = get_object_vars($conditions);
+			}
+			$sql = null;
+			if ($type === KE_STR) {
+				$sql = trim($conditions);
+			} elseif ($type === KE_ARY) {
+				$this->mkSelect($cd, $sql, $params);
+			}
+			if (empty($sql))
+				throw new Exception(Exception::INVALID_CONDITIONS, [$this->remote, static::class]);
+			$query = [
+				// sql
+				self::IDX_SQL          => $sql,
+				// params
+				self::IDX_PARAMS       => $params,
+				// fetch type, one or all
+				self::IDX_FETCH_TYPE   => (empty($cd['fetch']) || ($cd['fetch'] !== self::FETCH_ONE && $cd['fetch'] !== self::FETCH_ALL)) ? self::FETCH_ONE : $cd['fetch'],
+				// fetch style, assoc or num
+				self::IDX_FETCH_STYLE  => !empty($cd['array']) ? self::FETCH_NUM : self::FETCH_ASSOC,
+				// fetch column
+				self::IDX_FETCH_COLUMN => isset($cd['fetchColumn']) ? $cd['fetchColumn'] : null,
+			];
+		}
 		$this->operation = self::OPERATION_READ;
-		return $this->query($sql, $params,
-				$query[self::IDX_FETCH_TYPE],
-				$query[self::IDX_FETCH_STYLE],
-				$query[self::IDX_FETCH_COLUMN]
-		);
+		return call_user_func_array([$this, 'query'], $query);
 	}
 
 	public function count($conditions)
@@ -64,8 +83,8 @@ class PdoMySQL extends PdoAbs
 			$from = null;
 			$this->mkSelect($conditions, $from, $params);
 			$newConditions = [
-					'select' => 'COUNT(*) as rs_count',
-					'from'   => "({$from}) t_count",
+				'select' => 'COUNT(*) as rs_count',
+				'from'   => "({$from}) t_count",
 			];
 			$this->mkSelect($newConditions, $sql, $params);
 		} else {
@@ -87,8 +106,8 @@ class PdoMySQL extends PdoAbs
 			$params[] = $val;
 		}
 		$sql = 'INSERT INTO ' . (string)$table .
-				' (' . implode(', ', $keys) . ')' .
-				' VALUES (' . implode(', ', $placeholder) . ')';
+			' (' . implode(', ', $keys) . ')' .
+			' VALUES (' . implode(', ', $placeholder) . ')';
 		$this->operation = self::OPERATION_WRITE;
 		return $this->execute($sql, $params);
 //		if ($result) {
@@ -147,8 +166,6 @@ class PdoMySQL extends PdoAbs
 
 	public function delete($table, $target = null)
 	{
-		if (empty($target))
-			throw new Exception(['adm.delete_unset_target', $this->remote]);
 		$type = gettype($target);
 		$sql = 'DELETE FROM ' . (string)$table;
 		$params = [];
@@ -173,25 +190,27 @@ class PdoMySQL extends PdoAbs
 		return $this->execute('TRUNCATE TABLE ' . (string)$table);
 	}
 
-	public function mkSelectQuery(&$cd, &$sql, &$params = null)
-	{
-		if (empty($cd) || !is_array($cd))
-			throw new Exception(Exception::INVALID_CONDITIONS, [$this->remote, static::class]);
-		$this->mkSelect($cd, $sql, $params);
-		$query = [
-			// sql
-			self::IDX_SQL          => $sql,
-			// params
-			self::IDX_PARAMS       => $params,
-			// fetch type, one or all
-			self::IDX_FETCH_TYPE   => (empty($cd['fetch']) || ($cd['fetch'] !== self::FETCH_ONE && $cd['fetch'] !== self::FETCH_ALL)) ? self::FETCH_ONE : $cd['fetch'],
-			// fetch style, assoc or num
-			self::IDX_FETCH_STYLE  => !empty($cd['array']) ? self::FETCH_NUM : self::FETCH_ASSOC,
-			// fetch column
-			self::IDX_FETCH_COLUMN => isset($cd['fetchColumn']) ? $cd['fetchColumn'] : null,
-		];
-		return $query;
-	}
+//	public function mkSelectQuery(&$cd, &$sql, &$params = null)
+//	{
+//		if ($cd instanceof SqlQuery)
+//			return $cd->mkSelectQuery();
+//		if (empty($cd) || !is_array($cd))
+//			throw new Exception(Exception::INVALID_CONDITIONS, [$this->remote, static::class]);
+//		$this->mkSelect($cd, $sql, $params);
+//		$query = [
+//			// sql
+//			self::IDX_SQL          => $sql,
+//			// params
+//			self::IDX_PARAMS       => $params,
+//			// fetch type, one or all
+//			self::IDX_FETCH_TYPE   => (empty($cd['fetch']) || ($cd['fetch'] !== self::FETCH_ONE && $cd['fetch'] !== self::FETCH_ALL)) ? self::FETCH_ONE : $cd['fetch'],
+//			// fetch style, assoc or num
+//			self::IDX_FETCH_STYLE  => !empty($cd['array']) ? self::FETCH_NUM : self::FETCH_ASSOC,
+//			// fetch column
+//			self::IDX_FETCH_COLUMN => isset($cd['fetchColumn']) ? $cd['fetchColumn'] : null,
+//		];
+//		return $query;
+//	}
 
 	public function mkSelect(&$cd, &$sql, &$params = null)
 	{
@@ -280,14 +299,17 @@ class PdoMySQL extends PdoAbs
 		}
 		if (!empty($tempSql))
 			$sql .= (stripos($sql, 'where') === false ? ' WHERE ' : null) .
-					$tempSql;
+				$tempSql;
 		return $this;
 	}
 
-	protected function mkIn($in, &$sql = null, &$params = [],
-	                        $marryMode = self::MARRY_AND,
-	                        $type = self::WHERE_IN)
-	{
+	protected function mkIn(
+		$in,
+		&$sql = null,
+		&$params = [],
+		$marryMode = self::MARRY_AND,
+		$type = self::WHERE_IN
+	) {
 		if (empty($in)) return $this;
 		if (is_array($in)) {
 			$genSql = null;
@@ -414,7 +436,7 @@ class PdoMySQL extends PdoAbs
 						$val = $val[0];
 				}
 				$sql .= (empty($sql) ? null : ' AND ') .
-						$key . ' ' . $operator . ' ?';
+					$key . ' ' . $operator . ' ?';
 				$params[] = $val;
 			}
 		}

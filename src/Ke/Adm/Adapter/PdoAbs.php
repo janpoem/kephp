@@ -31,9 +31,6 @@ abstract class PdoAbs implements DatabaseImpl
 		'pdoOptions' => [],
 	];
 
-	private $isInit = false;
-
-
 	protected $readHostCount = 0;
 
 	protected $hostCount = 1; // 默认主机的数量是1
@@ -62,10 +59,8 @@ abstract class PdoAbs implements DatabaseImpl
 
 	protected $operation = self::OPERATION_READ;
 
-	public function init($remote, array $config)
+	public function __construct($remote, array $config)
 	{
-		if ($this->isInit)
-			return $this;
 		$this->remote = $remote;
 		$this->config = array_merge($this->config, $config);
 		$this->logger = $this->config['logger'];
@@ -83,6 +78,7 @@ abstract class PdoAbs implements DatabaseImpl
 
 	/**
 	 * 取得PDO连接的字符串，PDO专有接口
+	 * @param array $config
 	 * @return string
 	 */
 	abstract public function getDSN(array $config);
@@ -139,7 +135,10 @@ abstract class PdoAbs implements DatabaseImpl
 			}
 		} catch (\Exception $ex) {
 			throw new Exception(Exception::CONNECT_ERROR, [
-				$this->remote, static::class, $index, $ex->getMessage(),
+				$this->remote,
+				static::class,
+				$index,
+				$ex->getMessage(),
 			]);
 		}
 		return $this;
@@ -256,7 +255,7 @@ abstract class PdoAbs implements DatabaseImpl
 	 * 预备执行SQL函数，如果SQL存在异常，会在这里抛出错误。
 	 *
 	 * @param string $sql
-	 * @param array $args
+	 * @param array  $args
 	 * @return \PDOStatement
 	 */
 	protected function prepare($sql, array $args = null)
@@ -280,11 +279,13 @@ abstract class PdoAbs implements DatabaseImpl
 		return $st->rowCount();
 	}
 
-	public function query($sql, array $args = null,
-	                      $type = self::FETCH_ONE,
-	                      $style = self::FETCH_ASSOC,
-	                      $column = null)
-	{
+	public function query(
+		$sql,
+		array $args = null,
+		$type = self::FETCH_ONE,
+		$style = self::FETCH_ASSOC,
+		$column = null
+	) {
 		$st = $this->prepare($sql, $args);
 		if (isset($column)) {
 			$columnCount = $st->columnCount();

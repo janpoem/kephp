@@ -443,6 +443,12 @@ function depthQuery($data, $keys, $default = null)
 		return $default;
 }
 
+function arrayFlatten(array $array) {
+	$flattened = array();
+	array_walk_recursive($array, function($a) use (&$flattened) { $flattened[] = $a; });
+	return $flattened;
+}
+
 /**
  * 值内容是否相等
  * 动态类型语言的值类型检查真的蛋疼

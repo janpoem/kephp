@@ -8,6 +8,8 @@
 
 namespace Ke\Adm;
 
+use Ke\Adm\Adapter\CacheStoreImpl;
+use Ke\Adm\Adapter\DatabaseImpl;
 use Ke\Adm\Adapter\PdoMySQL;
 
 class Source
@@ -94,8 +96,7 @@ class Source
 			$class = static::$knownAdapters[$source['adapter']];
 		else
 			$class = $source['adapter'];
-		$adapter = new $class();
-		$adapter->init($remote, $source);
+		$adapter = new $class($remote, $source);
 		self::$adapters[static::$domain][$remote] = $adapter;
 		return self::$adapters[static::$domain][$remote];
 	}
@@ -111,4 +112,14 @@ class Db extends Source
 	protected static $knownAdapters = [
 		self::PDO_MYSQL => PdoMySQL::class,
 	];
+
+	protected static $adapterImpl = DatabaseImpl::class;
+}
+
+class Cache extends Source
+{
+
+	protected static $domain = 'cache';
+
+	protected static $adapterImpl = CacheStoreImpl::class;
 }

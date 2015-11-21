@@ -40,9 +40,9 @@ interface DatabaseImpl
 	 * 构造函数，一定要传入remote名称，输出调试的时候不会输出调试内容的明细，而以$remote标识
 	 *
 	 * @param string $remote
-	 * @param array $config
+	 * @param array  $config
 	 */
-	public function init($remote, array $config);
+	public function __construct($remote, array $config);
 
 	/**
 	 * 数据库连接
@@ -103,23 +103,31 @@ interface DatabaseImpl
 	/**
 	 * 执行一条 SQL 语句，并返回受影响的行数
 	 *
-	 * @param array $query
-	 * @return int
+	 * @param string     $sql
+	 * @param array|null $args
+	 * @return mixed
 	 */
 	public function execute($sql, array $args = null);
 
 	/**
 	 * 执行SQL，并返回结果集，默认返回数组格式的结果集
 	 *
-	 * query('select * from any_table where id > ? and name = ?', array(100, 'Jack'), 'one');
+	 * query('select * from any_table where id > ? and name = ?', [100, 'Jack'], 'one');
 	 *
-	 * @param array $query
-	 * @return array
+	 * @param string     $sql
+	 * @param array|null $args
+	 * @param string     $type
+	 * @param string     $style
+	 * @param null       $column
+	 * @return mixed
 	 */
-	public function query($sql, array $args = null,
-	                      $type = self::FETCH_ONE,
-	                      $style = self::FETCH_ASSOC,
-	                      $column = null);
+	public function query(
+		$sql,
+		array $args = null,
+		$type = self::FETCH_ONE,
+		$style = self::FETCH_ASSOC,
+		$column = null
+	);
 
 	// 暂时保留3.x的做法
 	/**
@@ -153,9 +161,9 @@ interface DatabaseImpl
 	 * 3. 如果不指定pk，则默认会返回插入的结果长度，实际上默认为1。
 	 *
 	 * @param string|\Adm\Table $table
-	 * @param array $data
-	 * @param null|string $primaryKey
-	 * @param bool $isAutoInc
+	 * @param array             $data
+	 * @param null|string       $primaryKey
+	 * @param bool              $isAutoInc
 	 * @return int
 	 */
 	public function insert($table, array $data);
@@ -170,8 +178,8 @@ interface DatabaseImpl
 	 * 这个目标并不会实际去检查数据库是不是存在这些目标，只是检查目标是否设定了。
 	 *
 	 * @param string $table
-	 * @param array $target
-	 * @param array $data
+	 * @param array  $target
+	 * @param array  $data
 	 * @return int
 	 */
 	public function update($table, array $data = null, $target = null);
@@ -184,7 +192,7 @@ interface DatabaseImpl
 	 * 注意，这个目标并不会实际去检查数据库是不是存在这些目标，只是检查目标是否设定了。
 	 *
 	 * @param string $table
-	 * @param array $target
+	 * @param array  $target
 	 * @return int
 	 */
 	public function delete($table, $target = null);
