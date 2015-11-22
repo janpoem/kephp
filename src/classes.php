@@ -39,6 +39,7 @@ return [
 	'Ke\\Adm\\Source'                  => __DIR__ . '/Ke/Adm/Source.php',
 	'Ke\\Adm\\Db'                      => __DIR__ . '/Ke/Adm/Source.php',
 	'Ke\\Adm\\Cache'                   => __DIR__ . '/Ke/Adm/Source.php',
+	'Ke\\Adm\\Model'                   => __DIR__ . '/Ke/Adm/Model.php',
 	// Query Helper
 	'Ke\\Adm\\Query\\SqlQuery'         => __DIR__ . '/Ke/Adm/Query/SqlQuery.php',
 	// Adapter

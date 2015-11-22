@@ -312,7 +312,7 @@ abstract class PdoAbs implements DatabaseImpl
 			return false;
 		} else {
 			$style = $style === self::FETCH_ASSOC ? PDO::FETCH_ASSOC : PDO::FETCH_NUM;
-			if ($style === self::FETCH_ONE) {
+			if ($type === self::FETCH_ONE) {
 				return $st->fetch($style);
 			} else {
 				return $st->fetchAll($style);

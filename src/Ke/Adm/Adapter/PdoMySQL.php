@@ -51,7 +51,7 @@ class PdoMySQL extends PdoAbs
 			if ($type === KE_STR) {
 				$sql = trim($conditions);
 			} elseif ($type === KE_ARY) {
-				$this->mkSelect($cd, $sql, $params);
+				$this->mkSelect($conditions, $sql, $params);
 			}
 			if (empty($sql))
 				throw new Exception(Exception::INVALID_CONDITIONS, [$this->remote, static::class]);
@@ -61,11 +61,11 @@ class PdoMySQL extends PdoAbs
 				// params
 				self::IDX_PARAMS       => $params,
 				// fetch type, one or all
-				self::IDX_FETCH_TYPE   => (empty($cd['fetch']) || ($cd['fetch'] !== self::FETCH_ONE && $cd['fetch'] !== self::FETCH_ALL)) ? self::FETCH_ONE : $cd['fetch'],
+				self::IDX_FETCH_TYPE   => (empty($conditions['fetch']) || ($conditions['fetch'] !== self::FETCH_ONE && $conditions['fetch'] !== self::FETCH_ALL)) ? self::FETCH_ONE : $conditions['fetch'],
 				// fetch style, assoc or num
-				self::IDX_FETCH_STYLE  => !empty($cd['array']) ? self::FETCH_NUM : self::FETCH_ASSOC,
+				self::IDX_FETCH_STYLE  => !empty($conditions['array']) ? self::FETCH_NUM : self::FETCH_ASSOC,
 				// fetch column
-				self::IDX_FETCH_COLUMN => isset($cd['fetchColumn']) ? $cd['fetchColumn'] : null,
+				self::IDX_FETCH_COLUMN => isset($conditions['fetchColumn']) ? $conditions['fetchColumn'] : null,
 			];
 		}
 		$this->operation = self::OPERATION_READ;
