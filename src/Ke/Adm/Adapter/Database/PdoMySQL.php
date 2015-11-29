@@ -1,15 +1,17 @@
 <?php
 /**
- * Created by PhpStorm.
- * User: Janpoem
- * Date: 2015/11/19 0019
- * Time: 10:25
+ * KePHP, Keep PHP easy!
+ *
+ * @license   http://www.apache.org/licenses/LICENSE-2.0
+ * @copyright Copyright 2015 KePHP Authors All Rights Reserved
+ * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp )
+ * @author    曾建凯 <janpoem@163.com>
  */
 
-namespace Ke\Adm\Adapter;
+namespace Ke\Adm\Adapter\Database;
 
 use Ke\Adm\Exception;
-use Ke\Adm\Query\SqlQuery;
+use Ke\Adm\Utils\SqlQuery;
 
 class PdoMySQL extends PdoAbs
 {
@@ -35,23 +37,23 @@ class PdoMySQL extends PdoAbs
 		$this->getConnector()->query("set names '{$this->config['charset']}'");
 	}
 
-	public function find($conditions, array $params = null)
+	public function find($cd, array $params = null)
 	{
-		if (empty($conditions))
+		if (empty($cd))
 			throw new Exception(Exception::INVALID_CONDITIONS, [$this->remote, static::class]);
-		if ($conditions instanceof SqlQuery) {
-			$query = $conditions->mkSelectQuery();
+		if ($cd instanceof SqlQuery) {
+			$query = $cd->mkSelectQuery();
 		} else {
-			$type = gettype($conditions);
+			$type = gettype($cd);
 			if ($type === KE_OBJ) {
 				$type = KE_ARY;
-				$conditions = get_object_vars($conditions);
+				$cd = get_object_vars($cd);
 			}
 			$sql = null;
 			if ($type === KE_STR) {
-				$sql = trim($conditions);
+				$sql = trim($cd);
 			} elseif ($type === KE_ARY) {
-				$this->mkSelect($conditions, $sql, $params);
+				$this->mkSelect($cd, $sql, $params);
 			}
 			if (empty($sql))
 				throw new Exception(Exception::INVALID_CONDITIONS, [$this->remote, static::class]);
@@ -61,11 +63,11 @@ class PdoMySQL extends PdoAbs
 				// params
 				self::IDX_PARAMS       => $params,
 				// fetch type, one or all
-				self::IDX_FETCH_TYPE   => (empty($conditions['fetch']) || ($conditions['fetch'] !== self::FETCH_ONE && $conditions['fetch'] !== self::FETCH_ALL)) ? self::FETCH_ONE : $conditions['fetch'],
+				self::IDX_FETCH_TYPE   => (empty($cd['fetch']) || ($cd['fetch'] !== self::FETCH_ONE && $cd['fetch'] !== self::FETCH_ALL)) ? self::FETCH_ONE : $cd['fetch'],
 				// fetch style, assoc or num
-				self::IDX_FETCH_STYLE  => !empty($conditions['array']) ? self::FETCH_NUM : self::FETCH_ASSOC,
+				self::IDX_FETCH_STYLE  => !empty($cd['array']) ? self::FETCH_NUM : self::FETCH_ASSOC,
 				// fetch column
-				self::IDX_FETCH_COLUMN => isset($conditions['fetchColumn']) ? $conditions['fetchColumn'] : null,
+				self::IDX_FETCH_COLUMN => isset($cd['fetchColumn']) ? $cd['fetchColumn'] : null,
 			];
 		}
 		$this->operation = self::OPERATION_READ;
@@ -74,25 +76,46 @@ class PdoMySQL extends PdoAbs
 
 	public function count($conditions)
 	{
-		$conditions['fetch'] = self::FETCH_ONE;
-		$conditions['select'] = 'COUNT(*) as rs_count';
-		unset($conditions['order']);
-		$sql = null;
-		$params = [];
-		if (!empty($conditions['group'])) {
-			$from = null;
-			$this->mkSelect($conditions, $from, $params);
-			$newConditions = [
-				'select' => 'COUNT(*) as rs_count',
-				'from'   => "({$from}) t_count",
-			];
-			$this->mkSelect($newConditions, $sql, $params);
-		} else {
-			$this->mkSelect($conditions, $sql, $params);
+		if ($conditions instanceof SqlQuery) {
+			$conditions->select('COUNT(*) as rs_count');
+			$conditions->fetch(self::FETCH_ONE, null, 0);
+			$conditions->order('');
+			$query = [];
+			if (!empty($conditions->group)) {
+				$sql = $conditions->mkSelectSql();
+				$conditions->select('COUNT(*) as rs_count');
+				$conditions->table("({$sql}) t_count");
+				$conditions->group('');
+				$query = $conditions->mkSelectQuery();
+			}
+			else {
+				$query = $conditions->mkSelectQuery();
+			}
+			$this->operation = self::OPERATION_READ;
+			$count = call_user_func_array([$this, 'query'], $query);
+			return (int)$count;
 		}
-		$this->operation = self::OPERATION_READ;
-		$result = $this->query($sql, $params, self::FETCH_ONE, self::FETCH_NUM, 0);
-		return (int)$result;
+		elseif (is_array($conditions)) {
+			$conditions['fetch'] = self::FETCH_ONE;
+			$conditions['select'] = 'COUNT(*) as rs_count';
+			unset($conditions['order']);
+			$sql = null;
+			$params = [];
+			if (!empty($conditions['group'])) {
+				$from = null;
+				$this->mkSelect($conditions, $from, $params);
+				$newConditions = [
+					'select' => 'COUNT(*) as rs_count',
+					'from'   => "({$from}) t_count",
+				];
+				$this->mkSelect($newConditions, $sql, $params);
+			} else {
+				$this->mkSelect($conditions, $sql, $params);
+			}
+			$this->operation = self::OPERATION_READ;
+			$result = $this->query($sql, $params, self::FETCH_ONE, self::FETCH_NUM, 0);
+			return (int)$result;
+		}
 	}
 
 	public function insert($table, array $data)
@@ -110,13 +133,6 @@ class PdoMySQL extends PdoAbs
 			' VALUES (' . implode(', ', $placeholder) . ')';
 		$this->operation = self::OPERATION_WRITE;
 		return $this->execute($sql, $params);
-//		if ($result) {
-//			if (isset($primaryKey) && $isAutoInc)
-//				return $this->lastInsertId();
-//			else
-//				return $result;
-//		} else
-//			return false;
 	}
 
 	public function lastInsertId($name = null)
@@ -126,13 +142,13 @@ class PdoMySQL extends PdoAbs
 		return $this->getConnector()->lastInsertId();
 	}
 
-	public function update($table, array $data = null, $target = null)
+	public function update($table, $conditions = null, array $data = null)
 	{
 //		if (empty($target))
 //			throw new Exception(array('adm.update_unset_target', $this->remote));
 		if (empty($data))
 			return 0;
-		$type = gettype($target);
+		$type = gettype($conditions);
 		$params = [];
 		$fields = [];
 		foreach ($data as $key => $val) {
@@ -155,7 +171,7 @@ class PdoMySQL extends PdoAbs
 //            if (!isset($target['in']) && !isset($target['where'])) {
 //                $target['in'] = $target;
 //            }
-			$this->mkQuery($target, $whereSql, $params);
+			$this->mkQuery($conditions, $whereSql, $params);
 		}
 		$whereSql = trim($whereSql);
 		if (!empty($whereSql))
@@ -164,9 +180,9 @@ class PdoMySQL extends PdoAbs
 		return $this->execute($sql, $params);
 	}
 
-	public function delete($table, $target = null)
+	public function delete($table, $conditions = null)
 	{
-		$type = gettype($target);
+		$type = gettype($conditions);
 		$sql = 'DELETE FROM ' . (string)$table;
 		$params = [];
 		$whereSql = '';
@@ -175,7 +191,7 @@ class PdoMySQL extends PdoAbs
 //            if (!isset($target['in']) && !isset($target['where'])) {
 //                $target['in'] = $target;
 //            }
-			$this->mkQuery($target, $whereSql, $params);
+			$this->mkQuery($conditions, $whereSql, $params);
 		}
 		$whereSql = trim($whereSql);
 		if (!empty($whereSql))

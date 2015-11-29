@@ -1,17 +1,21 @@
 <?php
 /**
- * Created by PhpStorm.
- * User: Janpoem
- * Date: 2015/11/19 0019
- * Time: 10:25
+ * KePHP, Keep PHP easy!
+ *
+ * @license   http://www.apache.org/licenses/LICENSE-2.0
+ * @copyright Copyright 2015 KePHP Authors All Rights Reserved
+ * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp )
+ * @author    曾建凯 <janpoem@163.com>
  */
 
-namespace Ke\Adm\Adapter;
+namespace Ke\Adm\Adapter\Database;
 
 use Ke\Logging\Log;
 use PDO;
 
 use Ke\Adm\Exception;
+
+use Ke\Adm\Adapter\DatabaseImpl;
 
 abstract class PdoAbs implements DatabaseImpl
 {
@@ -59,9 +63,14 @@ abstract class PdoAbs implements DatabaseImpl
 
 	protected $operation = self::OPERATION_READ;
 
-	public function __construct($remote, array $config)
+	public function setName($remote)
 	{
 		$this->remote = $remote;
+		return $this;
+	}
+
+	public function configure(array $config)
+	{
 		$this->config = array_merge($this->config, $config);
 		$this->logger = $this->config['logger'];
 		if (!empty($this->config['pdoOptions'])) {
@@ -74,6 +83,11 @@ abstract class PdoAbs implements DatabaseImpl
 			$this->hostCount += $this->readHostCount;
 		}
 		return $this;
+	}
+
+	public function getConfig()
+	{
+		return $this->config;
 	}
 
 	/**
@@ -89,7 +103,7 @@ abstract class PdoAbs implements DatabaseImpl
 	abstract protected function onConnect();
 
 
-	public function getConfig($index)
+	protected function getConnectConfig($index)
 	{
 		if ($index === -1 || !isset($this->config['readSplit'][$index]))
 			return $this->config;
@@ -117,7 +131,7 @@ abstract class PdoAbs implements DatabaseImpl
 		if (isset($this->connectors[$index]))
 			return $this;
 		try {
-			$config = $this->getConfig($index);
+			$config = $this->getConnectConfig($index);
 			$connector = new PDO(
 				$this->getDSN($config),
 				$config['user'],
@@ -133,7 +147,8 @@ abstract class PdoAbs implements DatabaseImpl
 			if (!empty($this->logger)) {
 				Log::getLogger($this->logger)->info("{$this->remote}#{$index} connect success!", ['config' => $config]);
 			}
-		} catch (\Exception $ex) {
+		}
+		catch (\Exception $ex) {
 			throw new Exception(Exception::CONNECT_ERROR, [
 				$this->remote,
 				static::class,
@@ -191,7 +206,7 @@ abstract class PdoAbs implements DatabaseImpl
 			$this->getConnector()->beginTransaction();
 			$this->isAutoCommit = false;
 		}
-		return $this;
+		return $this->isAutoCommit;
 	}
 
 	/**
@@ -205,28 +220,30 @@ abstract class PdoAbs implements DatabaseImpl
 
 	/**
 	 * 提交事务
-	 * @return PdoAbs
+	 * @return bool
 	 */
 	public function commit()
 	{
 		if (!$this->isAutoCommit) {
-			$this->getConnector()->commit();
+			$return = $this->getConnector()->commit();
 			$this->isAutoCommit = true;
+			return $return;
 		}
-		return $this;
+		return false;
 	}
 
 	/**
 	 * 回滚事务
-	 * @return PdoAbs
+	 * @return bool
 	 */
 	public function rollBack()
 	{
 		if (!$this->isAutoCommit) {
-			$this->getConnector()->rollBack();
+			$return = $this->getConnector()->rollBack();
 			$this->isAutoCommit = true;
+			return $return;
 		}
-		return $this;
+		return false;
 	}
 
 	/**
@@ -261,6 +278,7 @@ abstract class PdoAbs implements DatabaseImpl
 	protected function prepare($sql, array $args = null)
 	{
 		$statement = $this->getConnector()->prepare($sql);
+
 		if (!isset($args))
 			$args = [];
 		if (!empty($this->logger)) {
@@ -293,7 +311,8 @@ abstract class PdoAbs implements DatabaseImpl
 			if (is_numeric($column)) {
 				if ($column >= 0 && $column < $columnCount)
 					$columnIndex = $column;
-			} elseif (is_string($column) && !empty($column)) {
+			}
+			elseif (is_string($column) && !empty($column)) {
 				for ($i = 0; $i < $columnCount; $i++) {
 					$columnMeta = $st->getColumnMeta($i);
 					if ($columnMeta['name'] === $column) {
@@ -305,16 +324,19 @@ abstract class PdoAbs implements DatabaseImpl
 			if ($columnIndex > -1) {
 				if ($type === self::FETCH_ONE) {
 					return $st->fetchColumn($columnIndex);
-				} else {
+				}
+				else {
 					return $st->fetchAll(PDO::FETCH_COLUMN, $columnIndex);
 				}
 			}
 			return false;
-		} else {
+		}
+		else {
 			$style = $style === self::FETCH_ASSOC ? PDO::FETCH_ASSOC : PDO::FETCH_NUM;
 			if ($type === self::FETCH_ONE) {
 				return $st->fetch($style);
-			} else {
+			}
+			else {
 				return $st->fetchAll($style);
 			}
 		}

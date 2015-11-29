@@ -1,9 +1,11 @@
 <?php
 /**
- * Created by PhpStorm.
- * User: Janpoem
- * Date: 2015/11/19 0019
- * Time: 10:22
+ * KePHP, Keep PHP easy!
+ *
+ * @license   http://www.apache.org/licenses/LICENSE-2.0
+ * @copyright Copyright 2015 KePHP Authors All Rights Reserved
+ * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp )
+ * @author    曾建凯 <janpoem@163.com>
  */
 
 namespace Ke\Adm\Adapter;
@@ -12,9 +14,15 @@ namespace Ke\Adm\Adapter;
 interface CacheStoreImpl
 {
 
-	public function __construct($remote, array $config);
+	const DEFAULT_COLON = '.';
 
-	public function has($key);
+	public function setName($name);
+
+	public function configure(array $config);
+
+	public function getConfig();
+
+	public function exists($key);
 
 	public function set($key, $data, $expire = 0);
 

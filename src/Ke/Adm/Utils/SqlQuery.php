@@ -1,14 +1,18 @@
 <?php
 /**
- * Created by PhpStorm.
- * User: Janpoem
- * Date: 2015/11/22
- * Time: 2:24
+ * KePHP, Keep PHP easy!
+ *
+ * @license   http://www.apache.org/licenses/LICENSE-2.0
+ * @copyright Copyright 2015 KePHP Authors All Rights Reserved
+ * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp )
+ * @author    曾建凯 <janpoem@163.com>
  */
 
-namespace Ke\Adm\Query;
+namespace Ke\Adm\Utils;
 
 use Ke\Adm\Adapter\DatabaseImpl as Database;
+use Ke\Adm\Exception;
+use Ke\Adm\Model;
 
 /**
  * Sql查询辅助器
@@ -40,6 +44,8 @@ class SqlQuery
 
 	const OUTER_JOIN = 'OUTER JOIN';
 
+	const PAGE_PARAM = 'page';
+
 	protected static $operators = [
 		'null'  => [null, self::NONE_VALUE, 'IS NULL'],
 		'!null' => [null, self::NONE_VALUE, 'IS NOT NULL'],
@@ -52,7 +58,10 @@ class SqlQuery
 		'<='    => [null, self::SINGLE_VALUE,],
 		'in'    => [null, self::MULTI_VALUES, 'IN', true],
 		'!in'   => [null, self::MULTI_VALUES, 'NOT IN', true],
+		'like'  => [null, self::SINGLE_VALUE, 'LIKE'],
 	];
+
+	private $model = null;
 
 	/** @var array 当前查询关联的数据表 */
 	public $table = '';
@@ -76,9 +85,9 @@ class SqlQuery
 
 	public $offset = 0;
 
-	public $insert = [];
+	public $insert = null;
 
-	public $update = [];
+	public $update = null;
 
 	protected $fetchType = Database::FETCH_ONE;
 
@@ -86,55 +95,98 @@ class SqlQuery
 
 	protected $fetchColumn = null;
 
+	protected $pageSize = 0;
+
+	protected $pageNumber = 1;
+
+	protected $pageCount = 0;
+
+	protected $recordCount = 0;
+
 	public static function matchAs($str, array &$matches = null)
 	{
 		return preg_match('#([^\s]+)(?:[\s\t]+(?:as[\s\t]+)?([^\s]+))?#i', $str, $matches);
 	}
 
-	/**
-	 * @param null $table
-	 * @param null $select
-	 * @return SqlQuery
-	 */
-	public static function newSelect($table = null, $select = null)
+	public function setModel($model)
 	{
-		return (new static($table))->select($select);
+		if (!is_subclass_of($model, Model::class))
+			throw new Exception(Exception::INVALID_MODEL, [$model]);
+		$this->model = $model;
+		return $this;
 	}
 
-	/**
-	 * SqlQuery constructor.
-	 *
-	 * <code>
-	 * $query = new SqlQuery(SqlQuery::SELECT, 'users')
-	 * </code>
-	 *
-	 * @param null $table
-	 */
-	public function __construct($table = null)
+	public function find($column = null, $array = false)
 	{
-		if (isset($table))
-			$this->table($table);
-	}
-
-	public function table($table, $as = null)
-	{
-		if (empty($table) || !is_string($table))
-			return $this;
-		$table = trim($table);
-		if (empty($table))
-			return $this;
-		if (static::matchAs($table, $matches)) {
-			$table = $matches[1];
-			if (isset($matches[2]))
-				$as = $matches[2];
+		/** @var Model $model */
+		$model = $this->model;
+		if (!is_subclass_of($model, Model::class))
+			throw new Exception(Exception::INVALID_MODEL, [$model]);
+		if (empty($this->table))
+			$this->table($model::getTable());
+		$this->setFetchType(Database::FETCH_ALL);
+		if ($this->pageSize > 0)
+			$this->initPagination();
+		if (isset($column)) {
+			$this->setFetchColumn($column);
+		} elseif (!empty($array)) {
+			$this->setFetchStyle(Database::FETCH_NUM);
 		}
-		$this->table = $table;
+		return $model::find($this);
+	}
+
+	protected function initPagination()
+	{
+		/** @var Model $model */
+		$model = $this->model;
+		if ($this->recordCount <= 0)
+			$this->recordCount = $model::rsCount(clone $this);
+		if ($this->pageCount <= 0)
+			$this->pageCount = intval($this->recordCount / $this->pageSize);
+		if ($this->pageCount % $this->pageSize > 0)
+			$this->pageCount++;
+		if ($this->pageNumber < 1)
+			$this->pageNumber = 1;
+		elseif ($this->pageNumber > $this->pageCount - 1)
+			$this->pageNumber = $this->pageCount;
+		$this->limit = $this->pageSize;
+		$this->offset = ($this->pageNumber - 1) * $this->limit;
+	}
+
+
+	public function findOne($column = null, $array = false)
+	{
+		/** @var Model $model */
+		$model = $this->model;
+		if (!is_subclass_of($model, Model::class))
+			throw new Exception(Exception::INVALID_MODEL, [$model]);
+		if (empty($this->table))
+			$this->table($model::getTable());
+		$this->setFetchType(Database::FETCH_ONE);
+		if (isset($column)) {
+			$this->setFetchColumn($column);
+		} elseif (!empty($array)) {
+			$this->setFetchStyle(Database::FETCH_NUM);
+		}
+		$this->limit(1);
+		return $model::findOne($this);
+	}
+
+	public function getFetchStyle()
+	{
+		return $this->fetchStyle;
+	}
+
+	public function table($table = null, $as = null)
+	{
+		if (!empty($table = trim($table))) {
+			$this->table = $table;
+		}
 		if (empty($as) || !is_string($as))
 			$as = null;
 		$as = trim($as);
-		if (empty($as))
-			$as = null;
-		$this->tableAs = $as;
+		if (!empty($as))
+			$this->table .= ' AS ' . $as;
 		return $this;
 	}
 
@@ -160,7 +212,7 @@ class SqlQuery
 		if (empty($fields)) {
 			$fields = '*';
 			if (!empty($table))
-				$fields = "`{$table}`.*";
+				$fields = "{$table}.*";
 			return $fields;
 		} else {
 			if (is_string($fields)) {
@@ -168,9 +220,9 @@ class SqlQuery
 				foreach ($fields as &$field) {
 					$field = trim($field);
 					if (!empty($table))
-						$field = "`{$table}`.`{$field}`";
+						$field = "{$table}.{$field}";
 					else
-						$field = "`{$field}`";
+						$field = "{$field}";
 				}
 				return implode(',', $fields);
 			} elseif (is_array($fields)) {
@@ -399,12 +451,59 @@ class SqlQuery
 			}
 		}
 		$this->fetchColumn = $column;
+		if ($this->fetchColumn !== null)
+			$this->fetchStyle = Database::FETCH_NUM;
 		return $this;
 	}
 
 	public function getFetch()
 	{
 		return [$this->fetchType, $this->fetchStyle, $this->fetchColumn];
+	}
+
+	public function paginate($size, $page = null)
+	{
+//		if ($this->fetchType !== DatabaseImpl::FETCH_ALL)
+//			return $this;
+		/** @var Model $model */
+//		$model = $this->model;
+//		if (empty($model) || !is_subclass_of($model, Model::class))
+//			throw new Exception(Exception::INVALID_MODEL, [$model]);
+		if (isset($size) && is_numeric($size) && $size > 0) {
+			$this->pageSize = intval($size);
+			$number = $this->pageNumber;
+			if (isset($page)) {
+				if (is_numeric($page)) {
+					$number = $page > 0 ? intval($page) : 1;
+				} elseif (is_string($page) && !empty(($page = trim($page)))) {
+					if (isset($_GET[$page]) && is_numeric($_GET[$page]) && $_GET[$page] > 0) {
+						$number = intval($_GET[$page]);
+					} else {
+						$number = 1;
+					}
+				}
+			}
+			$this->pageNumber = $number;
+		}
+		return $this;
+	}
+
+	public function hasPagination()
+	{
+		return $this->pageSize > 0;
+	}
+
+	public function getPagination()
+	{
+		if ($this->pageSize > 0)
+			return [
+				'pageSize'    => $this->pageSize,
+				'pageNumber'  => $this->pageNumber,
+				'pageCount'   => $this->pageCount,
+				'recordCount' => $this->recordCount,
+			];
+		else
+			return false;
 	}
 
 	public function mkLimitOffsetSql($limit = 0, $offset = 0)
@@ -443,6 +542,11 @@ class SqlQuery
 			$sql .= ' ORDER BY ' . $this->order;
 		$sql .= $this->mkLimitOffsetSql($this->limit, $this->offset);
 		return $sql;
+	}
+
+	public function getParams()
+	{
+		return $this->params;
 	}
 
 	public function mkSelectQuery()

@@ -1,9 +1,11 @@
 <?php
 /**
- * Created by PhpStorm.
- * User: Janpoem
- * Date: 2015/11/19 0019
- * Time: 10:22
+ * KePHP, Keep PHP easy!
+ *
+ * @license   http://www.apache.org/licenses/LICENSE-2.0
+ * @copyright Copyright 2015 KePHP Authors All Rights Reserved
+ * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp )
+ * @author    曾建凯 <janpoem@163.com>
  */
 
 namespace Ke\Adm\Adapter;
@@ -36,13 +38,18 @@ interface DatabaseImpl
 
 	const IDX_FETCH_COLUMN = 4;
 
-	/**
-	 * 构造函数，一定要传入remote名称，输出调试的时候不会输出调试内容的明细，而以$remote标识
-	 *
-	 * @param string $remote
-	 * @param array  $config
-	 */
-	public function __construct($remote, array $config);
+//	/**
+//	 * 构造函数，一定要传入remote名称，输出调试的时候不会输出调试内容的明细，而以$remote标识
+//	 *
+//	 * @param string $remote
+//	 * @param array  $config
+//	 */
+
+	public function setName($name);
+
+	public function configure(array $config);
+
+	public function getConfig();
 
 	/**
 	 * 数据库连接
@@ -67,7 +74,7 @@ interface DatabaseImpl
 	/**
 	 * 启动事务
 	 *
-	 * @return DatabaseImpl
+	 * @return bool
 	 */
 	public function startTransaction();
 
@@ -81,14 +88,14 @@ interface DatabaseImpl
 	/**
 	 * 提交事务
 	 *
-	 * @return DatabaseImpl
+	 * @return bool
 	 */
 	public function commit();
 
 	/**
 	 * 回滚事务
 	 *
-	 * @return DatabaseImpl
+	 * @return bool
 	 */
 	public function rollBack();
 
@@ -135,11 +142,11 @@ interface DatabaseImpl
 	 *
 	 * conditions目前只处理为数组的情况，请不要传入其他格式。以后会陆续加入新的特性
 	 *
-	 * @param mixed $conditions
+	 * @param mixed $cd
 	 * @param array $params
 	 * @return mixed
 	 */
-	public function find($conditions, array $params = null);
+	public function find($cd, array $params = null);
 
 	/**
 	 * 指定查询条件的结果数，不同的数据库，有不同的查询方法，所以也列举在这里
@@ -160,10 +167,8 @@ interface DatabaseImpl
 	 * 2. 若指定了pk，但不是自增类型，则无需返回这个lastInsertId，因为实际上主键已经在insert的$data中包含了。
 	 * 3. 如果不指定pk，则默认会返回插入的结果长度，实际上默认为1。
 	 *
-	 * @param string|\Adm\Table $table
+	 * @param string $table
 	 * @param array             $data
-	 * @param null|string       $primaryKey
-	 * @param bool              $isAutoInc
 	 * @return int
 	 */
 	public function insert($table, array $data);
@@ -178,11 +183,11 @@ interface DatabaseImpl
 	 * 这个目标并不会实际去检查数据库是不是存在这些目标，只是检查目标是否设定了。
 	 *
 	 * @param string $table
-	 * @param array  $target
+	 * @param array  $conditions
 	 * @param array  $data
 	 * @return int
 	 */
-	public function update($table, array $data = null, $target = null);
+	public function update($table, $conditions = null, array $data = null);
 
 	/**
 	 * 指定table，删除指定目标的数据
@@ -192,10 +197,10 @@ interface DatabaseImpl
 	 * 注意，这个目标并不会实际去检查数据库是不是存在这些目标，只是检查目标是否设定了。
 	 *
 	 * @param string $table
-	 * @param array  $target
+	 * @param array  $conditions
 	 * @return int
 	 */
-	public function delete($table, $target = null);
+	public function delete($table, $conditions = null);
 
 	/**
 	 * 指定table，清空表，注意，这个接口表达的应该是清空表，并且重置表主键
