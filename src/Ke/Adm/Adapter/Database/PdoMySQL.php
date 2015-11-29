@@ -13,6 +13,8 @@ namespace Ke\Adm\Adapter\Database;
 use Ke\Adm\Exception;
 use Ke\Adm\Utils\SqlQuery;
 
+use Ke\Adm\Adapter\Forge\MySQLForge;
+
 class PdoMySQL extends PdoAbs
 {
 
@@ -23,6 +25,9 @@ class PdoMySQL extends PdoAbs
 	const WHERE_IN = 1;
 
 	const WHERE_NOT_IN = 0;
+
+	/** @var MySQLForge */
+	private $forge = null;
 
 	public function getDSN(array $config)
 	{
@@ -204,6 +209,13 @@ class PdoMySQL extends PdoAbs
 	{
 		$this->operation = self::OPERATION_WRITE;
 		return $this->execute('TRUNCATE TABLE ' . (string)$table);
+	}
+
+	public function getForge()
+	{
+		if (!isset($this->forge))
+			$this->forge = new MySQLForge($this);
+		return $this->forge;
 	}
 
 //	public function mkSelectQuery(&$cd, &$sql, &$params = null)

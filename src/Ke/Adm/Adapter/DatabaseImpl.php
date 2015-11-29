@@ -11,6 +11,8 @@
 namespace Ke\Adm\Adapter;
 
 
+use Ke\Adm\Adapter\Forge\MySQLForge;
+
 interface DatabaseImpl
 {
 
@@ -46,6 +48,8 @@ interface DatabaseImpl
 //	 */
 
 	public function setName($name);
+
+	public function getName();
 
 	public function configure(array $config);
 
@@ -209,4 +213,9 @@ interface DatabaseImpl
 	 * @return int
 	 */
 	public function truncate($table);
+
+	/**
+	 * @return MySQLForge
+	 */
+	public function getForge();
 }

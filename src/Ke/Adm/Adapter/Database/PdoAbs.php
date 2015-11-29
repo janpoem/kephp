@@ -69,6 +69,11 @@ abstract class PdoAbs implements DatabaseImpl
 		return $this;
 	}
 
+	public function getName()
+	{
+		return $this->remote;
+	}
+
 	public function configure(array $config)
 	{
 		$this->config = array_merge($this->config, $config);
@@ -147,8 +152,7 @@ abstract class PdoAbs implements DatabaseImpl
 			if (!empty($this->logger)) {
 				Log::getLogger($this->logger)->info("{$this->remote}#{$index} connect success!", ['config' => $config]);
 			}
-		}
-		catch (\Exception $ex) {
+		} catch (\Exception $ex) {
 			throw new Exception(Exception::CONNECT_ERROR, [
 				$this->remote,
 				static::class,
@@ -311,8 +315,7 @@ abstract class PdoAbs implements DatabaseImpl
 			if (is_numeric($column)) {
 				if ($column >= 0 && $column < $columnCount)
 					$columnIndex = $column;
-			}
-			elseif (is_string($column) && !empty($column)) {
+			} elseif (is_string($column) && !empty($column)) {
 				for ($i = 0; $i < $columnCount; $i++) {
 					$columnMeta = $st->getColumnMeta($i);
 					if ($columnMeta['name'] === $column) {
@@ -324,19 +327,16 @@ abstract class PdoAbs implements DatabaseImpl
 			if ($columnIndex > -1) {
 				if ($type === self::FETCH_ONE) {
 					return $st->fetchColumn($columnIndex);
-				}
-				else {
+				} else {
 					return $st->fetchAll(PDO::FETCH_COLUMN, $columnIndex);
 				}
 			}
 			return false;
-		}
-		else {
+		} else {
 			$style = $style === self::FETCH_ASSOC ? PDO::FETCH_ASSOC : PDO::FETCH_NUM;
 			if ($type === self::FETCH_ONE) {
 				return $st->fetch($style);
-			}
-			else {
+			} else {
 				return $st->fetchAll($style);
 			}
 		}

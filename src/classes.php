@@ -51,5 +51,6 @@ return [
 	'Ke\\Adm\\Adapter\\CacheStoreImpl'         => __DIR__ . '/Ke/Adm/Adapter/CacheStoreImpl.php',
 	'Ke\\Adm\\Adapter\\CacheStore\\Memcache'   => __DIR__ . '/Ke/Adm/Adapter/CacheStore/Memcache.php',
 	'Ke\\Adm\\Adapter\\CacheStore\\RedisCache' => __DIR__ . '/Ke/Adm/Adapter/CacheStore/RedisCache.php',
+	'Ke\\Adm\\Adapter\\Forge\\MySQLForge'      => __DIR__ . '/Ke/Adm/Adapter/Forge/MySQLForge.php',
 
 ];

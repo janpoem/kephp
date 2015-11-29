@@ -164,7 +164,14 @@ class Console implements ContextImpl
 	{
 		if (!isset($this->writer))
 			$this->getOutput();
-		$this->writer->output(implode(' ', func_get_args()));
+		$args = func_get_args();
+		if (empty($args))
+			$args = ' ';
+		else
+			foreach ($args as &$item) {
+				$item = print_r($item, true);
+			}
+		$this->writer->output(implode(' ', $args));
 		return $this;
 	}
 
@@ -172,7 +179,14 @@ class Console implements ContextImpl
 	{
 		if (!isset($this->writer))
 			$this->getOutput();
-		$this->writer->output(implode(' ', func_get_args()), true);
+		$args = func_get_args();
+		if (empty($args))
+			$args = ' ';
+		else
+			foreach ($args as &$item) {
+				$item = print_r($item, true);
+			}
+		$this->writer->output(implode(' ', $args), true);
 		return $this;
 	}
 

@@ -112,6 +112,11 @@ class Model extends ArrayObject
 	{
 	}
 
+	protected static function databaseColumns()
+	{
+		return false;
+	}
+
 	protected static function overrideColumns()
 	{
 		return false;
@@ -144,6 +149,10 @@ class Model extends ArrayObject
 			else
 				$columns = [$pk => $pkAutoInc ? self::$pkAutoIncColumn : self::$pkNotAutoIncColumn];
 		}
+		$dbColumns = static::databaseColumns();
+		if (!empty($dbColumns) && is_array($dbColumns)) {
+			$columns += $dbColumns;
+		}
 		// load override columns
 		// merge the static::$columns with override, and foreach once time
 		// but here we don't used merge method, we used +, if the field exists, it will not be cover
@@ -153,6 +162,10 @@ class Model extends ArrayObject
 			$columns += $override;
 		}
 		foreach ($columns as $field => &$column) {
+			// 数据库字段为基础
+			if (!empty($dbColumns[$field]) && is_array($dbColumns[$field])) {
+				$column = array_merge($dbColumns[$field], $column);
+			}
 			if (!empty($override[$field]) && is_array($override[$field])) {
 				$column = array_merge($column, $override[$field]);
 			}
