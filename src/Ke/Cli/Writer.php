@@ -13,27 +13,39 @@ use Ke\OutputImpl;
 class Writer implements OutputImpl
 {
 
-	protected $buffers = [];
+	protected $lineCounter = [];
 
-	protected $line = -1;
+	protected $line = 0;
 
 	public function isOutput()
 	{
 		// TODO: Implement isOutput() method.
 	}
 
-	public function output($content = null, $isBreakLine = false)
+	public function output($output = null, $isBreakLine = false)
 	{
-		if ($isBreakLine)
-			$content .= PHP_EOL;
-		if (PHP_SAPI === KE_CLI_MODE) {
-			file_put_contents('php://stdout', $content);
-		} else {
-			echo nl2br(htmlentities($content));
+		if (!isset($this->lineCounter[$this->line]))
+			$this->lineCounter[$this->line] = 0;
+		if (!is_array($output))
+			$output = [$output];
+		$content = '';
+		foreach ($output as &$item) {
+			if ($item === PHP_EOL) {
+				$this->line += 1;
+				$this->lineCounter[$this->line] = 0;
+				$content .= $item;
+			}
+			else {
+				if ($this->lineCounter[$this->line] > 0)
+					$content .= ' ';
+				$content .= print_r($item, true);
+				$this->lineCounter[$this->line]++;
+			}
 		}
-	}
-
-	public function send($content = null, $isBreakLine = false)
-	{
+		if ($isBreakLine) {
+			$content .= PHP_EOL;
+			$this->line += 1;
+		}
+		file_put_contents('php://stdout', $content);
 	}
 }

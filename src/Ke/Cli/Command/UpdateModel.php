@@ -2,8 +2,8 @@
 /**
  * Created by PhpStorm.
  * User: Janpoem
- * Date: 2015/11/30
- * Time: 4:40
+ * Date: 2015/11/30 0030
+ * Time: 13:19
  */
 
 namespace Ke\Cli\Command;
@@ -13,13 +13,7 @@ use Ke\Adm\DbSource;
 use Ke\Cli\Command;
 use Ke\Cli\ReflectionCommand;
 
-/**
- * 添加一个Model
- *
- *
- * @package Ke\Cli\Command
- */
-class AddModel extends ReflectionCommand
+class UpdateModel extends ReflectionCommand
 {
 
 	protected static $commandName = 'add_model';
@@ -80,10 +74,10 @@ class AddModel extends ReflectionCommand
 
 		list($this->namespace, $this->class) = parseClass($this->className);
 
-		$console->writef('Creating model "{0}" ...', [$model], false);
+		$console->writef('Updating model "{0}" ...', [$model], false);
 
-		if (is_file($this->classPath)) {
-			$console->halt("Fail", PHP_EOL, "The file \"{$this->classPath}\" is existing, please use update_model!");
+		if (!is_file($this->classPath)) {
+			$console->halt("Fail", PHP_EOL, "The file \"{$this->classPath}\" did not exist, please use add_model!");
 		}
 
 		if (!is_dir($this->dir))
@@ -91,18 +85,33 @@ class AddModel extends ReflectionCommand
 
 		$forge = $this->adapter->getForge();
 		$vars = $forge->mkTableVars($this->tableName);
-		$vars['namespace'] = $this->namespace;
-		$vars['class'] = $this->class;
-		$vars['className'] = $this->className;
-		$vars['tableName'] = $this->tableName;
-		$vars['datetime'] = date('Y-m-d H:i:s');
 
-		$tplPath = __DIR__ . '/Templates/Model.tp';
-		$tpl = file_get_contents($tplPath);
-		if (file_put_contents($this->classPath, substitute($tpl, $vars))) {
+		$content = file_get_contents($this->classPath);
+		$split = explode(' * // class properties', $content);
+		if (count($split) >= 3) {
+			$split[1] = $vars['props'];
+		}
+		$content = implode('', $split);
+
+		$split = explode('		// database columns', $content);
+		if (count($split) >= 3) {
+			$split[1] = $vars['columns'];
+		}
+		$content = implode('', $split);
+
+		$content = preg_replace_callback('#[\t\s]+protected[\t\s]+static[\t\s]+\$pkField[\t\s]+\=[\t\s]+([^\t\s]+)\;#i', function($matches) use ($vars) {
+			return str_replace($matches[1], $vars['pkField'], $matches[0]);
+		}, $content);
+
+		$content = preg_replace_callback('#[\t\s]+protected[\t\s]+static[\t\s]+\$pkAutoInc[\t\s]+\=[\t\s]+([^\t\s]+)\;#i', function($matches) use ($vars) {
+			return str_replace($matches[1], $vars['pkAutoInc'], $matches[0]);
+		}, $content);
+
+		if (file_put_contents($this->classPath, $content)) {
 			$console->halt('Success');
-		} else {
-			$console->halt("Fail", PHP_EOL, "I/O error, please try again!");
+		}
+		else {
+			$console->halt('Fail', PHP_EOL, 'I/O error, please try again!');
 		}
 	}
 }

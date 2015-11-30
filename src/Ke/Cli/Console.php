@@ -79,6 +79,9 @@ class Console implements ContextImpl
 		// 初始化日志配置
 		$this->initLogger('cli');
 		// 将错误和异常处理，从App中接管过来。
+		register_shutdown_function(function () {
+			$this->onExiting();
+		});
 		set_error_handler([$this, 'errorHandle']);
 		set_exception_handler([$this, 'exceptionHandle']);
 		if (isset($argv)) {
@@ -97,17 +100,24 @@ class Console implements ContextImpl
 			if (!isset($this->app))
 				$this->app = App::getApp();
 			return $this->app;
-		} elseif ($field === 'output') {
+		}
+		elseif ($field === 'output') {
 			if (!isset($this->writer))
 				$this->getOutput();
 			return $this->writer;
-		} elseif ($field === 'input') {
+		}
+		elseif ($field === 'input') {
 			if (!isset($this->argv))
 				$this->getInput();
 			return $this->argv;
-		} else {
+		}
+		else {
 			return isset($this->{$field}) ? $this->{$field} : false;
 		}
+	}
+
+	protected function onExiting()
+	{
 	}
 
 	/**
@@ -164,14 +174,7 @@ class Console implements ContextImpl
 	{
 		if (!isset($this->writer))
 			$this->getOutput();
-		$args = func_get_args();
-		if (empty($args))
-			$args = ' ';
-		else
-			foreach ($args as &$item) {
-				$item = print_r($item, true);
-			}
-		$this->writer->output(implode(' ', $args));
+		$this->writer->output(func_get_args());
 		return $this;
 	}
 
@@ -179,14 +182,24 @@ class Console implements ContextImpl
 	{
 		if (!isset($this->writer))
 			$this->getOutput();
-		$args = func_get_args();
-		if (empty($args))
-			$args = ' ';
-		else
-			foreach ($args as &$item) {
-				$item = print_r($item, true);
-			}
-		$this->writer->output(implode(' ', $args), true);
+		$this->writer->output(func_get_args(), true);
+		return $this;
+	}
+
+	public function writef($message, array $args = [], $isBreakLine = true)
+	{
+		if (!isset($this->writer))
+			$this->getOutput();
+		$this->writer->output(substitute($message, $args), $isBreakLine);
+		return $this;
+	}
+
+	public function halt()
+	{
+		if (!isset($this->writer))
+			$this->getOutput();
+		$this->writer->output(func_get_args());
+		exit();
 		return $this;
 	}
 

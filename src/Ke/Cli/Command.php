@@ -9,6 +9,8 @@
 namespace Ke\Cli;
 
 
+use Ke\Exception;
+
 abstract class Command
 {
 
@@ -249,8 +251,8 @@ abstract class Command
 				if (!$column['require'])
 					$temp = "[$temp]";
 				$tempLength = strlen($temp) + 1;
-				if ($total + $tempLength >= 80) {
-					$usage .= '\\' . PHP_EOL . $padding;
+				if ($total + $tempLength >= 120) {
+					$usage .= PHP_EOL . $padding;
 					$total = $length;
 				} else {
 					$total += $tempLength;
@@ -324,6 +326,7 @@ abstract class Command
 						'command' => static::getName(),
 						'field'   => $name,
 					]));
+					exit();
 					break;
 				}
 			}

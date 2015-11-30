@@ -36,11 +36,11 @@ class MySQLForge
 		$this->db = $db;
 	}
 
-	public function mkModelVars($model, $tableName)
+	public function mkTableVars($tableName)
 	{
 		$vars = [
-			'pkField'   => null,
-			'pkAutoInc' => false,
+			'columns' => '',
+			'props'   => '',
 		];
 		$tableInfo = $this->getTableInfo($tableName);
 		if ($tableInfo === false)
@@ -51,13 +51,17 @@ class MySQLForge
 		$dbCols = $this->getTableColumns($tableName);
 		$props = [];
 		$cols = [];
+		$typeMaxLength = 0;
+		$fieldMaxLength = 0;
 
 		foreach ($dbCols as $column) {
 			$field = $column['column_name'];
 			$type = $column['data_type'];
+			$varType = null;
 			$col = [];
-			if ($field === $pkField && stripos($column['extra'], 'auto_increment') !== false)
+			if ($field === $pkField && stripos($column['extra'], 'auto_increment') !== false) {
 				$pkAutoInc = true;
+			}
 			$comment = str_replace(['，', '：'], [',', ':'], $column['comment']);
 			$comment = explode('|', $comment);
 			if (!empty(($label = trim($comment[0]))))
@@ -68,27 +72,37 @@ class MySQLForge
 				$col[] = sprintf('\'%s\' => %s', 'timestamp', '1');
 				if ($field === 'created_at') {
 					$col[] = sprintf('self::ON_CREATE => \'%s\'', 'now');
-				} elseif ($field === 'updated_at') {
+				}
+				elseif ($field === 'updated_at') {
 					$col[] = sprintf('self::ON_UPDATE => \'%s\'', 'now');
 				}
-				$props[] = ['int', "{$field}", $label];
-			} else {
+				$varType = 'int';
+				$props[] = [$varType, "{$field}", $label];
+			}
+			else {
 				if (isset($this->intTypes[$type])) {
 					$col[] = sprintf('\'%s\' => %s', 'int', '1');
 					if (isset($column['column_default']))
 						$col[] = sprintf('\'%s\' => %s', 'default', intval($column['column_default']));
-					$props[] = ['int', "{$field}", $label];
-				} elseif (isset($this->floatTypes[$type])) {
-					$col[] = sprintf('\'%s\' => %s', 'float', $column['numeric_scale'] > 0 ? intval($column['numeric_scale']) : 1);
+					$varType = 'int';
+					$props[] = [$varType, "{$field}", $label];
+				}
+				elseif (isset($this->floatTypes[$type])) {
+					$col[] = sprintf('\'%s\' => %s', 'float',
+						$column['numeric_scale'] > 0 ? intval($column['numeric_scale']) : 1);
 					if (isset($column['column_default']))
 						$col[] = sprintf('\'%s\' => %s', 'default', floatval($column['column_default']));
-					$props[] = ['double', "{$field}", $label];
-				} elseif ($type === 'bigint') {
+					$varType = 'double';
+					$props[] = [$varType, "{$field}", $label];
+				}
+				elseif ($type === 'bigint') {
 					$col[] = sprintf('\'%s\' => %s', 'bigint', '1');
 					if (isset($column['column_default']) && is_numeric($column['column_default']))
 						$col[] = sprintf('\'%s\' => \'%s\'', 'default', $column['column_default']);
-					$props[] = ['string', "{$field}", $label];
-				} elseif ($type === 'enum') {
+					$varType = 'string';
+					$props[] = [$varType, "{$field}", $label];
+				}
+				elseif ($type === 'enum') {
 					// 枚举类型，肯定是要限制选项的
 					$options = [];
 					$commentOptions = [];
@@ -107,17 +121,75 @@ class MySQLForge
 							$options[] = sprintf('\'%s\' => \'%s\'', $val, $txt);
 						}
 					}
-					$options = empty($options) ? '[]' : '['.implode(', ', $options).']';
-
-//					$col['options'] = $options;
-//					if (isset($dbCol['column_default']))
-//						$col['default'] = $dbCol['column_default'];
+					$options = empty($options) ? '[]' : '[' . implode(', ', $options) . ']';
+					$col[] = sprintf('\'%s\' => %s', 'options', $options);
+					if (isset($column['column_default']))
+						$col[] = sprintf('\'%s\' => \'%s\'', 'default', $column['column_default']);
+					$varType = 'string';
+					$props[] = [$varType, "{$field}", $label];
+				}
+				elseif ($type === 'varchar' || $type === 'char') {
+					$col[] = sprintf('\'max\' => %s', $column['char_length']);
+					if (isset($column['column_default']))
+						$col[] = sprintf('\'%s\' => \'%s\'', 'default', $column['column_default']);
+					$varType = 'string';
+					$props[] = [$varType, "{$field}", $label];
+				}
+				else {
+					$varType = 'mixed';
+					$props[] = [$varType, "{$field}", $label];
 				}
 			}
+			if ($field === $pkField) {
+				$col[] = '\'pk\' => 1';
+				if ($pkAutoInc)
+					$col[] = '\'autoInc\' => 1';
+			}
 			$cols[] = [$field, implode(', ', $col)];
+			$typeLength = strlen($varType);
+			$fieldLength = strlen($field);
+			if ($fieldLength > $fieldMaxLength)
+				$fieldMaxLength = $fieldLength;
+			if ($typeLength > $typeMaxLength)
+				$typeMaxLength = $typeLength;
 		}
 
-//		var_dump($props);
+		$vars['pkField'] = empty($pkField) ? "null" : "'{$pkField}'";
+
+		$vars['pkAutoInc'] = empty($pkAutoInc) ? "false" : "true";
+
+		$temp = [
+			"\t\t// database columns",
+			"\t\t// generated as " . date('Y-m-d H:i:s'),
+			"\t\treturn [",
+		];
+		foreach ($cols as $index => &$col) {
+			$prefix = "\t\t\t";
+			$temp[] = sprintf('%s%s => [%s],',
+				$prefix,
+				str_pad("'{$col[0]}'", $fieldMaxLength + 2, ' ', STR_PAD_RIGHT),
+				$col[1]);
+		}
+		$temp[] = "\t\t];";
+		$temp[] = "\t\t// database columns";
+		$vars['columns'] = implode(PHP_EOL, $temp);
+
+		$temp = [
+			" * // class properties",
+		];
+		$vars['props'] = '';
+		foreach ($props as $index => $prop) {
+			$prefix = " * ";
+			$temp[] = sprintf('%s@property %s $%s %s',
+				$prefix,
+				str_pad("{$prop[0]}", $typeMaxLength, ' ', STR_PAD_RIGHT),
+				str_pad("{$prop[1]}", $fieldMaxLength, ' ', STR_PAD_RIGHT),
+				$prop[2]);
+		}
+		$temp[] = " * // class properties";
+		$vars['props'] = implode(PHP_EOL, $temp);
+
+		return $vars;
 	}
 
 	public function getTableInfo($tableName)
@@ -163,69 +235,6 @@ class MySQLForge
 			'order'  => 'ordinal_position asc',
 		]);
 		return $columns;
-	}
-
-	public function filterTableColumnAsModelColumn(array $dbCol)
-	{
-		$field = $dbCol['column_name'];
-		$col = [];
-		$dataType = $dbCol['data_type'];
-		$comment = str_replace(['，', '：'], [',', ':'], $dbCol['comment']);
-		$comment = explode('|', $comment);
-		if (!empty(($label = trim($comment[0]))))
-			$col['label'] = $label;
-		if (preg_match('#_(at|time|date|datetime)#i', $field)) {
-			$col['timestamp'] = true;
-			if ($field === 'created_at')
-				$col['{PROCESS_CREATE}'] = '{now}';
-			elseif ($field === 'updated_at')
-				$col['{PROCESS_UPDATE}'] = '{now}';
-		} else {
-			if (isset($this->intTypes[$dataType])) {
-				$col['int'] = true;
-				if ($dbCol['column_default'] === null)
-					$col['default'] = 0;
-				else
-					$col['default'] = intval($dbCol['column_default']);
-			} elseif (isset($this->floatTypes[$dataType])) {
-				$col['float'] = $dbCol['numeric_scale'];
-				if ($dbCol['column_default'] === null)
-					$col['default'] = (double)0;
-				else
-					$col['default'] = floatval($dbCol['column_default']);
-			} elseif ($dataType === 'bigint') {
-				$col['bigint'] = true;
-				if ($dbCol['column_default'] === null || !is_numeric($dbCol['column_default']))
-					$col['default'] = '0';
-				else
-					$col['default'] = $dbCol['column_default'];
-			} elseif ($dataType === 'enum') {
-				// 枚举类型，肯定是要限制选项的
-				$options = [];
-				$commentOptions = [];
-				if (!empty($comment[1])) {
-					$exp = explode(',', $comment[1]);
-					foreach ($exp as $item) {
-						$itemExp = explode(':', $item);
-						if (isset($itemExp[1]))
-							$commentOptions[trim($itemExp[0])] = trim($itemExp[1]);
-					}
-				}
-				if (preg_match_all('#\'([^\']+)\'#i', $dbCol['column_type'], $matches, PREG_SET_ORDER)) {
-					foreach ($matches as $match) {
-						$options[$match[1]] = isset($commentOptions[$match[1]]) ? $commentOptions[$match[1]] : $match[1];
-					}
-				}
-				$col['options'] = $options;
-				if (isset($dbCol['column_default']))
-					$col['default'] = $dbCol['column_default'];
-
-//				$properties[] = "@property string \${$name} {$title}{$comment}";
-			}
-		}
-//		var_dump($col);
-		var_dump($col);
-		return [$field, $col];
 	}
 
 	public function mkLabel($field, $label)

@@ -1,0 +1,30 @@
+<?php
+/**
+ * KePHP, Keep PHP easy!
+ */
+
+namespace {namespace};
+
+use Ke\Adm\Model;
+
+/**
+ * Class {class}
+ * tableName {tableName}
+ *
+{props}
+ */
+class {class} extends Model
+{
+
+	protected static $pkField = {pkField};
+
+	protected static $pkAutoInc = {pkAutoInc};
+
+//	protected static $columns = [];
+
+	protected static function databaseColumns()
+	{
+{columns}
+	}
+
+}
