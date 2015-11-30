@@ -87,13 +87,14 @@ class UpdateModel extends ReflectionCommand
 		$vars = $forge->mkTableVars($this->tableName);
 
 		$content = file_get_contents($this->classPath);
-		$split = explode(' * // class properties', $content);
+		$split = preg_split('#\s{1}\*\s{1}\/\/\s{1}class\s{1}properties#i', $content);
 		if (count($split) >= 3) {
 			$split[1] = $vars['props'];
 		}
 		$content = implode('', $split);
 
-		$split = explode('		// database columns', $content);
+		$split = preg_split('#[\t\s]+\/\/\s{1}database\s{1}columns#', $content);
+		print_r($split);
 		if (count($split) >= 3) {
 			$split[1] = $vars['columns'];
 		}
