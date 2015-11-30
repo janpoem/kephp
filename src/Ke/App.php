@@ -82,6 +82,7 @@ class App
 	 */
 	public static function getApp()
 	{
+		global $KEAPP;
 		if (!isset(self::$app)) {
 			$cls = KE_APP_CLASS;
 			if (class_exists($cls, true)) {
@@ -91,6 +92,7 @@ class App
 				$cls = static::class;
 			}
 			self::$app = new $cls();
+			$KEAPP = self::$app;
 		}
 		return self::$app;
 	}

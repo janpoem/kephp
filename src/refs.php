@@ -263,7 +263,8 @@ const KE_HTTP_SECURITY_FIELD = '';
  */
 const KE_HTTP_SECURITY_SALT = '';
 
-global $_KE;
+/** @var \Ke\App $KEAPP */
+global $_KE, $KEAPP;
 
 $_KE = [
 	'APP_PATH'            => null,
