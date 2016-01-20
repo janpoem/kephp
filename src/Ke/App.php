@@ -94,54 +94,6 @@ class App
 		return self::$app;
 	}
 
-//	final public static function bootstrap(string $root)
-//	{
-//		if (isset(self::$app))
-//			return self::$app;
-//		$appClass = static::class;
-//		try {
-//			new $appClass($root);
-//		}
-//		catch (Throwable $ex) {
-//			print $ex->getMessage();
-//		}
-//		return self::$app;
-//
-//
-//		// 项目的根目录和src源代码目录
-//		$root = realpath($root);
-//		if ($root === false || !is_dir($root))
-//			exit('Invalid app root path!');
-//		if (empty($src))
-//			$src = 'src';
-//		if (is_dir($src))
-//			$src = realpath($src);
-//		else
-//			$src = $root . DS . $src;
-//
-//		// 项目的基础的类、命名空间和命名空间对应的路径
-//		$appClass = static::class;
-//		$appNs = null;
-//		$appNsPath = $src;
-//		if ($appClass !== __CLASS__) {
-//			list($appNs) = parse_class($appClass);
-//			if (!empty($appNs)) {
-//				$appNsPath .= DS . $appNs;
-//			}
-//			if (!KE_IS_WIN)
-//				$appNsPath = str_replace('\\', '/', $appNsPath);
-//		}
-//
-//		define('KE_APP_SRC', $src);
-//		define('KE_APP_ROOT', $root);
-//		define('KE_APP_DIR', basename(KE_APP_ROOT));
-//		define('KE_APP_CLASS', $appClass);
-//		define('KE_APP_NS', $appNs);
-//		define('KE_APP_NS_PATH', $appNsPath);
-//
-//		return self::$app;
-//	}
-
 	final public function __construct(string $root = null, array $dirs = null)
 	{
 		if (isset(self::$app))
