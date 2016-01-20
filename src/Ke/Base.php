@@ -37,8 +37,6 @@ const KE_CLI_MODE = 'cli';
  */
 const KE_WEB_MODE = 'web';
 
-define('KE_APP_MODE', PHP_SAPI === 'cli' ? KE_CLI_MODE : KE_WEB_MODE);
-
 /** KE_APP_ENV:开发环境 */
 const KE_DEVELOPMENT = 'development';
 /** KE_APP_ENV:测试环境 */

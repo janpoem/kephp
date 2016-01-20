@@ -1,9 +1,11 @@
 <?php
 /**
- * Created by PhpStorm.
- * User: Janpoem
- * Date: 2016/1/20 0020
- * Time: 20:49
+ * KePHP, Keep PHP easy!
+ *
+ * @license   http://www.apache.org/licenses/LICENSE-2.0
+ * @copyright Copyright 2015 KePHP Authors All Rights Reserved
+ * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp-core )
+ * @author    曾建凯 <janpoem@163.com>
  */
 
 namespace Ke\Cli\Cmd;

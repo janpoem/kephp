@@ -15,7 +15,10 @@ namespace Ke\Adm;
  *
  * @package Ke\Adm
  */
-class CacheModel
+abstract class CacheModel
 {
+
+	use CacheModelTrait;
+
 
 }

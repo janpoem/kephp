@@ -108,12 +108,17 @@ class App
 		if (!empty($dirs))
 			$this->setDirs($dirs);
 
+		define('KE_APP_MODE', PHP_SAPI === 'cli' ? KE_CLI_MODE : KE_WEB_MODE);
+
 		// CLI模式加载特定的环境配置文件
 		if (KE_APP_MODE === KE_CLI_MODE) {
 			// 先尝试加载环境配置文件，这个文件以后会扩展成为json格式，以装载更多的信息
 			$envFile = $this->root . '/env';
 			if (is_file($envFile) && is_readable($envFile)) {
 				$_SERVER['SERVER_NAME'] = trim(file_get_contents($envFile));
+			}
+			else {
+				$_SERVER['SERVER_NAME'] = 'localhost';
 			}
 		}
 
@@ -388,4 +393,5 @@ class App
 	{
 		return $this->loader;
 	}
+
 }

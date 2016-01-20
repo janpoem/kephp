@@ -70,6 +70,8 @@ class Model extends ArrayObject
 
 	protected static $cacheSource = null;
 
+	protected static $cacheTTL = 60 * 60 * 12; /* default value: 12 hours */
+
 	protected static $tableName = '';
 
 	protected static $tablePrefix = '';
@@ -115,8 +117,6 @@ class Model extends ArrayObject
 	protected $cacheKey = null;
 
 	protected $cacheUpdatedAt = 0;
-
-	protected $cacheTTL = 60 * 60 * 12; /* default value: 12 hours */
 
 	protected $errors = null;
 
@@ -509,17 +509,26 @@ class Model extends ArrayObject
 				static::class));
 		if (strlen($pk) === 0)
 			throw new Exception('Undefined primary key!');
+		global $KE_CACHES;
 		$key = static::makeCacheKey($pk);
 		$adapter = static::getCacheAdapter();
-		$cache = $adapter->get($key);
-		if ($cache !== false) {
-			return $cache;
+		$cache = $KE_CACHES[$key] ?? $adapter->get($key);
+		if ($cache === false) {
+			$cache = static::findOneIn([static::$pk => $pk]);
+			if ($cache->isExists()) {
+				$cache->saveCache();
+			}
 		}
-		$obj = static::findOneIn([static::$pk => $pk]);
-		if ($obj->isExists()) {
-			$obj->saveCache();
-		}
-		return $obj;
+//		if ($cache !== false) {
+//			return $cache;
+//		}
+//		$obj = static::findOneIn([static::$pk => $pk]);
+//		if ($obj->isExists()) {
+//			$obj->saveCache();
+//		}
+		if ($cache->isExists() && !isset($KE_CACHES[$key]))
+			$KE_CACHES[$key] = $cache;
+		return $cache;
 	}
 
 	public function __construct($data = null)
@@ -887,7 +896,7 @@ class Model extends ArrayObject
 		$builder->buildDelete($table, $builder->buildIn((array)$this->referenceData), $sql, $args);
 		if ($adapter->execute($sql, $args) > 0) {
 			if ($this->isCache() || static::isEnableCache())
-				$this->deleteCache();
+				$this->destroyCache();
 			$this->referenceData = null;
 			$this->afterDestroy();
 			return self::SAVE_SUCCESS;
@@ -911,7 +920,7 @@ class Model extends ArrayObject
 	{
 	}
 
-	protected function onDeleteCache()
+	protected function onDestroyCache()
 	{
 	}
 
@@ -944,17 +953,21 @@ class Model extends ArrayObject
 		return self::SAVE_FAILURE;
 	}
 
-	public function deleteCache()
+	public function destroyCache()
 	{
-		if (!static::isEnableCache() || $this->isNew())
+		if (!static::isEnableCache() || $this->isNew() || !$this->isCache())
 			return self::SAVE_FAILURE;
+		$status = $this->cacheStatus;
 		$this->cacheStatus = self::ON_DELETE;
 		$key = static::makeCacheKey($this->getPk());
-		$event = 'onDeleteCache';
+		$event = 'onDestroyCache';
 		if ($this->$event() === false)
 			return self::SAVE_FAILURE;
-		if (static::getCacheAdapter()->delete($key))
+		if (static::getCacheAdapter()->delete($key)) {
+			$this->cacheStatus = false;
 			return self::SAVE_SUCCESS;
+		}
+		$this->cacheStatus = $status;
 		return self::SAVE_FAILURE;
 	}
 
@@ -970,13 +983,14 @@ class Model extends ArrayObject
 
 	public function getCacheTTL()
 	{
-		return $this->cacheTTL;
+		return static::$cacheTTL;
 	}
 
-	public function setCacheTTL(int $ttl)
+	public function getCacheExpireDate()
 	{
-		$this->cacheTTL = $ttl < 0 ? 0 : $ttl;
-		return $this;
+		if ($this->isCache())
+			return $this->cacheUpdatedAt + $this->getCacheTTL();
+		return -1;
 	}
 
 }

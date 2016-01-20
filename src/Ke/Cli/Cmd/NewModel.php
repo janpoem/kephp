@@ -1,11 +1,11 @@
 <?php
 /**
- * Kephp command file
+ * KePHP, Keep PHP easy!
  *
- * Command: New_Model
- * Class  : NewModel
- * Usage  : php kephp.php New_Model
- * Created: 2016-01-20 17:44
+ * @license   http://www.apache.org/licenses/LICENSE-2.0
+ * @copyright Copyright 2015 KePHP Authors All Rights Reserved
+ * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp-core )
+ * @author    曾建凯 <janpoem@163.com>
  */
 
 namespace Ke\Cli\Cmd;
