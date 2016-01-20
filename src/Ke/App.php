@@ -10,15 +10,13 @@
 
 namespace Ke;
 
-/**
- * 应用程序
- *
- * 在实际的项目代码中，不应该直接使用Ke\Core\App，而应该使用项目的App(继承自Ke\Core\App)。
- * 如果用户未在项目中定义App，引导流程会将class_alias(Ke\Core\App, APP_CLASS)，保证这个Class一定存在。
- *
- * @package Ke\Core
- * @author  曾建凯 <janpoem@163.com>
- */
+require 'Base.php';
+require 'DirectoryRegistry.php';
+require 'Loader.php';
+
+use Throwable;
+use Exception as PhpException;
+
 class App
 {
 
@@ -30,24 +28,27 @@ class App
 		'127.0.0.1' => KE_DEVELOPMENT,
 	];
 
+	/** @var App */
 	private static $app = null;
 
-	private static $profiler = null;
+	private $isInit = false;
+
+	private $root = null;
 
 	/** @var string 项目的名称 */
-	public $name = null;
+	protected $name = null;
 
 	/** @var string 项目的基础Hash */
-	public $salt = null;
+	protected $salt = null;
 
 	/** @var string 区域语言习惯 */
-	public $locale = 'en_US';
+	protected $locale = 'en_US';
 
 	/** @var string 默认时区 */
-	public $timezone = 'Asia/Shanghai';
+	protected $timezone = 'Asia/Shanghai';
 
 	/** @var string 编码 */
-	public $encoding = 'UTF-8';
+	protected $encoding = 'UTF-8';
 
 	/**
 	 * 编码顺序，值类型应该数组格式，或者以逗号分隔的字符串类型
@@ -57,81 +58,195 @@ class App
 	 *
 	 * @var string|array
 	 */
-	public $encodingOrder = ['GBK', 'GB2312'];
+	protected $encodingOrder = ['GBK', 'GB2312'];
 
 	/** @var string http的路径前缀 */
-	public $httpBase = null;
+	protected $httpBase = null;
 
 	/** @var bool 是否开启了HTTP REWRITE */
-	public $httpRewrite = true;
+	protected $httpRewrite = true;
 
 	/** @var string http的验证字段 */
-	public $httpSecurityField = null;
+	protected $httpSecurityField = null;
 
 	/** @var string http验证字段的内容加密的hash */
-	public $httpSecuritySalt = null;
+	protected $httpSecuritySalt = null;
+
+	protected $httpSecuritySessionField = null;
 
 	/** @var array 声明SERVER_NAME所对应的应用程序运行环境 */
-	public $servers = [];
+	protected $servers = [];
 
-	/**
-	 * 取得项目的App实例
-	 *
-	 * @return App
-	 * @throws Exception
-	 */
-	public static function getApp()
+	protected $helpers = [];
+
+	protected $aliases = [
+		'web' => 'public',
+	];
+
+	protected $dirs = [];
+
+	protected $loader = null;
+
+	final public static function getApp(): App
 	{
-		global $KEAPP;
-		if (!isset(self::$app)) {
-			$cls = KE_APP_CLASS;
-			if (class_exists($cls, true)) {
-				if (!is_subclass_of($cls, static::class))
-					throw new Exception('Invalid app class {class}', ['class' => $cls]);
-			} else {
-				$cls = static::class;
-			}
-			self::$app = new $cls();
-			$KEAPP = self::$app;
-		}
+		if (!isset(self::$app))
+			throw new PhpException('未创建App实例！');
 		return self::$app;
 	}
 
-	final private function __construct()
+//	final public static function bootstrap(string $root)
+//	{
+//		if (isset(self::$app))
+//			return self::$app;
+//		$appClass = static::class;
+//		try {
+//			new $appClass($root);
+//		}
+//		catch (Throwable $ex) {
+//			print $ex->getMessage();
+//		}
+//		return self::$app;
+//
+//
+//		// 项目的根目录和src源代码目录
+//		$root = realpath($root);
+//		if ($root === false || !is_dir($root))
+//			exit('Invalid app root path!');
+//		if (empty($src))
+//			$src = 'src';
+//		if (is_dir($src))
+//			$src = realpath($src);
+//		else
+//			$src = $root . DS . $src;
+//
+//		// 项目的基础的类、命名空间和命名空间对应的路径
+//		$appClass = static::class;
+//		$appNs = null;
+//		$appNsPath = $src;
+//		if ($appClass !== __CLASS__) {
+//			list($appNs) = parse_class($appClass);
+//			if (!empty($appNs)) {
+//				$appNsPath .= DS . $appNs;
+//			}
+//			if (!KE_IS_WIN)
+//				$appNsPath = str_replace('\\', '/', $appNsPath);
+//		}
+//
+//		define('KE_APP_SRC', $src);
+//		define('KE_APP_ROOT', $root);
+//		define('KE_APP_DIR', basename(KE_APP_ROOT));
+//		define('KE_APP_CLASS', $appClass);
+//		define('KE_APP_NS', $appNs);
+//		define('KE_APP_NS_PATH', $appNsPath);
+//
+//		return self::$app;
+//	}
+
+	final public function __construct(string $root = null, array $dirs = null)
 	{
-		$this->servers += self::$knownServers;
+		if (isset(self::$app))
+			throw new PhpException('重复创建App实例！');
+		self::$app = $this;
 
-		/////////////////////////////////////////////////////////////////////////////
-		// p1：基本环境的准备
-		/////////////////////////////////////////////////////////////////////////////
+		// 检查根目录
+		if (($this->root = real_dir($root)) === false)
+			throw new PhpException('应用程序根目录(root)不是一个目录，或者路径无效！');
 
-		$method = 'on';
+		// 绑定绝对路径
+		if (!empty($dirs))
+			$this->setDirs($dirs);
 
-		// 加载公共配置数据
-		importWithApp(KE_CONF . '/common.php', $this);
-
-		$env = $this->detectEnv();
-		if (empty($env)) {
-			if (isset($this->servers[$_SERVER['SERVER_NAME']]))
-				$env = $this->servers[$_SERVER['SERVER_NAME']];
+		// CLI模式加载特定的环境配置文件
+		if (KE_APP_MODE === KE_CLI_MODE) {
+			// 先尝试加载环境配置文件，这个文件以后会扩展成为json格式，以装载更多的信息
+			$envFile = $this->root . '/env';
+			if (is_file($envFile) && is_readable($envFile)) {
+				$_SERVER['SERVER_NAME'] = trim(file_get_contents($envFile));
+			}
 		}
-		// 最后，再次严格的检查一次环境，确保不会出现这三个以外的环境声明
+
+		// 匹配当前的环境
+		$this->servers += self::$knownServers;
+		$env = $this->detectEnv();
+		// 不是开发模式或者测试模式，就必然是发布模式，确保在未知的模式下，返回发布模式
 		if ($env !== KE_DEVELOPMENT && $env !== KE_TEST)
 			$env = KE_PRODUCTION;
 
 		define('KE_APP_ENV', $env);
-		$method .= $env;
+		define('KE_APP_ROOT', $this->root);
+		define('KE_APP_DIR', basename($this->root));
+		define('KE_APP_SRC', $this->path('src'));
 
-		// 加载当前环境相关的配置数据
-		importWithApp(KE_CONF . '/' . KE_APP_ENV . '.php', $this);
+		// 项目的基础的类、命名空间和命名空间对应的路径
+		$appClass = static::class;
+		$appNs = null;
+		$appNsPath = KE_APP_SRC;
+		if ($appClass !== __CLASS__) {
+			list($appNs) = parse_class($appClass);
+			if (!empty($appNs)) {
+				$appNsPath .= DS . $appNs;
+			}
+			if (!KE_IS_WIN)
+				$appNsPath = str_replace('\\', '/', $appNsPath);
+		}
+
+		define('KE_APP_CLASS', $appClass);
+		define('KE_APP_NS', $appNs);
+		define('KE_APP_NS_PATH', $appNsPath);
+
+		$this->loader = new Loader([
+			'dirs'    => [
+				'app_src'    => [KE_APP_SRC, 0],
+				'app_helper' => [KE_APP_SRC . '/Helper', 0, Loader::HELPER],
+				'ke_helper'  => [KE_ROOT . '/Helper', 1000, Loader::HELPER],
+			],
+			'classes' => import(__DIR__ . '/../classes.php'),
+			'prepend' => true,
+		]);
+		$this->loader->start();
+		if (!empty($this->helpers))
+			$this->loader->loadHelper(...$this->helpers);
+
+		// Uri准备
+		Uri::prepare();
+
+		$this->onConstruct();
+	}
+
+	protected function onConstruct() { }
+
+	final public function init()
+	{
+		if ($this->isInit)
+			return $this;
+
+		$env = KE_APP_ENV;
+
+		// 加载配置
+		import([
+			"{$this->root}/config/common.php",
+			"{$this->root}/config/{$env}.php",
+		]);
 
 		if (KE_APP_MODE === KE_WEB_MODE) {
+			$this->httpRewrite = (bool)$this->httpRewrite;
 			if (empty($this->httpBase)) {
-				$this->httpBase = comparePath(KE_REQUEST_PATH, $_SERVER['SCRIPT_NAME'], '/');
-			} elseif ($this->httpBase !== '/') {
-				// 这个httpBase，是用户的输入的，就可能会出现各种奇怪的东西，就要用路径净化大招
-				$this->httpBase = purgePath($this->httpBase, KE_PATH_DOT_REMOVE, KE_PATH_LEFT_REMAIN, '/');
+				$target = dirname($_SERVER['SCRIPT_NAME']);
+				if ($target === '\\')
+					$target = '/';
+				$this->httpBase = compare_path(KE_REQUEST_PATH, $target, KE_DS_UNIX);
 			}
+			elseif ($this->httpBase !== '/') {
+				$this->httpBase = purge_path($this->httpBase, KE_PATH_DOT_REMOVE ^ KE_PATH_LEFT_TRIM, KE_DS_UNIX);
+			}
+			// 上面的过滤，无论如何，过滤出来的httpBase都为没有首位的/的路径，如:path/dir/dir
+			if (empty($this->httpBase))
+				$this->httpBase = '/';
+			elseif ($this->httpBase !== '/')
+				$this->httpBase = '/' . $this->httpBase . '/';
+			// 如果不指定重写，则httpBase应该是基于一个php文件为基础的
+			if (!$this->httpRewrite)
+				$this->httpBase .= KE_SCRIPT_FILE;
 			define('KE_HTTP_BASE', $this->httpBase);
 			define('KE_HTTP_REWRITE', (bool)$this->httpRewrite);
 		}
@@ -144,7 +259,7 @@ class App
 			$this->name = KE_APP_DIR;
 
 		// 一个App的完整摘要
-		$summary = sprintf('%s(%s,%s,%s)', $this->name, KE_APP_ENV, KE_REQUEST_HOST, KE_APP);
+		$summary = sprintf('%s(%s,%s,%s)', $this->name, KE_APP_ENV, KE_REQUEST_HOST, $this->root);
 
 		// 项目的hash，基于完整摘要生成，而非基于用户设置的项目名称
 		// hash，主要用于服务器缓存识别不同的项目时使用
@@ -152,7 +267,7 @@ class App
 		$hash = hash('crc32b', $summary);
 
 		// 真正用于显示的项目名称，包含项目名称、环境、hash
-		$this->name = "{$this->name}({$env}@{$hash})";
+		$this->name = sprintf('%s(%s:%s)', $this->name, KE_APP_ENV, $hash);
 
 		// 项目的基本加密混淆码 => 不应为空，也必须是一个字符串，且必须不小于32长度
 		if (empty($this->salt) || !is_string($this->salt) || strlen($this->salt) < 32)
@@ -168,7 +283,10 @@ class App
 
 		// http验证字段，如果没指定，就只好使用一个统一的了
 		if (empty($this->httpSecurityField) || !is_string($this->httpSecurityField))
-			$this->httpSecurityField = '_ke_http_';
+			$this->httpSecurityField = 'ke_http';
+
+		if (empty($this->httpSecuritySessionField) || !is_string($this->httpSecuritySessionField))
+			$this->httpSecuritySessionField = 'ke_security_reference';
 
 		// http验证字段的加密混淆码
 		if (empty($this->httpSecuritySalt) || !is_string($this->httpSecuritySalt))
@@ -176,8 +294,9 @@ class App
 
 		$this->httpSecuritySalt = $this->hash($this->httpSecuritySalt);
 
-		define('KE_HTTP_SECURITY_FIELD', $this->httpSecurityField, true);
-		define('KE_HTTP_SECURITY_SALT', $this->httpSecuritySalt, true);
+		define('KE_HTTP_SECURITY_FIELD', $this->httpSecurityField);
+		define('KE_HTTP_SECURITY_SALT', $this->httpSecuritySalt);
+		define('KE_HTTP_SECURITY_SESS_FIELD', $this->httpSecuritySessionField);
 		// 敏感数据还是清空为妙
 		$this->httpSecuritySalt = null;
 
@@ -207,8 +326,8 @@ class App
 			date_default_timezone_set($this->timezone);
 		}
 
-		define('KE_APP_TIMEZONE', $this->timezone, true);
-		define('KE_APP_ENCODING', $this->encoding, true);
+		define('KE_APP_TIMEZONE', $this->timezone);
+		define('KE_APP_ENCODING', $this->encoding);
 
 		// 系统的配置
 		ini_set('default_charset', KE_APP_ENCODING);
@@ -216,41 +335,15 @@ class App
 		mb_internal_encoding(KE_APP_ENCODING);
 		mb_http_output(KE_APP_ENCODING);
 
-		$this->onBootstrap();
-		call_user_func([$this, $method]);
+		$this->isInit = true;
+
+		call_user_func([$this, 'on' . KE_APP_ENV]);
 
 		register_shutdown_function(function () {
 			$this->onExiting();
 		});
 
-		set_error_handler([$this, 'errorHandle']);
-		set_exception_handler([$this, 'exceptionHandle']);
-
-		ini_set("display_errors", "off");
-		error_reporting(E_ALL);
-	}
-
-	/**
-	 * 应用程序引导接口
-	 */
-	protected function onBootstrap()
-	{
-	}
-
-	/**
-	 * PHP退出接口
-	 */
-	protected function onExiting()
-	{
-		$err = $this->getLastError();
-		if (!empty($err)) {
-			var_dump($err);
-			// 如果最终还是有错，不能直接调用echoError，
-			// 而是要触发错误，以确保将错误处理交给适合的上下文环境来处理。
-//			trigger_error($err['message'], E_ERROR);
-//			throw new Exception(getPhpErrorStr($err['type']) . ' - ' . $err['message']);
-//			var_dump($err);
-		}
+		return $this;
 	}
 
 	/**
@@ -274,37 +367,11 @@ class App
 	{
 	}
 
-	/**
-	 * PHP错误的处理的接管函数
-	 */
-	public function errorHandle($no, $msg, $file, $line)
+	protected function onExiting()
 	{
-		// 在App的层级，因为并不知道具体运行时的上下文环境，所以只是简单的输出错误信息而已。
-		$this->echoError([
-			'type'    => $no,
-			'message' => $msg,
-			'file'    => $file,
-			'line'    => $line,
-		], 500);
 	}
 
-	public function getLastError()
-	{
-		return error_get_last();
-	}
-
-	/**
-	 * PHP异常处理的接管函数
-	 *
-	 * @param \Exception $ex
-	 */
-	public function exceptionHandle(\Exception $ex)
-	{
-		// 在App的层级，因为并不知道具体运行时的上下文环境，所以只是简单的输出错误信息而已。
-		$this->echoError($ex, 500);
-	}
-
-	public function hash($content, $salt = KE_APP_HASH)
+	public function hash(string $content, string $salt = KE_APP_HASH): string
 	{
 		return hash('sha512', $content . $salt, true);
 	}
@@ -316,52 +383,57 @@ class App
 	 */
 	public function detectEnv()
 	{
-		return null;
+		if (isset($this->servers[$_SERVER['SERVER_NAME']]))
+			return $this->servers[$_SERVER['SERVER_NAME']];
+		return KE_PRODUCTION;
 	}
 
-	public function echoError($error, $code = 500)
+	public function setDirs(array $dirs)
 	{
-		$ex = null;
-		if ($error instanceof \Exception) {
-			$ex = $error;
-			$error = [
-				'type'    => get_class($ex),
-				'message' => $ex->getMessage(),
-				'file'    => $ex->getFile(),
-				'line'    => $ex->getLine(),
-			];
-		} elseif (isset($error['type'])) {
-			$error['type'] = getPhpErrorStr($error['type']);
-		}
-		$type = gettype($error);
-		if ($type !== KE_OBJ && $type !== KE_ARY) {
-			$error = ['message' => $error];
-		}
-		if (isset($error['file']) && KE_APP_ENV !== KE_DEVELOPMENT) {
-			$error['file'] = $this->remainAppPath($error['file']);
-		}
-		if (KE_APP_MODE === KE_WEB_MODE) {
-			header("{$_SERVER['SERVER_PROTOCOL']} {$code}", true, $code);
-			$output = '';
-			$tpl = '<h1>An error occurred</h1><table><tr><th>Error Type</th><td>{type}</td></tr><tr><th>Message</th><td>{message}</td></tr><tr><th>File</th><td>{file}</td></tr><tr><th>Line</th><td>{line}</td></tr>';
-			if (KE_APP_ENV === KE_DEVELOPMENT) {
-				$output = OutputBuffer::getInstance()->getFunctionBuffer('app_debug', function () {
-					echo '<tr><th>Debug</th><td><pre>';
-					debug_print_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-					echo '<pre></td></tr>';
-				});
+		foreach ($dirs as $name => $dir) {
+			if ($dir === null) {
+				unset($this->dirs[$name]);
+				continue;
 			}
-			$tpl .= $output . '</table';
-		} else {
-			$tpl = '{type} - {message} [{file}:{line}]';
+			if (($real = real_dir($dir)) !== false) {
+				$this->dirs[$name] = $real;
+			}
+			else {
+				$this->aliases[$name] = $dir;
+			}
 		}
-		exit(substitute($tpl, $error));
+		return $this;
 	}
 
-	public function remainAppPath($path)
+	public function path(string $name = null, string $path = null, string $ext = null)
 	{
-		return str_replace([KE_APP, '\\'], ['/' . KE_APP_DIR, '/'], $path);
+		$result = false;
+		if (empty($name))
+			$result = $this->root;
+		elseif (isset($this->dirs[$name]))
+			$result = $this->dirs[$name];
+		else {
+			$this->dirs[$name] =
+			$result = $this->root . DS . (empty($this->aliases[$name]) ? $name : $this->aliases[$name]);
+		}
+		if (!empty($path)) {
+			if (!empty($ext))
+				$path = ext($path, $ext);
+			$result .= DS . $path;
+		}
+		if (!KE_IS_WIN) {
+			$result = str_replace('\\', '/', $result);
+		}
+		return $result;
+	}
+
+	public function __call(string $name, array $args)
+	{
+		return $this->path($name, ...$args);
+	}
+
+	public function getLoader()
+	{
+		return $this->loader;
 	}
 }
-
-

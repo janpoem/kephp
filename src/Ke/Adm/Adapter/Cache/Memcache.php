@@ -4,26 +4,26 @@
  *
  * @license   http://www.apache.org/licenses/LICENSE-2.0
  * @copyright Copyright 2015 KePHP Authors All Rights Reserved
- * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp )
+ * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp-core )
  * @author    曾建凯 <janpoem@163.com>
  */
 
-namespace Ke\Adm\Adapter\CacheStore;
+namespace Ke\Adm\Adapter\Cache;
 
-use Ke\Adm\Exception;
+use Exception;
 use Memcache as PhpMemcache;
-use Ke\Adm\Adapter\CacheStoreImpl;
+use Ke\Adm\Adapter\CacheAdapter;
 
-class Memcache implements CacheStoreImpl
+class Memcache implements CacheAdapter
 {
 
-	protected $name = null;
+	protected $source = null;
 
 	protected $prefix = '';
 
 	protected $server = '';
 
-	protected $config = [
+	protected $configuration = [
 		'prefix'            => '',
 		'colon'				=> self::DEFAULT_COLON,
 		'host'              => '',
@@ -35,42 +35,42 @@ class Memcache implements CacheStoreImpl
 	/** @var PhpMemcache */
 	private $memcache = null;
 
-	public function setName($name)
+	public function __construct(string $source, array $config = null)
 	{
-		$this->name = $name;
-		return $this;
+		$this->source = $source;
+		$this->configure($config);
 	}
 
 	public function configure(array $config)
 	{
-		$this->config = array_merge($this->config, $config);
+		$this->configuration = array_merge($this->configuration, $config);
 		if (!extension_loaded('memcache') || !class_exists(PhpMemcache::class, false))
 			throw new Exception('Missing memcache extension!');
-		if (empty($this->config['host']))
-			throw new Exception('Memcache host not specified in cache source "{0}"!', [$this->name]);
-		$this->server = "{$this->config['host']}:{$this->config['port']}";
-		if (!empty($this->config['prefix']) && is_string($this->config['prefix'])) {
-			if (empty($this->config['colon']))
-				$this->config['colon'] = self::DEFAULT_COLON;
-			$this->prefix = rtrim($this->config['prefix'], '\\/.:_-#') . $this->config['colon'];
+		if (empty($this->configuration['host']))
+			throw new Exception("Memcache host not specified in cache source \"{$this->source}\"!");
+		$this->server = "{$this->configuration['host']}:{$this->configuration['port']}";
+		if (!empty($this->configuration['prefix']) && is_string($this->configuration['prefix'])) {
+			if (empty($this->configuration['colon']))
+				$this->configuration['colon'] = self::DEFAULT_COLON;
+			$this->prefix = rtrim($this->configuration['prefix'], '\\/.:_-#') . $this->configuration['colon'];
 		}
 		return $this;
 	}
 
-	public function getConfig()
+	public function getConfiguration()
 	{
-		return $this->config;
+		return $this->configuration;
 	}
 
 	protected function connect()
 	{
 		if (!isset($this->instance)) {
 			$this->memcache = new PhpMemcache();
-			$this->memcache->addServer($this->config['host'], $this->config['port']);
+			$this->memcache->addServer($this->configuration['host'], $this->configuration['port']);
 			$status = @$this->memcache->getExtendedStats();
 			// unset $status[$server] or $status[$server] === false
 			if (empty($status[$this->server])) {
-				throw new Exception('Memcache connect failed about cache source "{0}"', [$this->name]);
+				throw new Exception('Memcache connect failed about cache source "{0}"', [$this->source]);
 			}
 //			if ($this->memcache->getServerStatus($this->config['host'], $this->config['port']) === 0) {
 //				if ($this->config['pconnect'])
@@ -80,8 +80,8 @@ class Memcache implements CacheStoreImpl
 //				if ($conn === false)
 //					throw new Exception('Memcache connect failure about cache source "{0}"', [$this->name]);
 //			}
-			if ($this->config['compressThreshold'] > 0 && $this->config['compressRatio'] > 0)
-				$this->memcache->setCompressThreshold($this->config['compressThreshold'], $this->config['compressRatio']);
+			if ($this->configuration['compressThreshold'] > 0 && $this->configuration['compressRatio'] > 0)
+				$this->memcache->setCompressThreshold($this->configuration['compressThreshold'], $this->configuration['compressRatio']);
 		}
 		return $this;
 	}

@@ -13,6 +13,8 @@ namespace Ke;
 /**
  * Uri类
  *
+ * 替换原来的实现，原来的实现setData太过复杂，调试不易。
+ *
  * 部分接口遵照PSR-7规范，但不完全遵守PSR-7规范的要求。
  *
  * 本类经过精心的调整，可支持任意的继承扩展，如/Ke/Web/Params则是继承自该类而实现
@@ -37,7 +39,6 @@ namespace Ke;
 class Uri
 {
 
-	/** @var bool 是否已经完成预备过程 */
 	private static $isPrepare = false;
 
 	/** @var array 存放已经解析过的路径 */
@@ -45,7 +46,7 @@ class Uri
 
 	private static $filterPaths = [];
 
-	private static $current = null;
+	private static $currentUri = null;
 
 	/** @var array 已知的协议、端口号 */
 	private static $stdPorts = [
@@ -56,27 +57,23 @@ class Uri
 		'sftp'  => 22,
 	];
 
-	private $isHideAuthority = false;
-
-	// data 不填充默认值，这样能节省一点内存
 	/** @var array 数据容器 */
 	protected $data = [
-		'scheme'   => '',
-		'host'     => '',
-		'user'     => '',
-		'pass'     => '',
+		'scheme'   => null,
+		'host'     => null,
+		'user'     => null,
+		'pass'     => null,
 		'port'     => null,
-		'path'     => '',
-		'query'    => '',
-		'fragment' => '',
+		'path'     => null,
+		'query'    => null,
+		'fragment' => null,
 	];
 
 	/** @var array */
 	protected $queryData = [];
 
-//	protected $withAuthorityUri = null;
-//
-//	protected $withoutAuthorityUri = null;
+	protected $isHideAuthority = false;
+
 
 	/**
 	 * 检查端口号是否为相关协议的标准端口
@@ -90,12 +87,12 @@ class Uri
 	 * @param int    $port   端口号
 	 * @return bool
 	 */
-	public static function isStdPort($port, $scheme = null)
+	public static function isStdPort($port, $scheme = null): bool
 	{
 		return !empty($scheme) && isset(self::$stdPorts[$scheme]) && self::$stdPorts[$scheme] === intval($port);
 	}
 
-	public static function filterPath($path, array $excludes = null)
+	public static function filterPath($path, array $excludes = null): string
 	{
 		if (empty($path))
 			return '';
@@ -104,14 +101,25 @@ class Uri
 			$split = explode('/', $path);
 			$segments = [];
 			foreach ($split as $index => $segment) {
-				if (empty($segment) || $segment === '.' || $segment === KE_DS_UNIX || $segment === KE_DS_WIN) {
+				if (empty($segment) || $segment === KE_DS_UNIX || $segment === KE_DS_WIN) {
 					if ($index === 0)
 						$isAbsolute = true;
 					continue;
 				}
+				if ($segment === '.')
+					continue;
+				$segment = preg_replace('#^\.{2,}#', '..', $segment);
+				$segment = urldecode($segment);
 				if (!empty($excludes) && isset($excludes[$segment]))
 					continue;
-				$segments[] = urldecode($segment);
+				$segments[] = $segment;
+			}
+			$count = count($segments);
+			if ($count > 0) {
+				$last = $segments[$count - 1];
+				if (!preg_match('#[^.]+\.[^.]+#', $last)) {
+					$segments[] = '';
+				}
 			}
 			$result = implode('/', $segments);
 			if ($isAbsolute)
@@ -149,7 +157,7 @@ class Uri
 	 *
 	 * @return bool
 	 */
-	public static function prepare()
+	public static function prepare(): bool
 	{
 		if (self::$isPrepare === true)
 			return false;
@@ -163,7 +171,7 @@ class Uri
 			if (empty($_SERVER['HTTP_HOST']))
 				$_SERVER['HTTP_HOST'] = $_SERVER['SERVER_NAME'];
 			// @todo cli的queryString即为执行时的参数，具体为：$_SERVER['argv'] 1 .. n => $query，后续会增加
-			$path = substr(KE_SCRIPT_PATH, strlen(KE_APP));
+			$path = substr(KE_SCRIPT_PATH, strlen(KE_APP_ROOT));
 			if (KE_IS_WIN)
 				$path = str_replace('\\', '/', $path);
 			$path = '/' . KE_APP_DIR . $path;
@@ -186,7 +194,7 @@ class Uri
 			if (empty($parse['path']))
 				$parse['path'];
 			elseif ($parse['path'] !== '/')
-				$parse['path'] = purgePath($parse['path'], KE_PATH_DOT_NORMALIZE, KE_PATH_LEFT_REMAIN, '/');
+				$parse['path'] = static::filterPath($parse['path']);
 			$path = $parse['path'];
 			if (!empty($parse['query']))
 				parse_str($parse['query'], $query);
@@ -209,203 +217,79 @@ class Uri
 	}
 
 	/**
-	 * @return static
+	 * @return Uri
 	 */
 	public static function current()
 	{
-		if (!isset(self::$current)) {
-			self::$current = new static([
+		if (!isset(self::$currentUri)) {
+			self::$currentUri = new static([
 				'scheme' => KE_REQUEST_SCHEME,
 				'host'   => KE_REQUEST_HOST,
 				'uri'    => KE_REQUEST_URI,
 			]);
 		}
-		return self::$current;
+		return self::$currentUri;
 	}
 
-	/**
-	 * Uri构建函数
-	 *
-	 * @param Uri|string|array|object $uri 传入的uri数据，可以是一个URi的实例，也可以是一个字符串、数组或对象。
-	 */
-	public function __construct($uri = null)
+	public function __construct($data = null)
 	{
 		if (self::$isPrepare === false)
 			static::prepare();
-		if (isset($uri))
-			$this->setData($uri);
+		if (isset($data))
+			$this->setData($data);
 	}
 
-	/**
-	 * 设置uri数据
-	 *
-	 * @todo 注意，如果传入的是：http://www.kephp.com/ ，表示的scheme: http, host: www.kephp.com, path: /，这仍然有一些问题。
-	 *
-	 * <code>
-	 * $uri = new Uri( 'http://www.baidu.com' );
-	 * // 等价于 setScheme
-	 * $uri->setData('https:'); // => https://www.baidu.com
-	 * // 等价于setHost, setPort，所以请注意如果你设置的是一个path，请不要以//开头
-	 * $uri->setData('//www.163.com:90'); // => https://www.163.com:90
-	 * // 等价于合并两组queryString
-	 * $uri->setData('?id=1&keyword=mobile', 'keyword=email'); // https://www.163.com:90/?id=1&keyword=email
-	 * </code>
-	 *
-	 * @param Uri|string|array|object       $input      输入的uri数据，可以是一个URi的实例，也可以是一个字符串、数组或对象。
-	 * @param null|bool|array|string|object $mergeQuery 是否要合并查询数据，
-	 *                                                  当为true|false类型时，表示的是否合并Query。
-	 *                                                  false，表示的是替换已经存在的queryString（清空）
-	 *                                                  为非空数据时，则是否合并Query为true，且同时再合并处理这个数据。
-	 *                                                  如果希望去除某个字段的query，可将此字段的值设为null，如: ['a' => null]
-	 * @return $this 返回当前的Uri实例
-	 */
-	public function setData($input, $mergeQuery = null)
+	public function setData($data, $mergeQuery = null)
 	{
-		if ($input instanceof static) {
-			$input->cloneTo($this);
-			return $this;
+		if ($data instanceof static) {
+			return $data->cloneTo($this);
 		}
-		$type = gettype($input);
+		$type = gettype($data);
 		if ($type === KE_STR) {
-			$input = parse_url($input);
+			$type = KE_ARY;
+			$data = parse_url($data);
 		} elseif ($type === KE_OBJ) {
-			$input = get_object_vars($input);
+			$type = KE_ARY;
+			$data = get_object_vars($data);
 		}
-		if (isset($input['uri'])) {
-//			$input = array_merge($input, parse_url($input['uri']));
-//			unset($input['uri']);
-//			return $this->setData($input, $mergeQuery);
-			$uri = $input['uri'];
-			unset($input['uri']);
-			return $this->setData($input, $mergeQuery)->setData($uri, $mergeQuery);
-		}
-		$isMergeQuery = !empty($mergeQuery);
-		if ($mergeQuery === true || $mergeQuery === false) {
-			$isMergeQuery = $mergeQuery;
-			if ($mergeQuery === false) {
-				if (!isset($input['query']))
-					$input['query'] = [];
-			}
-			$mergeQuery = null;
+		if (empty($data) || $type !== KE_ARY)
+			return $this;
+		if (isset($data['uri'])) {
+			$uri = $data['uri'];
+			unset($data['uri']);
+			return $this->setData($data, $mergeQuery)->setData($uri, $mergeQuery);
 		}
 
-		// host
-		if (!empty($input['host'])) {
-			if ($input['host'] !== KE_REQUEST_HOST)
-				$input['host'] = strtolower(trim($input['host'], '/'));
-			// http://localhost => http, localhost
-			// //localhost => localhost
-			if (($index = strpos($input['host'], '//')) !== false) {
-				if ($index > 1)
-					$input['scheme'] = substr($input['host'], 0, $index - 1);
-				$input['host'] = substr($input['host'], $index + 2);
-			}
-			// localhost:90 => localhost, 90
-			if (($index = strpos($input['host'], ':')) !== false) {
-				$input['port'] = substr($input['host'], $index + 1);
-				$input['host'] = substr($input['host'], 0, $index);
-			}
-		}
-		// scheme
-		if (!empty($input['scheme'])) {
-			if (!isset(self::$stdPorts[$input['scheme']])) {
-				// ftp: => ftp
-				if (($scheme = strstr($input['scheme'], ':', true)) !== false)
-					$input['scheme'] = $scheme;
-				$input['scheme'] = strtolower($input['scheme']);
+		foreach (['scheme', 'host', 'port', 'path', 'fragment'] as $name) {
+			if (isset($data[$name])) {
+				call_user_func([$this, 'set' . $name], $data[$name]);
+				unset($data[$name]);
 			}
 		}
 
-		// port
-		if (isset($input['port']) && is_numeric($input['port']) && $input['port'] > 0 && $input['port'] < 65536) {
-			$input['port'] = (int)$input['port'];
+		if (isset($data['query'])) {
+			$this->setQuery($data['query'], $mergeQuery);
+			unset($data['query']);
 		}
 
-		if (!empty($input['path'])) {
-			// @todo path是否可能会传入一个数组格式的？
-			$isAbsolute = $input['path'][0] === '/';
-			// 这个路径处理，还是太损耗运算时间了。
-			// 暂时只过滤了多余部分
-			if (strpos($input['path'], '/') === false) {
-				$input['path'] = urldecode($input['path']);
-			} else {
-				$input['path'] = static::filterPath($input['path']);
-			}
-			if (!empty($input['path'])) {
-				if (!$isAbsolute && !empty($this->data['path']))
-					$input['path'] = $this->data['path'] . '/' . $input['path'];
-			}
+		if (isset($data['user'])) {
+			$this->setUserInfo($data['user'], $data['pass'] ?? null);
+			unset($data['user'], $data['pass']);
 		}
 
-		if (isset($input['query'])) {
-			$query = $input['query'];
-			if (empty($query)) {
-				$query = [];
-			} else {
-				$type = gettype($input['query']);
-				if ($type === KE_OBJ) {
-					$query = get_object_vars($query);
-				}
-				elseif ($type === KE_ARY) {
-					// @todo 严格来说，当query为一个数组的时候，应该循环遍历，并执行key, value的urlencode
-				} else {
-					// 强制转为字符串类型
-					if ($type !== KE_STR)
-						$query = (string)$query;
-					if ($query[0] === '?')
-						$query = ltrim($query, '?');
-					parse_str($query, $query);
-				}
-			}
-			// 合并query，先合并
-			$isChangeQuery = false;
-
-			if ($this->queryData !== $query) {
-				$isChangeQuery = true;
-				if ($isMergeQuery)
-					$this->queryData = array_merge($this->queryData, $query);
-				else
-					$this->queryData = $query;
-			}
-
-//			if (empty($this->queryData)) {
-//				if (!empty($query)) {
-//					$isChangeQuery = true;
-//					$this->queryData = $query;
-//				}
-//			} elseif ($this->queryData !== $query) {
-//				$isChangeQuery = true;
-//				if ($isMergeQuery)
-//					$this->queryData = array_merge($this->queryData, $query);
-//				else
-//					$this->queryData = $query;
-//			}
-			if ($isChangeQuery) {
-				if (empty($this->queryData))
-					$input['query'] = '';
-				else
-					$input['query'] = http_build_query($this->queryData);
-			}
-		}
-
-		if (isset($input['fragment'])) {
-			$input['fragment'] = (string)$input['fragment'];
-			if (isset($input['fragment'][0]) && $input['fragment'][0] === '#')
-				$input['fragment'] = ltrim($input['fragment'], '#');
-		}
-
-		if (!empty($input)) {
-			$this->data = array_merge($this->data, $input);
-		}
-
-		if (isset($mergeQuery)) {
-			$this->setData(['query' => $mergeQuery]);
-		}
+		if (!empty($data))
+			$this->filterData($data);
 
 		return $this;
 	}
 
-	public function getData()
+	protected function filterData(array $data)
+	{
+		$this->data = array_merge($this->data, $data);
+		return $this;
+	}
+
+	public function getData(): array
 	{
 		return $this->data;
 	}
@@ -419,9 +303,9 @@ class Uri
 		} elseif ($field === 'authority') {
 			return $this->getAuthority();
 		} elseif ($field === 'uri') {
-			return $this->getUri();
+			return $this->toUri();
 		} elseif ($field === 'fullUri') {
-			return $this->getUri(true);
+			return $this->toUri(true);
 		} elseif ($field === 'userInfo') {
 			return $this->getUserInfo();
 		} elseif ($field === 'query') {
@@ -435,10 +319,10 @@ class Uri
 
 	public function __set($field, $value)
 	{
-		if ($field === 'mergeQuery' || $field === 'query') {
+		if ($field === 'mergeQuery') {
 			$this->mergeQuery($value);
-		} elseif ($field === 'queryString') {
-			$this->setData(['query' => $value]);
+		} elseif ($field === 'query') {
+			$this->setQuery($value, false);
 		} else {
 			$this->setData([$field => $value]);
 		}
@@ -460,27 +344,92 @@ class Uri
 		return $clone;
 	}
 
+	/**
+	 * 设置uri的协议
+	 *
+	 * <code>
+	 * $uri->setScheme('http://www.163.com/')
+	 * $uri->setScheme('https')
+	 * </code>
+	 *
+	 * @param string $scheme uri的协议
+	 * @return $this
+	 */
+	public function setScheme($scheme)
+	{
+		if ($scheme !== $this->data['scheme']) {
+			if (isset(self::$stdPorts[$scheme]))
+				$this->data['scheme'] = $scheme;
+			else {
+				if (($scheme = strstr($scheme, ':', true)) !== false)
+					$this->data['scheme'] = $scheme;
+				$this->data['scheme'] = strtolower($this->data['scheme']);
+			}
+		}
+		return $this;
+	}
+
 	public function getScheme()
 	{
 		return empty($this->data['scheme']) ? '' : $this->data['scheme'];
+	}
+
+	public function setHost($host, $port = null)
+	{
+		if ($host !== $this->data['host']) {
+			// 过滤 //www.163.com/
+			$host = strtolower(trim($host, '/'));
+			$scheme = null;
+			if (($index = strpos($host, '//')) !== false) {
+				// http://localhost => http, localhost
+				// //localhost => localhost
+				if ($index > 1)
+					$scheme = substr($host, 0, $index - 1);
+				$host = substr($host, $index + 2);
+			}
+			if (($index = strpos($host, ':')) !== false) {
+				// localhost:90 => localhost, 90
+				$port = substr($host, $index + 1);
+				$host = substr($host, 0, $index);
+			}
+			$this->data['host'] = $host;
+			if (!empty($scheme))
+				$this->setScheme($scheme);
+			if (isset($port))
+				$this->setPort($port);
+		}
+		return $this;
 	}
 
 	public function getHost($withPort = false)
 	{
 		$host = empty($this->data['host']) ? '' : $this->data['host'];
 		if ($withPort) {
-			$port = $this->getPort();
-			if (!empty($port))
-				$host .= ':' . $port;
+			if (isset($this->data['port']))
+				$host .= ':' . $this->data['port'];
 		}
 		return $host;
 	}
 
+	public function setPort($port)
+	{
+		if (is_numeric($port))
+			$this->data['port'] = (int)$port;
+		return $this;
+	}
+
 	public function getPort()
 	{
-		if (isset($this->data['port']) && !$this->isStdPort($this->data['port'], $this->getScheme()))
-			return $this->data['port'];
-		return null;
+		return isset($this->data['port']) ? $this->data['port'] : null;
+	}
+
+	public function setUserInfo($user, $pass = null)
+	{
+		if ($user !== $this->data['user'])
+			$this->data['user'] = $user;
+		if (isset($pass) && $pass !== $this->data['pass'])
+			$this->data['pass'] = $pass;
+		return $this;
 	}
 
 	public function getUserInfo()
@@ -497,18 +446,104 @@ class Uri
 		$result = $this->getUserInfo();
 		if (!empty($result))
 			$result .= '@';
-		$result .= $this->data['host'];
-		$port = $this->getPort();
-		if (!empty($port))
-			$result .= ':' . $port;
+		$result .= $this->getHost(true);
 		return $result;
+	}
+
+	public function setPath($path, $isMergeQuery = false)
+	{
+		// 先对路径进行过滤
+		$query = $fragment = null;
+		if (($index = strpos($path, '#')) !== false) {
+			$fragment = substr($path, $index + 1);
+			$path = substr($path, 0, $index);
+		}
+		if (($index = strpos($path, '?')) !== false) {
+			$query = substr($path, $index + 1);
+			$path = substr($path, 0, $index);
+		}
+		// 判断路径是否为绝对路径
+		$path = static::filterPath($path);
+		$isAbsolute = isset($path[0]) && $path[0] === '/';
+		if (!$isAbsolute) {
+			if (!empty($path)) {
+				$len = strlen($this->data['path']);
+				if ($len === 0 || ($len > 0 && $this->data['path'][$len - 1] !== '/'))
+					$this->data['path'] .= '/';
+				$this->data['path'] .= $path;
+			}
+		} else {
+			$this->data['path'] = $path;
+		}
+		if (!empty($query))
+			$this->setQuery($query, $isMergeQuery);
+		if (!empty($fragment))
+			$this->setFragment($fragment);
+		return $this;
+	}
+
+	public function setAbsPath($path)
+	{
+		if (!isset($path[0]) || $path[0] !== '/')
+			$path = '/' . $path;
+		return $this->setPath($path);
 	}
 
 	public function getPath()
 	{
-		if (empty($this->data['path']))
-			return '';
-		return $this->data['path'];
+		return empty($this->data['path']) ? '' : $this->data['path'];
+	}
+
+	public function setQuery($query, $mergeQuery = false)
+	{
+		$isMerge = false;
+		$mergeData = [];
+		if ($mergeQuery === true || $mergeQuery === false)
+			$isMerge = $mergeQuery;
+		elseif (!empty($mergeQuery))
+			$mergeData = $mergeQuery;
+		if (empty($query)) {
+			$query = [];
+		} else {
+			$type = gettype($query);
+			if ($type === KE_OBJ) {
+				$query = get_object_vars($query);
+			} elseif ($type === KE_ARY) {
+				// @todo 严格来说，当query为一个数组的时候，应该循环遍历，并执行key, value的urlencode
+			} else {
+				// 强制转为字符串类型
+				if ($type !== KE_STR)
+					$query = (string)$query;
+				if ($query[0] === '?')
+					$query = ltrim($query, '?');
+				parse_str($query, $query);
+			}
+		}
+		// 合并query，先合并
+		$isChangeQuery = false;
+
+		if ($this->queryData !== $query) {
+			$isChangeQuery = true;
+			if ($isMerge)
+				$this->queryData = array_merge($this->queryData, $query);
+			else
+				$this->queryData = $query;
+		}
+
+		if ($isChangeQuery) {
+			if (empty($this->queryData))
+				$this->data['query'] = '';
+			else
+				$this->data['query'] = http_build_query($this->queryData, null, '&', PHP_QUERY_RFC3986);
+		}
+		if (!empty($mergeData))
+			$this->setQuery($mergeData, true);
+		return $this;
+	}
+
+	public function mergeQuery($query)
+	{
+		return $this->setQuery($query, true);
 	}
 
 	public function getQuery()
@@ -525,7 +560,15 @@ class Uri
 	{
 		if (isset($this->queryData[$keys]))
 			return $this->queryData[$keys];
-		return depthQuery($this->queryData, $keys, $default);
+		return depth_query($this->queryData, $keys, $default);
+	}
+
+	public function setFragment($fragment)
+	{
+		if (isset($fragment[0]) && $fragment[0] === '#')
+			$fragment = ltrim($fragment, '#');
+		$this->data['fragment'] = $fragment;
+		return $this;
 	}
 
 	public function getFragment()
@@ -533,53 +576,12 @@ class Uri
 		return empty($this->data['fragment']) ? '' : $this->data['fragment'];
 	}
 
-	public function setScheme($scheme)
-	{
-		return $this->setData(['scheme' => $scheme]);
-	}
-
-	public function setHost($host)
-	{
-		return $this->setData(['host' => $host]);
-	}
-
-	public function setPort($port)
-	{
-		return $this->setData(['port' => $port]);
-	}
-
-	public function setUserInfo($user, $pass)
-	{
-		return $this->setData(['user' => $user, 'pass' => $pass]);
-	}
-
-	public function setPath($path)
-	{
-		return $this->setData(['path' => $path]);
-	}
-
-	public function setQuery($query, $mergeQuery = null)
-	{
-		return $this->setData(['query' => $query], $mergeQuery);
-	}
-
-	public function mergeQuery($query)
-	{
-		$this->setData(['query' => $query], true);
-		return $this;
-	}
-
-	public function setFragment($fragment)
-	{
-		return $this->setData(['fragment' => $fragment]);
-	}
-
 	public function __toString()
 	{
-		return $this->getUri();
+		return $this->toUri();
 	}
 
-	public function getUri($isWithAuthority = null)
+	public function toUri($isWithAuthority = null)
 	{
 		if (!isset($isWithAuthority))
 			$isWithAuthority = !$this->isHideAuthority();

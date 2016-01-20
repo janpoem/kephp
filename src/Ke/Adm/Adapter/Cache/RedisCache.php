@@ -4,20 +4,21 @@
  *
  * @license   http://www.apache.org/licenses/LICENSE-2.0
  * @copyright Copyright 2015 KePHP Authors All Rights Reserved
- * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp )
+ * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp-core )
  * @author    曾建凯 <janpoem@163.com>
  */
 
-namespace Ke\Adm\Adapter\CacheStore;
+namespace Ke\Adm\Adapter\Cache;
+
 
 use Redis;
-use Ke\Adm\Exception;
-use Ke\Adm\Adapter\CacheStoreImpl;
+use Exception;
+use Ke\Adm\Adapter\CacheAdapter;
 
-class RedisCache implements CacheStoreImpl
+class RedisCache implements CacheAdapter
 {
 
-	protected $name = null;
+	protected $source = null;
 
 	protected $prefix = '';
 
@@ -25,10 +26,10 @@ class RedisCache implements CacheStoreImpl
 
 	protected $db = null;
 
-	protected $config = [
+	protected $configuration = [
 		'prefix'     => '',
 		'colon'      => self::DEFAULT_COLON,
-		'host'       => '',
+		'host'       => '127.0.0.1',
 		'port'       => 6379,
 		'pconnect'   => true,
 		'db'         => null,
@@ -42,50 +43,54 @@ class RedisCache implements CacheStoreImpl
 	/** @var Redis */
 	private $redis = null;
 
-	public function setName($name)
+	public function __construct(string $source, array $config = null)
 	{
-		$this->name = $name;
-		return $this;
+		$this->source = $source;
+		$this->configure($config);
 	}
 
 	public function configure(array $config)
 	{
-		$this->config = array_merge($this->config, $config);
+		$this->configuration = array_merge($this->configuration, $config);
 		if (!extension_loaded('redis') || !class_exists(Redis::class, false))
 			throw new Exception('Missing redis extension!');
-		if (empty($this->config['host']))
-			throw new Exception('Redis host not specified in cache source "{0}"!', [$this->name]);
-		$this->server = "{$this->config['host']}:{$this->config['port']}";
-		if (!empty($this->config['prefix']) && is_string($this->config['prefix'])) {
-			if (empty($this->config['colon']))
-				$this->config['colon'] = self::DEFAULT_COLON;
-			$this->prefix = rtrim($this->config['prefix'], '\\/.:_-#') . $this->config['colon'];
+		if (empty($this->configuration['host']))
+			throw new Exception("Redis host not specified in cache source \"{$this->source}\"!");
+		$this->server = "{$this->configuration['host']}:{$this->configuration['port']}";
+		if (!empty($this->configuration['prefix']) && is_string($this->configuration['prefix'])) {
+			if (empty($this->configuration['colon']))
+				$this->configuration['colon'] = self::DEFAULT_COLON;
+			$this->prefix = rtrim($this->configuration['prefix'], '\\/.:_-#') . $this->configuration['colon'];
 		}
 		return $this;
 	}
 
-	public function getConfig()
+	public function getConfiguration()
 	{
-		return $this->config;
+		return $this->configuration;
 	}
 
 	protected function connect()
 	{
 		if (!isset($this->redis)) {
 			$this->redis = new Redis();
-			if ($this->config['pconnect']) {
-				$isConn = $this->redis->pconnect($this->config['host'], $this->config['port']);
-			} else {
-				$isConn = $this->redis->connect($this->config['host'], $this->config['port']);
+			if ($this->configuration['pconnect']) {
+				$isConn = $this->redis->pconnect($this->configuration['host'], $this->configuration['port']);
+			}
+			else {
+				$isConn = $this->redis->connect($this->configuration['host'], $this->configuration['port']);
 			}
 			if ($isConn === false)
-				throw new Exception('Redis service connect error in cache source "{0}"!', [$this->name]);
+				throw new Exception("Redis service connect error in cache source \"{$this->source}\"!");
 			if (!empty($this->prefix))
 				$this->redis->setOption(Redis::OPT_PREFIX, $this->prefix);
-			if (!empty($this->config['serializer']))
-				$this->redis->setOption(Redis::OPT_SERIALIZER, $this->config['serializer']);
-			if (isset($this->config['db']) && is_numeric($this->config['db']) && $this->config['db'] >= 0) {
-				$db = (int)$this->config['db'];
+			if (!empty($this->configuration['serializer']))
+				$this->redis->setOption(Redis::OPT_SERIALIZER, $this->configuration['serializer']);
+			if (isset($this->configuration['db']) &&
+			    is_numeric($this->configuration['db']) &&
+			    $this->configuration['db'] >= 0
+			) {
+				$db = (int)$this->configuration['db'];
 				if ($this->redis->select($db)) {
 					$this->db = $db;
 				}

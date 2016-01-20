@@ -4,62 +4,87 @@
  *
  * @license   http://www.apache.org/licenses/LICENSE-2.0
  * @copyright Copyright 2015 KePHP Authors All Rights Reserved
- * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp )
+ * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp-core )
  * @author    曾建凯 <janpoem@163.com>
  */
 
 namespace Ke\Adm;
 
+use Exception;
 use ArrayObject;
-use Ke\Adm\Adapter\DatabaseImpl;
-use Ke\Adm\Utils\SqlQuery;
-
-use Ke\Adm\Utils\Filter;
-use Ke\Adm\Utils\Validator;
 
 class Model extends ArrayObject
 {
 
 	const SOURCE_USER = 0;
-	const SOURCE_DB = 1;
+	const SOURCE_DB   = 1;
 
-	const ON_INIT = 'init';
-	const ON_UPDATE = 'update';
 	const ON_CREATE = 'create';
+	const ON_UPDATE = 'update';
+	const ON_DELETE = 'delete';
+	const ON_SAVE   = 'save';
 
 	const SAVE_FAILURE = 0;
-	const SAVE_NOTHING = 1;
-	const SAVE_SUCCESS = 2;
+	const SAVE_SUCCESS = 1;
+	const SAVE_NOTHING = 2;
 
-	private static $initModels = [];
+	const ERR_UNKNOWN                 = 1;
+	const ERR_NOT_NUMERIC             = 10;
+	const ERR_NOT_FLOAT               = 11;
+	const ERR_NUMERIC_LESS_THAN       = 12;
+	const ERR_NUMERIC_GREET_THAN      = 13;
+	const ERR_NUMERIC_LESS_GREAT_THAN = 14;
+	const ERR_NOT_ALLOW_EMPTY         = 20;
+	const ERR_NOT_EMAIL               = 21;
+	const ERR_NOT_MATCH               = 22;
+	const ERR_NOT_MATCH_SAMPLE        = 23;
+	const ERR_STR_LEN_LESS_THAN       = 24;
+	const ERR_STR_LEN_GREET_THAN      = 25;
+	const ERR_STR_LEN_LESS_GREAT_THAN = 26;
+	const ERR_NOT_EQUAL               = 27;
+	const ERR_NOT_IN_RANGE            = 28;
+	const ERR_DUPLICATE               = 29;
 
-	private static $pkAutoIncColumn = ['pk' => true, 'autoInc' => true, 'unique' => true];
+	private static $stdErrorMessages = [
+		self::ERR_UNKNOWN                 => '{label}存在未知的错误！',
+		self::ERR_NOT_NUMERIC             => '{label}不是有效的数值类型！',
+		self::ERR_NOT_FLOAT               => '{label}不是有效的浮点数！',
+		self::ERR_NUMERIC_LESS_THAN       => '{label}的数值不得小于{min}！',
+		self::ERR_NUMERIC_GREET_THAN      => '{label}的数值不得大于{max}！',
+		self::ERR_NUMERIC_LESS_GREAT_THAN => '{label}的数值应在{min} ~ {max}之间！',
+		self::ERR_NOT_ALLOW_EMPTY         => '{label}为必填字段，不得为空！',
+		self::ERR_NOT_EMAIL               => '{label}不是有效的邮箱地址！',
+		self::ERR_NOT_MATCH               => '{label}不符合指定格式！',
+		self::ERR_NOT_MATCH_SAMPLE        => '{label}不符合指定格式，正确格式为：{sample}！',
+		self::ERR_STR_LEN_LESS_THAN       => '{label}的字符长度不能少于{min}位！',
+		self::ERR_STR_LEN_GREET_THAN      => '{label}的字符长度不能多于{max}位！',
+		self::ERR_STR_LEN_LESS_GREAT_THAN => '{label}的字符长度应在{min} ~ {max}位之间！',
+		self::ERR_NOT_EQUAL               => '{label}与{equalLabel}的值不相同！',
+		self::ERR_NOT_IN_RANGE            => '{label}不在指定的取值范围内！',
+		self::ERR_DUPLICATE               => '{label}已经存在值为"{value}"的记录！',
+	];
 
-	private static $pkNotAutoIncColumn = ['pk' => true, 'require' => true, 'unique' => true];
+	protected static $_init = false;
+
+	protected static $dbSource = null;
+
+	protected static $cacheSource = null;
+
+	protected static $tableName = '';
+
+	protected static $tablePrefix = '';
+
+	protected static $pk = 'id';
+
+	protected static $pkAutoInc = true;
+
+	protected static $columns = [];
+
+	protected static $groupColumns = [];
 
 	private static $globalValidator = null;
 
 	private static $globalFilter = null;
-
-	protected static $isInitModel = false;
-
-	protected static $dbSource = null;
-
-	protected static $cacheSource = false;
-
-	protected static $cacheTTL = 0;
-
-	protected static $tableName = null;
-
-	protected static $tablePrefix = null;
-
-	protected static $columns = [];
-
-	protected static $groupColumns = null;
-
-	protected static $pkField = 'id';
-
-	protected static $pkAutoInc = true;
 
 	protected static $validatorClass = null;
 
@@ -69,295 +94,92 @@ class Model extends ArrayObject
 
 	protected static $filter = null;
 
-	private $isInitData = false;
+	protected static $queries = [];
 
-	private $isCached = false;
+	protected static $errorMessages = [];
 
-	private $sourceType = self::SOURCE_USER;
+	///////////////////////////////////////////////////////////////
 
-	private $referenceData = null;
+	protected $_initData = false;
 
-	private $shadowData = null;
+	protected $sourceType = self::SOURCE_USER;
 
-	private $hiddenData = null;
+	protected $referenceData = false;
 
-	private $errors = null;
+	protected $shadowData = null;
+
+	protected $hiddenData = null;
+
+	protected $cacheStatus = 0;
+
+	protected $cacheKey = null;
+
+	protected $cacheUpdatedAt = 0;
+
+	protected $cacheTTL = 60 * 60 * 12; /* default value: 12 hours */
+
+	protected $errors = null;
 
 	public static function initModel()
 	{
-		$class = static::class;
-		if (!isset(self::$initModels[$class]) || !static::$isInitModel) {
+		if (!static::$_init) {
+			$isInit = true;
+			$class = static::class;
+			// todo: 这里要增加从缓存中读取
 			// 初始化表名
-			$table = DbSource::mkTableName(static::$dbSource, $class, static::$tableName, static::$tablePrefix);
+			$table = Db::mkTableName(static::$dbSource, $class, static::$tableName, static::$tablePrefix);
 			static::$tableName = &$table;
-			// 初始化字段
-			static::initColumns();
-			static::onInitModel($class);
-			self::$initModels[$class] = true;
-			static::$isInitModel = &self::$initModels[$class];
-		}
-	}
 
-	public static function getInitModels()
-	{
-		return self::$initModels;
-	}
-
-	public static function hasInitModel($class)
-	{
-		return isset(self::$initModels[$class]);
-	}
-
-	protected static function onInitModel($class)
-	{
-	}
-
-	protected static function databaseColumns()
-	{
-		return false;
-	}
-
-	protected static function overrideColumns()
-	{
-		return false;
-	}
-
-	protected static function initColumns()
-	{
-		$filter = static::getFilter();
-		$columns = static::$columns;
-		$groupColumns = static::$groupColumns;
-		$groupColumns['default'] = [];
-		$defaultData = &$groupColumns['default'];
-		$pk = null;
-		$pkAutoInc = false;
-		$pkInit = false;
-		// 主键的处理
-		if (!empty(static::$pkField) && is_string(static::$pkField)) {
-			$pk = trim(static::$pkField);
-			if (strlen($pk) <= 0) {
-				$pk = null;
-			}
-		}
-		if ($pk !== null) {
-			$pkAutoInc = !empty(static::$pkAutoInc);
-		}
-		if ($pk !== null && !isset($columns[$pk])) {
-			$pkInit = true;
-			if (!empty($columns))
-				$columns = [$pk => $pkAutoInc ? self::$pkAutoIncColumn : self::$pkNotAutoIncColumn] + $columns;
-			else
-				$columns = [$pk => $pkAutoInc ? self::$pkAutoIncColumn : self::$pkNotAutoIncColumn];
-		}
-		$dbColumns = static::databaseColumns();
-		if (!empty($dbColumns) && is_array($dbColumns)) {
-			$columns += $dbColumns;
-		}
-		// load override columns
-		// merge the static::$columns with override, and foreach once time
-		// but here we don't used merge method, we used +, if the field exists, it will not be cover
-		// in the foreach, then we will load the exists field from
-		$override = static::overrideColumns();
-		if (!empty($override) && is_array($override)) {
-			$columns += $override;
-		}
-		foreach ($columns as $field => &$column) {
-			// 数据库字段为基础
-			if (!empty($dbColumns[$field]) && is_array($dbColumns[$field])) {
-				$column = array_merge($dbColumns[$field], $column);
-			}
-			if (!empty($override[$field]) && is_array($override[$field])) {
-				$column = array_merge($column, $override[$field]);
-			}
-			if ($pk === null) {
-				if (!empty($column['pk'])) {
+			$filter = static::getFilter();
+			$columns = static::$columns;
+			$groupColumns = static::$groupColumns;
+			$pk = null;
+			$pkAutoInc = false;
+			$dbColumns = static::dbColumns();
+			foreach ($columns as $field => $column) {
+				// field必须是字符类型
+				if (empty($field) || !is_string($field))
+					continue;
+				// 过滤column
+				if (is_string($column))
+					$column = ['label' => $column];
+				elseif (!is_array($column))
+					$column = [];
+				// 合并数据库的字段设置
+				if (!empty($dbColumns[$field]) && is_array($dbColumns[$field]))
+					$column = array_merge($dbColumns[$field], $column);
+				// 主键检查
+				if (!empty($column['pk']) && empty($pk)) {
 					$pk = $field;
-					$pkAutoInc = !empty($column['autoInc']);
+					$pkAutoInc = $column['autoInc'] ?? false;
 				}
+				$columns[$field] = $filter->initColumn($field, $column, $groupColumns, false);
 			}
-			// 主键的过滤
-			if ($pk === $field) {
-				if (!$pkInit) {
-					$pkInit = true;
-					$column = array_merge($column, $pkAutoInc ? self::$pkAutoIncColumn : self::$pkNotAutoIncColumn);
-				}
-				if ($pkAutoInc) {
-					if (empty($column['numeric']) && empty($column['numeric']))
-						$column['numeric'] = 1;
-					unset($column['default'], $defaultData[$pk]);
-				} else {
-					if (empty($column['max']))
-						$column['max'] = 32;
-					if (!isset($column['default']))
-						$column['default'] = '';
-					else
-						$column['default'] = trim($column['default']);
-					$defaultData[$pk] = $column['default'];
-				}
-				continue;
+			// 全部字段过滤完以后，才来检查主键的有效性
+			if (empty($pk)) {
+				$pk = trim(static::$pk);
+				$pkAutoInc = static::$pkAutoInc;
+				if (!isset($columns[$pk]))
+					$columns[$pk] = [];
 			}
-			if (!empty($column['hidden']))
-				$groupColumns['hidden'][$field] = true;
-			if (!empty($column['require']))
-				$groupColumns['require'][$field] = true;
-			if (!empty($column['dummy']))
-				$groupColumns['dummy'][$field] = true;
-			$default = null;
-			$isDefineDefault = false;
-			$isDummy = !empty($columns['dummy']);
-			$numeric = 0;
-			if (isset($column['default'])) {
-				$default = $column['default'];
-				$isDefineDefault = true;
-			} elseif (isset($defaultData[$field])) {
-				$default = $defaultData[$field];
-				$isDefineDefault = true;
-			}
-			if (!empty($column['numeric']))
-				$numeric = (int)$column['numeric'];
-			// filter options
-			if (isset($column['options'])) {
-				if (empty($column['options']) || !is_array($column['options'])) {
-					unset($column['options']);
-				} else {
-					if (!isset($default) || !isset($column['options'][$default]))
-						$default = array_keys($column['options'])[0];
-				}
-			} // 序列化操作的初始值，和一般的字段的初始值的处理不同，所以这里独立处理
-			elseif (isset($column['concat'])) {
-				if (empty($column['concat']))
-					$column['concat'] = ',';
-				if (empty($default))
-					$default = [];
-				elseif (is_string($default))
-					$default = explode(',', $default);
-				elseif (!is_array($default))
-					$default = (array)$default;
-				$column['serialize'] = ['concat', $column['concat']];
-				$column['array'] = true;
-				$groupColumns['serialize'][$field] = true;
-			} elseif (!empty($column['json'])) {
-				$column['serialize'] = ['json', null];
-				$groupColumns['serialize'][$field] = true;
-			} elseif (!empty($column['php'])) {
-				$column['serialize'] = ['php', null];
-				$groupColumns['serialize'][$field] = true;
-			} else {
-				// 到这里，首先就排除了序列化的可能性
-				unset($column['serialize']);
-				// 优先级，bool > timestamp > numeric > string
-				if ($numeric > 0 ||
-					!empty($column['int']) ||
-					!empty($column['float']) ||
-					!empty($column['bigint'])
-				) {
-					if (!empty($column['float'])) {
-						$numeric = 3;
-						if (is_numeric($column['float']))
-							$numeric += $column['float'];
-					} elseif (!empty($column['bigint']))
-						$numeric = 2;
-					elseif (!empty($column['int']))
-						$numeric = 1;
-					if ($numeric > 12) // 9位小数
-						$numeric = 12;
-					$column['numeric'] = $numeric;
-				} else {
-					// 到这里，也排除了是数值类型的可能性
-					unset($column['numeric']);
-				}
-				// 这里就可以统一用过滤的方法，对默认值进行过滤处理了。
-				$default = $filter->filterColumn($column, $default, null, self::ON_INIT);
-			}
-			// 虚构字段
-//			if ($isDummy)
-//				$column['dummy'] = true;
-//			else
-//				unset($column['dummy']);
-			// 写入default
-			// 如果是虚构的字段，而且没有定义默认值的话，就不写入默认值了。
+			$columns[$pk] = $filter->initColumn($pk, $columns[$pk], $groupColumns, true, $pkAutoInc);
 
-			if (!$isDummy || $isDefineDefault)
-				$defaultData[$field] = $column['default'] = $default;
-
-			if (!empty($column[self::ON_CREATE])) {
-				$columnClone = $column;
-				unset($columnClone[self::ON_CREATE]);
-				if (is_array($column[self::ON_CREATE])) {
-					$columnClone = array_merge($columnClone, $column[self::ON_CREATE]);
-				} else {
-					$columnClone['default'] = $column[self::ON_CREATE];
-				}
-				$columnCloneDefault = isset($columnClone['default']) ? $columnClone['default'] : null;
-				$columnClone['default'] = $filter->filterColumn($columnClone, $columnCloneDefault, null, self::ON_INIT);
-				$groupColumns[self::ON_CREATE][$field] = $columnClone;
-
-				$defaultData[$field] = $column['default'] = $columnClone['default'];
-			}
-			if (!empty($column[self::ON_UPDATE])) {
-				$columnClone = $column;
-				unset($columnClone[self::ON_UPDATE]);
-				if (is_array($column[self::ON_UPDATE])) {
-					$columnClone = array_merge($columnClone, $column[self::ON_UPDATE]);
-				} else {
-					$columnClone['default'] = $column[self::ON_UPDATE];
-				}
-				$columnCloneDefault = isset($columnClone['default']) ? $columnClone['default'] : null;
-				$columnClone['default'] = $filter->filterColumn($columnClone, $columnCloneDefault, null, self::ON_INIT);
-				$groupColumns[self::ON_UPDATE][$field] = $columnClone;
-
-				$groupColumns['update_data'][$field] = $columnClone['default'];
-			}
+			static::$pk = &$pk;
+			static::$pkAutoInc = &$pkAutoInc;
+			static::$columns = &$columns;
+			static::$groupColumns = &$groupColumns;
+			static::$_init = &$isInit;
+			static::onInitModel();
 		}
-		static::$columns = &$columns;
-		static::$pkField = &$pk;
-		static::$pkAutoInc = &$pkAutoInc;
-		static::$groupColumns = &$groupColumns;
 	}
 
-	public static function getStaticColumns()
+	public static function dbColumns(): array
 	{
-		if (static::$isInitModel === false)
-			static::initModel();
-		return static::$columns;
+		return [];
 	}
 
-	public static function getStaticColumn($field, $process = null)
+	protected static function onInitModel()
 	{
-		if (static::$isInitModel === false)
-			static::initModel();
-		if (isset(static::$groupColumns[$process][$field]))
-			return static::$groupColumns[$process][$field];
-		return isset(static::$columns[$field]) ? static::$columns[$field] : [];
-	}
-
-	public static function getGroupColumns($group = null)
-	{
-		if (static::$isInitModel === false)
-			static::initModel();
-		if (!isset($group))
-			return static::$groupColumns;
-		return empty(static::$groupColumns[$group]) ? [] : static::$groupColumns[$group];
-	}
-
-	public static function getDefaultData($field = null)
-	{
-		if (static::$isInitModel === false)
-			static::initModel();
-		if (!isset($field))
-			return static::$groupColumns['default'];
-		return isset(static::$groupColumns['default'][$field]) ? static::$groupColumns['default'][$field] : false;
-	}
-
-	public static function getLabel($field)
-	{
-		if (static::$isInitModel === false)
-			static::initModel();
-		if (isset(static::$columns[$field]['label']))
-			return static::$columns[$field]['label'];
-		if (isset(static::$columns[$field]['title']))
-			return static::$columns[$field]['title'];
-		return $field;
 	}
 
 	public static function getDbSource()
@@ -366,17 +188,17 @@ class Model extends ArrayObject
 	}
 
 	/**
-	 * @return DatabaseImpl
-	 * @throws Exception
+	 * @return Adapter\Db\PdoMySQL|Adapter\DbAdapter
+	 * @throws \Exception
 	 */
 	public static function getDbAdapter()
 	{
-		return DbSource::getAdapter(static::$dbSource);
+		return Db::getAdapter(static::$dbSource);
 	}
 
 	public static function isEnableCache()
 	{
-		return static::$cacheSource !== false && !empty(static::$pkField);
+		return static::$cacheSource !== false && !empty(static::$pk);
 	}
 
 	public static function getCacheSource()
@@ -387,29 +209,9 @@ class Model extends ArrayObject
 	public static function getCacheAdapter()
 	{
 		if (!static::isEnableCache())
-			throw new Exception('Model "{0}" undefined cache source or the model without primary key!', [static::class]);
-		return CacheSource::getAdapter(static::$cacheSource);
-	}
-
-	public static function getTable($as = null)
-	{
-		if (!static::$isInitModel)
-			static::initModel();
-		if (!empty($as))
-			return static::$tableName . ' ' . $as;
-		return static::$tableName;
-	}
-
-	public static function getPkField()
-	{
-		return empty(static::$pkField) ? false : static::$pkField;
-	}
-
-	public static function isPkAutoInc()
-	{
-		if (!empty(static::$pkField) && !empty(static::$pkAutoInc))
-			return true;
-		return false;
+			throw new Exception(sprintf('Model "{%s}" undefined cache source or the model without primary key!',
+				static::class));
+		return Cache::getAdapter(static::$cacheSource);
 	}
 
 	/**
@@ -424,7 +226,8 @@ class Model extends ArrayObject
 			if ($class === Validator::class || !is_subclass_of($class, Validator::class)) {
 				$class = null;
 				static::$validatorClass = &$class;
-			} else {
+			}
+			else {
 				$validator = new $class();
 				static::$validator = &$validator;
 				return static::$validator;
@@ -440,14 +243,15 @@ class Model extends ArrayObject
 	 */
 	public static function getFilter()
 	{
-		if (isset(static::$filter))
+		if (isset(static::$filter) && static::$filter instanceof Filter)
 			return static::$filter;
 		if (!empty(static::$filterClass)) {
 			$class = static::$filterClass;
 			if ($class === Filter::class || !is_subclass_of($class, Filter::class)) {
 				$class = null;
 				static::$filterClass = &$class;
-			} else {
+			}
+			else {
 				$filter = new $class();
 				static::$filter = &$filter;
 				return static::$filter;
@@ -458,312 +262,263 @@ class Model extends ArrayObject
 		return self::$globalFilter;
 	}
 
-	/**
-	 * 启动数据库事务
-	 * @return bool
-	 */
-	public static function startTransaction()
+	public static function getStaticColumns($process = Model::ON_CREATE)
 	{
-		return static::getDbAdapter()->startTransaction();
-	}
-
-	/**
-	 * 检查数据库是否在事务状态中
-	 *
-	 * @return bool
-	 */
-	public static function inTransaction()
-	{
-		return static::getDbAdapter()->inTransaction();
-	}
-
-	/**
-	 * 提交事务
-	 *
-	 * @return bool
-	 */
-	public static function commit()
-	{
-		return static::getDbAdapter()->commit();
-	}
-
-	/**
-	 * 回滚事务
-	 *
-	 * @return bool
-	 */
-	public static function rollBack()
-	{
-		return static::getDbAdapter()->rollBack();
-	}
-
-	protected static function traditionFindPrepare(
-		array $args,
-		$type = DatabaseImpl::FETCH_ALL,
-		$arrayMode = null,
-		$fetchColumn = null
-	) {
-		if (!static::$isInitModel)
+		if (static::$_init === false)
 			static::initModel();
-		$conditions = [];
-		$pkField = static::$pkField;
-		if (isset($args[0]) && is_array($args[0])) {
-			$conditions = $args[0];
-		} elseif (!empty($args)) {
-			// model::find(1,2,3,4) => args = array(1,2,3,4)
-			if (!empty($pkField)) {
-				if (is_array($args[count($args) - 1])) {
-					$conditions = array_pop($args);
-				}
-				$conditions['in'][$pkField] = $args;
-			}
+		$columns = static::$columns;
+		if ($process !== Model::ON_CREATE && !empty(static::$groupColumns[$process])) {
+//			return array_merge($columns, static::$groupColumns[$process]); // 维持默认的columns的顺序
+			return static::$groupColumns[$process] + $columns; // 此方法会打乱columns的顺序
 		}
-
-		if (isset($conditions['fetchColumn'])) {
-			$conditions['array'] = 1;
-		}
-
-		if (!empty($arrayMode))
-			$conditions['array'] = $arrayMode;
-		if (isset($fetchColumn)) {
-			$conditions['array'] = 1;
-			$conditions['fetchColumn'] = $fetchColumn;
-		}
-
-		if (empty($conditions['from']))
-			$conditions['from'] = static::$tableName;
-
-		static::onTraditionFind($conditions);
-
-		if ($type === DatabaseImpl::FETCH_ALL) {
-			// find
-			if (isset($conditions['pageSize']) && is_numeric($conditions['pageSize']) && $conditions['pageSize'] > 0) {
-				$pagination = ['pageSize' => intval($conditions['pageSize'])];
-				// 过滤页码
-				if (isset($conditions['pageNumber'])) {
-					if (is_numeric($conditions['pageNumber']) && $conditions['pageNumber'] > 0)
-						$pagination['pageNumber'] = intval($conditions['pageNumber']);
-					else
-						$pagination['pageNumber'] = 1;
-				} else {
-					if (empty($conditions['pageParam']))
-						$conditions['pageParam'] = 'page';
-					$pagination['pageParam'] = $conditions['pageParam'];
-					// 如果指定了分页的字段，而且在$_GET中存在该值，且该值为大于0的整型
-					if (isset($conditions['pageParam']) && isset($_GET[$conditions['pageParam']]) &&
-						is_numeric($_GET[$conditions['pageParam']]) && $_GET[$conditions['pageParam']] > 0
-					) {
-						$pagination['pageNumber'] = intval($_GET[$conditions['pageParam']]);
-					} else {
-						$pagination['pageNumber'] = 1;
-					}
-				}
-
-				// 记录总数
-				$pagination['recordCount'] = static::getDbAdapter()->count($conditions);
-				// 分页总数
-				$pagination['pageCount'] = intval($pagination['recordCount'] / $pagination['pageSize']);
-				if ($pagination['recordCount'] % $pagination['pageSize'] > 0)
-					$pagination['pageCount']++;
-				// 限制页码
-				if ($pagination['pageNumber'] < 1)
-					$pagination['pageNumber'] = 1;
-				elseif ($pagination['pageNumber'] > $pagination['pageCount'] - 1)
-					$pagination['pageNumber'] = $pagination['pageCount'];
-				$conditions['limit'] = $pagination['pageSize'];
-				$conditions['offset'] = ($pagination['pageNumber'] - 1) * $conditions['limit'];
-				$conditions['pagination'] = $pagination;
-			} else {
-				if (isset($conditions['limit']) && is_numeric($conditions['limit']) && $conditions['limit'] > 0) {
-					$conditions['limit'] = intval($conditions['limit']);
-				} else {
-					unset($conditions['limit']);
-				}
-				if (isset($conditions['offset']) && is_numeric($conditions['offset']) && $conditions['offset'] > -1) {
-					$conditions['offset'] = intval($conditions['offset']);
-				} else {
-					unset($conditions['offset']);
-				}
-			}
-		} else {
-			// findOne
-			$conditions['limit'] = 1;
-		}
-		$conditions['fetch'] = $type;
-		return $conditions;
+		return $columns;
 	}
 
-	protected static function onTraditionFind(array &$conditions)
+	public static function getStaticColumn($field, $process = Model::ON_CREATE)
 	{
+		if (static::$_init === false)
+			static::initModel();
+		$columns = static::getStaticColumns($process);
+		return isset($columns[$field]) ? $columns[$field] : [];
+	}
+
+	public static function getGroupColumns($group = null)
+	{
+		if (static::$_init === false)
+			static::initModel();
+		if (!isset($group))
+			return static::$groupColumns;
+		return empty(static::$groupColumns[$group]) ? [] : static::$groupColumns[$group];
+	}
+
+	public static function getDefaultData($field = null)
+	{
+		if (static::$_init === false)
+			static::initModel();
+		if (!isset($field))
+			return static::$groupColumns['default'];
+		return isset(static::$groupColumns['default'][$field]) ? static::$groupColumns['default'][$field] : false;
+	}
+
+	public static function getLabel($field)
+	{
+		if (static::$_init === false)
+			static::initModel();
+		if (isset(static::$columns[$field]['label']))
+			return static::$columns[$field]['label'];
+		if (isset(static::$columns[$field]['title']))
+			return static::$columns[$field]['title'];
+		return $field;
+	}
+
+	public static function getErrorMessage($message): string
+	{
+		if (isset(static::$errorMessages[$message]))
+			return static::$errorMessages[$message];
+		if (isset(self::$stdErrorMessages[$message]))
+			return self::$stdErrorMessages[$message];
+		return (string)$message;
+	}
+
+	public static function buildErrorMessage($field, $error): string
+	{
+		$message = null;
+		$data = ['label' => static::getLabel($field)];
+		if (empty($error)) {
+			$message = static::getErrorMessage(static::ERR_UNKNOWN);
+		}
+		elseif (is_string($error)) {
+			$message = static::getErrorMessage($error);
+		}
+		elseif (is_array($error)) {
+			$message = static::getErrorMessage(array_shift($error));
+			if (!empty($error))
+				$data += $error;
+		}
+		return substitute($message, $data);
+	}
+
+	public static function getTable($as = null)
+	{
+		if (static::$_init === false)
+			static::initModel();
+		if (!empty($as))
+			return static::$tableName . ' ' . $as;
+		return static::$tableName;
+	}
+
+	public static function getPkField()
+	{
+		if (static::$_init === false)
+			static::initModel();
+		return empty(static::$pk) ? static::$pk : false;
+	}
+
+	public static function isPkAutoInc()
+	{
+		if (static::$_init === false)
+			static::initModel();
+		if (!empty(static::$pk) && !empty(static::$pkAutoInc))
+			return true;
+		return false;
 	}
 
 	/**
-	 * @param null $tableAs
-	 * @return SqlQuery
-	 * @throws Exception
+	 * @param bool|null $name
+	 * @return Query
 	 */
-	public static function query($tableAs = null)
+	public static function query($name = false)
 	{
-		return (new SqlQuery())->setModel(static::class)->table(static::getTable($tableAs));
-	}
-
-	public static function find($conditions = null)
-	{
-		if (!($conditions instanceof SqlQuery)) {
-			$conditions = static::traditionFindPrepare(func_get_args(), DatabaseImpl::FETCH_ALL);
-			$fetchNum = !empty($conditions['array']);
-		} else {
-			$fetchNum = $conditions->getFetchStyle() === DatabaseImpl::FETCH_NUM;
-		}
-		$result = static::getDbAdapter()->find($conditions);
-		if ($fetchNum)
-			return $result;
-		return static::newList($result, $conditions, self::SOURCE_DB);
-	}
-
-	public static function findOne($conditions = null)
-	{
-		if (!($conditions instanceof SqlQuery)) {
-			$conditions = static::traditionFindPrepare(func_get_args(), DatabaseImpl::FETCH_ONE);
-			$fetchNum = !empty($conditions['array']);
-		} else {
-			$fetchNum = $conditions->getFetchStyle() === DatabaseImpl::FETCH_NUM;
-		}
-		$result = static::getDbAdapter()->find($conditions);
-		if ($fetchNum)
-			return $result;
-		if ($result === false)
-			return new static();
-		return static::newInstance($result, $conditions, self::SOURCE_DB);
-	}
-
-	public static function findIn(array $in, array $conditions = null)
-	{
-		if (!isset($conditions))
-			$conditions = [];
-		$conditions['in'] = $in;
-		return static::find($conditions);
-	}
-
-	public static function findOneIn(array $in, array $conditions = null)
-	{
-		if (!isset($conditions))
-			$conditions = [];
-		$conditions['in'] = $in;
-		return static::findOne($conditions);
-	}
-
-	public static function findColumn()
-	{
-		$args = func_get_args();
-		$column = array_shift($args);
-		$conditions = self::traditionFindPrepare($args, DatabaseImpl::FETCH_ALL, true, $column);
-		return static::getDbAdapter()->find($conditions);
-	}
-
-	public static function findColumnOne()
-	{
-		$args = func_get_args();
-		$column = array_shift($args);
-		$conditions = self::traditionFindPrepare($args, DatabaseImpl::FETCH_ONE, true, $column);
-		return static::getDbAdapter()->find($conditions);
-	}
-
-	public static function rsCount($conditions = null)
-	{
-		if ($conditions instanceof SqlQuery) {
-			if (empty($conditions->table))
-				$conditions->table = static::$tableName;
-		} elseif (is_array($conditions)) {
-			if (empty($conditions['from']))
-				$conditions['from'] = static::$tableName;
-		}
-		return static::getDbAdapter()->count($conditions);
-	}
-
-	public static function rsCountIn(array $in, array $conditions = null)
-	{
-		if ($conditions instanceof SqlQuery) {
-			if (empty($conditions->table))
-				$conditions->table = static::$tableName;
-			foreach ($in as $field => $values) {
-				$conditions->where($field, 'in', $values);
+		if ($name !== false && isset(static::$queries[$name])) {
+			if (!(static::$queries[$name] instanceof Query)) {
+				$query = (new Query())->setModel(static::class);
+				if (is_array(static::$queries[$name]))
+					$query->load(static::$queries[$name]);
+				static::$queries[$name] = &$query;
 			}
-		} elseif (is_array($conditions)) {
-			if (empty($conditions['from']))
-				$conditions['from'] = static::$tableName;
-			$conditions['in'] = $in;
+			return clone static::$queries[$name];
 		}
-		return static::getDbAdapter()->count($conditions);
+		return (new Query())->setModel(static::class);
 	}
 
-	public static function mkCacheKey($pk)
+	public static function getQueries()
 	{
-		return static::$tableName . '.' . $pk;
+		return static::$queries;
 	}
 
-	public static function getCache($pk)
+	/**
+	 *
+	 * <code>
+	 * // 指定查询条件
+	 * User::find([ 'where' => ['id', '=', 100] ]);
+	 * User::find(User::query()->where('id', '=', 100));
+	 * // 查询主键，必须Model为有主键的模式
+	 * User::find(1, 2, 3);
+	 * // 主键查询，并追加查询条件
+	 * User::find(1, 2, 3, ['select' => 'id', 'order' => 'id DESC']);
+	 * </code>
+	 *
+	 * @param array ...$args
+	 * @return array|DataList
+	 */
+	public static function find(...$args)
 	{
-		if (!static::$isInitModel)
-			static::initModel();
-		if (!static::isEnableCache())
-			throw new Exception('Model "{0}" undefined cache source or the model without primary key!', [static::class]);
-		if (strlen($pk) === 0)
-			throw new Exception('Undefined primary key!');
-		$key = static::mkCacheKey($pk);
-		$cs = static::getCacheAdapter();
-		$load = $cs->get($key);
-		if ($load !== false) {
-			return $load;
+		$count = count($args);
+		$query = null;
+		if ($count > 0) {
+			$last = $args[$count - 1];
+			if (is_array($last) || is_object($last)) {
+				$query = array_pop($args);
+				if (!($query instanceof Query))
+					$query = static::query(false)->load($query);
+				else
+					$query->setModel(static::class);
+			}
 		}
-		$obj = static::findOne($pk);
-		if ($obj->isNew()) {
-			return $obj;
+		if (!isset($query))
+			$query = static::query(false);
+		if (!empty($args)) {
+			if (!empty(static::$pk))
+				$query->in(static::$pk, $args);
 		}
-		$obj->saveCache(self::ON_CREATE);
-		return $obj;
+		return $query->find();
 	}
 
-	public static function update($conditions, array $data)
+	/**
+	 * 这个方法类似find，但是不管满足查询条件的结果为多少，只返回第一条结果。
+	 *
+	 * @param array ...$args
+	 * @return array|Model|static
+	 */
+	public static function findOne(...$args)
 	{
-		return static::getDbAdapter()->update(static::$tableName, $conditions, $data);
+		$count = count($args);
+		$query = null;
+		if ($count > 0) {
+			$last = $args[$count - 1];
+			if (is_array($last) || is_object($last)) {
+				$query = array_pop($args);
+				if (!($query instanceof Query))
+					$query = static::query(false)->load($query);
+				else
+					$query->setModel(static::class);
+			}
+		}
+		if (!isset($query))
+			$query = static::query(false);
+		if (!empty($args)) {
+			if (!empty(static::$pk))
+				$query->in(static::$pk, $args);
+		}
+		return $query->findOne();
 	}
 
-	public static function updateIn(array $in, array $data)
+	/**
+	 * @param array $keyValues
+	 * @param null  $query
+	 * @return array|DataList
+	 */
+	public static function findIn(array $keyValues, $query = null)
 	{
-		return static::getDbAdapter()->update(static::$tableName, ['in' => $in], $data);
+		if (!($query instanceof Query))
+			$query = static::query(false)->load($query);
+		return $query->in($keyValues)->find();
 	}
 
-	public static function delete($conditions)
+	/**
+	 * @param array $keyValues
+	 * @param null  $query
+	 * @return array|Model|static
+	 */
+	public static function findOneIn(array $keyValues, $query = null)
 	{
-		return static::getDbAdapter()->delete(static::$tableName, $conditions);
+		if (!($query instanceof Query))
+			$query = static::query(false)->load($query);
+		return $query->in($keyValues)->findOne();
 	}
 
-	public static function deleteIn(array $in)
-	{
-		return static::getDbAdapter()->delete(static::$tableName, ['in' => $in]);
-	}
-
-	protected static function newList(array $data, $conditions, $source = null)
+	public static function newList($data, $query, $source = null)
 	{
 		$list = new DataList();
-		if ($conditions instanceof SqlQuery) {
-			if ($conditions->hasPagination())
-				$list->setPagination($conditions->getPagination());
-		} else {
-			if (isset($conditions['pagination']))
-				$list->setPagination($conditions['pagination']);
-		}
-		foreach ($data as $index => $row) {
-			$list[] = static::newInstance($row, $conditions, $source);
+		foreach ($data as $row) {
+			$list[] = self::newInstance($row, $query, $source);
 		}
 		return $list;
 	}
 
-	protected static function newInstance(array $data, $conditions, $source = null)
+	public static function newInstance($data, $query, $source = null)
 	{
 		$obj = new static(false);
 		$obj->prepareData($data, $source);
+		return $obj;
+	}
+
+	public static function makeCacheKey($pk)
+	{
+		if (!static::$_init)
+			static::initModel();
+		return static::$tableName . '.' . $pk;
+	}
+
+	public static function loadCache($pk)
+	{
+		if (!static::$_init)
+			static::initModel();
+		if (!static::isEnableCache())
+			throw new Exception(sprintf('Model "{%s}" undefined cache source or the model without primary key!',
+				static::class));
+		if (strlen($pk) === 0)
+			throw new Exception('Undefined primary key!');
+		$key = static::makeCacheKey($pk);
+		$adapter = static::getCacheAdapter();
+		$cache = $adapter->get($key);
+		if ($cache !== false) {
+			return $cache;
+		}
+		$obj = static::findOneIn([static::$pk => $pk]);
+		if ($obj->isExists()) {
+			$obj->saveCache();
+		}
 		return $obj;
 	}
 
@@ -776,25 +531,27 @@ class Model extends ArrayObject
 		}
 	}
 
-	final private function prepareData(array $data, $source = self::SOURCE_USER)
+	final protected function prepareData($data, $source = Model::SOURCE_USER)
 	{
-		if (!static::$isInitModel)
+		if (static::$_init === false)
 			static::initModel();
+		if (empty($data))
+			$source = self::SOURCE_USER;
 		// 优先绑定了数据源，和数据的参考依据，防止这个数据被污染
 		$this->sourceType = $source;
 		// 重置数据
 		$this->referenceData = null;
 		$this->shadowData = null;
 		if (!empty($data) && $source !== self::SOURCE_USER) {
-			if ($this->isInitData) {
+			if ($this->_initData) {
 				$data += (array)$this;
 				if (!empty(static::$groupColumns['dummy'])) {
 					$data = array_diff_key($data, static::$groupColumns['dummy']);
 				}
 			}
 
-			if (!empty(static::$pkField) && !empty($data[static::$pkField]))
-				$this->referenceData = [static::$pkField => $data[static::$pkField]];
+			if (!empty(static::$pk) && !empty($data[static::$pk]))
+				$this->referenceData = [static::$pk => $data[static::$pk]];
 			else
 				$this->referenceData = $data;
 
@@ -806,7 +563,8 @@ class Model extends ArrayObject
 				$this->hiddenData = $hidden;
 				$data = array_diff_key($data, static::$groupColumns['hidden']);
 			}
-		} else {
+		}
+		else {
 
 		}
 		// 反序列化，必须处理
@@ -817,7 +575,7 @@ class Model extends ArrayObject
 					$data[$field] = $filter->unSerialize($data[$field]);
 			}
 		}
-		if ($this->isInitData === false) {
+		if ($this->_initData === false) {
 			// 如果是直接从数据源加载的，不用defaultData来填充默认的字段（如果只是数据片段，则只作为片段处理）
 			if ($source === self::SOURCE_USER) {
 				if (empty($data))
@@ -826,9 +584,10 @@ class Model extends ArrayObject
 					$data = array_merge(static::$groupColumns['default'], $data);
 			}
 			parent::__construct($data, ArrayObject::ARRAY_AS_PROPS);
-			$this->isInitData = true;
+			$this->_initData = true;
 			$this->onInitData();
-		} else {
+		}
+		else {
 			parent::__construct($data, ArrayObject::ARRAY_AS_PROPS);
 			$this->onUpgradeData();
 		}
@@ -840,18 +599,6 @@ class Model extends ArrayObject
 	}
 
 	protected function onUpgradeData()
-	{
-	}
-
-	protected function onCreateCache()
-	{
-	}
-
-	protected function onUpdateCache()
-	{
-	}
-
-	protected function onDestroyCache()
 	{
 	}
 
@@ -874,10 +621,29 @@ class Model extends ArrayObject
 		return isset($this->hiddenData[$field]) ? $this->hiddenData[$field] : null;
 	}
 
+	/**
+	 * 验证一个Model的数据时，会调用这个接口
+	 *
+	 * 这个接口，用于给不同的Model实例提供一个重载Columns的机会
+	 *
+	 * @param string $process
+	 * @return array
+	 */
+	public function getColumns($process = self::ON_CREATE): array
+	{
+		return static::getStaticColumns($process);
+	}
+
+	public function getColumn($field, $process = self::ON_CREATE): array
+	{
+		$columns = $this->getColumns($process);
+		return isset($columns[$field]) ? $columns[$field] : [];
+	}
+
 	public function getPk()
 	{
-		if (!empty(static::$pkField) && isset($this->referenceData[static::$pkField]))
-			return $this->referenceData[static::$pkField];
+		if (!empty(static::$pk) && isset($this->referenceData[static::$pk]))
+			return $this->referenceData[static::$pk];
 		return false;
 	}
 
@@ -889,16 +655,6 @@ class Model extends ArrayObject
 	public function isExists()
 	{
 		return !empty($this->referenceData);
-	}
-
-	public function getCacheTTL()
-	{
-		return static::$cacheTTL;
-	}
-
-	public function getColumn($field, $process = null)
-	{
-		return static::getStaticColumn($field, $process);
 	}
 
 	public function offsetSet($field, $value)
@@ -913,7 +669,8 @@ class Model extends ArrayObject
 					$old = $this[$field];
 				if (!equals($old, $value))
 					$this->shadowData[$field] = $old;
-			} elseif ($value === $this->shadowData[$field]) {
+			}
+			elseif ($value === $this->shadowData[$field]) {
 				unset($this->shadowData[$field]); // 恢复这个值
 				if (isset($this->hiddenData[$field])) {
 					unset($this[$field]);
@@ -925,7 +682,7 @@ class Model extends ArrayObject
 			parent::offsetSet($field, $value);
 	}
 
-	public function merge(array $data)
+	public function merge($data)
 	{
 		foreach ($data as $field => $value)
 			$this[$field] = $value;
@@ -986,7 +743,7 @@ class Model extends ArrayObject
 	{
 		if (!empty($data))
 			$this->merge($data);
-		$this->errors = null;
+		$this->errors = [];
 		$process = empty($this->referenceData) ? self::ON_CREATE : self::ON_UPDATE;
 		$validate = 'validate' . $process;
 		$before = 'before' . $process;
@@ -1006,69 +763,61 @@ class Model extends ArrayObject
 		}
 
 		$validator = static::getValidator();
-		// 第一次
-		if ($this->$validate($data) === false || $this->validateSave($process, $data) === false || !empty($this->errors))
+		//////////////////////////////////////////////////////////////////////
+		// 一段验证，validate*
+		// 触发validateUpdate|validateCreate, validateSave事件
+		if ($this->$validate($data) === false || $this->validateSave($process, $data) === false)
 			return self::SAVE_FAILURE;
-		if (!empty($errors = $validator->validateModelData($this, $data, $process, false)))
-			$this->errors = array_merge((array)$this->errors, $errors);
+		// 执行数据检验
+		$validator->validateModelObject($this, $data, $process, false);
+		// 如果在此过程中，发现错误，则不往后执行
 		if (!empty($this->errors))
 			return self::SAVE_FAILURE;
 
-		if ($this->$before($data) === false || $this->beforeSave($process, $data) === false || !empty($this->errors))
+		//////////////////////////////////////////////////////////////////////
+		// 二段验证，before*
+		// 触发beforeUpdate|beforeCreate, beforeSave事件
+		if ($this->$before($data) === false || $this->beforeSave($process, $data) === false)
 			return self::SAVE_FAILURE;
-		if (!empty($errors = $validator->validateModelData($this, $data, $process, true)))
-			$this->errors = array_merge((array)$this->errors, $errors);
+		$validator->validateModelObject($this, $data, $process, true);
 		if (!empty($this->errors))
 			return self::SAVE_FAILURE;
 
-		$db = DbSource::getAdapter(static::$dbSource);
-		$table = static::$tableName;
+		$this->errors = null;
+
+		$adapter = static::getDbAdapter();
+		$builder = $adapter->getQueryBuilder();
+		$table = static::getTable();
+		$sql = null;
+		$args = [];
+
+		// 生成SQL和执行参数
 		if ($process === self::ON_CREATE) {
-			$result = $db->insert($table, $data);
-			if ($result > 0) {
-				if (!empty(static::$pkField) && !empty(static::$pkAutoInc)) {
-					$data[static::$pkField] = $db->lastInsertId($table);
-					static::getFilter()->filterColumn(static::$columns[static::$pkField], $data[static::$pkField], $this);
-				}
-				$this->prepareData($data, self::SOURCE_DB);
-				$this->$after($data);
-				$this->afterSave($process, $data);
-				if ($this->isCached || static::isEnableCache())
-					$this->saveCache($process);
-				return self::SAVE_SUCCESS;
-			}
-		} elseif ($process === self::ON_UPDATE) {
+			$builder->buildInsert($table, $data, $sql, $args);
+		}
+		else {
+			// 比较一下，除了默认要更新的数据外，实际更新的数据时什么
 			$diff = array_diff_key($data, $updateData);
 			if (empty($diff)) {
 				$this->restore();
 				return self::SAVE_NOTHING;
 			}
-			$result = $db->update($table, $data, [
-				'in' => $this->referenceData,
-			]);
-			if ($result > 0) {
-				$this->prepareData($data, self::SOURCE_DB);
-				$this->$after($data);
-				$this->afterSave($process, $data);
-				if ($this->isCached || static::isEnableCache())
-					$this->saveCache($process);
-				return self::SAVE_SUCCESS;
+			$builder->buildUpdate($table, $data, $builder->buildIn((array)$this->referenceData), $sql, $args);
+		}
+		if ($adapter->execute($sql, $args) > 0) {
+			if ($process === self::ON_CREATE) {
+				if (!empty(static::$pk) && !empty(static::$pkAutoInc)) {
+					$data[static::$pk] = (int)$adapter->lastInsertId($table);
+				}
 			}
+			$this->prepareData($data, self::SOURCE_DB);
+			$this->$after($data);
+			$this->afterSave($process, $data);
+			if ($this->isCache() || static::isEnableCache())
+				$this->saveCache();
+			return self::SAVE_SUCCESS;
 		}
 		return self::SAVE_FAILURE;
-	}
-
-	public function saveCache($process = self::ON_CREATE)
-	{
-		if (!static::isEnableCache() || $this->isNew())
-			return false;
-		$this->isCached = true;
-		if (static::getCacheAdapter()->set(static::mkCacheKey($this->getPk()), $this, $this->getCacheTTL())) {
-			$event = 'on' . $process . 'cache';
-			$this->$event();
-			return true;
-		}
-		return false;
 	}
 
 	public function getErrors()
@@ -1099,18 +848,21 @@ class Model extends ArrayObject
 		return isset($this->errors[$field]);
 	}
 
-	public function setError($field, $error = null)
+	public function setError($field, $error = null, bool $isCover = true)
 	{
-		if ($error === null)
+		if ($error === null || $error === false)
 			unset($this->errors[$field]);
 		else {
-			if (is_array($error)) {
-				$validator = static::getValidator();
-				$error = $validator->mkErrorMessage($this, $field, $error);
+			if (!isset($this->errors[$field]) || $isCover) {
+				$this->errors[$field] = static::buildErrorMessage($field, $error);
 			}
-			$this->errors[$field] = $error;
 		}
 		return $this;
+	}
+
+	public function removeError($field)
+	{
+		unset($this->errors[$field]);
 	}
 
 	protected function beforeDestroy()
@@ -1123,34 +875,108 @@ class Model extends ArrayObject
 
 	public function destroy()
 	{
-		if (empty($this->referenceData) || $this->sourceType === self::SOURCE_USER)
-			return false;
-		$query = [
-			'in'    => $this->referenceData,
-			'limit' => 1,
-		];
+		if ($this->isNew() || $this->sourceType === self::SOURCE_USER)
+			return self::SAVE_FAILURE;
 		if ($this->beforeDestroy() === false)
-			return false;
-		$count = static::getDbAdapter()->delete(static::$tableName, $query);
-		if ($count > 0) {
-			if ($this->isCached || static::isEnableCache())
-				$this->destroyCache();
+			return self::SAVE_FAILURE;
+		$adapter = static::getDbAdapter();
+		$builder = $adapter->getQueryBuilder();
+		$table = static::getTable();
+		$sql = null;
+		$args = [];
+		$builder->buildDelete($table, $builder->buildIn((array)$this->referenceData), $sql, $args);
+		if ($adapter->execute($sql, $args) > 0) {
+			if ($this->isCache() || static::isEnableCache())
+				$this->deleteCache();
 			$this->referenceData = null;
 			$this->afterDestroy();
-			return true;
+			return self::SAVE_SUCCESS;
 		}
-		return false;
+		return self::SAVE_FAILURE;
 	}
 
-	public function destroyCache()
+	/////////////////////////////////////////////////////////////////////////////////////
+	// cache 部分
+	/////////////////////////////////////////////////////////////////////////////////////
+
+	protected function onCreateCache()
+	{
+	}
+
+	protected function onUpdateCache()
+	{
+	}
+
+	protected function onSaveCache()
+	{
+	}
+
+	protected function onDeleteCache()
+	{
+	}
+
+	public function saveCache()
 	{
 		if (!static::isEnableCache() || $this->isNew())
-			return false;
-		$this->isCached = false;
-		if (static::getCacheAdapter()->delete(static::mkCacheKey($this->getPk()))) {
-			$this->onDestroyCache();
-			return true;
+			return self::SAVE_FAILURE;
+		$process = 'Update';
+		$lastStatus = $this->cacheStatus;
+		if (empty($this->cacheStatus)) {
+			$this->cacheStatus = self::ON_CREATE;
+			$process = 'Create';
 		}
-		return false;
+		elseif ($this->cacheStatus === self::ON_CREATE) {
+			$this->cacheStatus = self::ON_UPDATE;
+		}
+		$lastUpdatedAt = $this->cacheUpdatedAt;
+		$this->cacheUpdatedAt = time();
+		$this->cacheKey = static::makeCacheKey($this->getPk());
+		$event = "on{$process}Cache";
+		if ($this->$event() !== false &&
+		    $this->onSaveCache() !== false &&
+		    static::getCacheAdapter()->set($this->cacheKey, $this, $this->getCacheTTL())
+		) {
+			return self::SAVE_SUCCESS;
+		}
+		// 保存失败，要还原最后更新的时间，和状态
+		$this->cacheStatus = $lastStatus;
+		$this->cacheUpdatedAt = $lastUpdatedAt;
+		return self::SAVE_FAILURE;
 	}
+
+	public function deleteCache()
+	{
+		if (!static::isEnableCache() || $this->isNew())
+			return self::SAVE_FAILURE;
+		$this->cacheStatus = self::ON_DELETE;
+		$key = static::makeCacheKey($this->getPk());
+		$event = 'onDeleteCache';
+		if ($this->$event() === false)
+			return self::SAVE_FAILURE;
+		if (static::getCacheAdapter()->delete($key))
+			return self::SAVE_SUCCESS;
+		return self::SAVE_FAILURE;
+	}
+
+	public function isCache()
+	{
+		return $this->cacheStatus !== 0;
+	}
+
+	public function getCacheStatus()
+	{
+		return $this->cacheStatus;
+	}
+
+	public function getCacheTTL()
+	{
+		return $this->cacheTTL;
+	}
+
+	public function setCacheTTL(int $ttl)
+	{
+		$this->cacheTTL = $ttl < 0 ? 0 : $ttl;
+		return $this;
+	}
+
 }

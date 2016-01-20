@@ -10,6 +10,8 @@
 
 namespace Ke;
 
+use Throwable;
+
 /**
  * Php的输出缓冲控制器
  *
@@ -173,7 +175,7 @@ class OutputBuffer
 			$this->start($node);
 			try {
 				call_user_func($fn);
-			} catch (\Exception $ex) {
+			} catch (Throwable $throw) {
 			}
 			$this->clean($node);
 			return $this->getOutput($node, true);
@@ -188,7 +190,7 @@ class OutputBuffer
 			$this->start($node);
 			try {
 				require $file;
-			} catch (\Exception $ex) {
+			} catch (Throwable $throw) {
 			}
 			$this->clean($node);
 			return $this->getOutput($node, true);

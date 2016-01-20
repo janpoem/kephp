@@ -4,23 +4,23 @@
  *
  * @license   http://www.apache.org/licenses/LICENSE-2.0
  * @copyright Copyright 2015 KePHP Authors All Rights Reserved
- * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp )
+ * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp-core )
  * @author    曾建凯 <janpoem@163.com>
  */
 
 namespace Ke\Adm\Adapter;
 
 
-interface CacheStoreImpl
+interface CacheAdapter
 {
 
 	const DEFAULT_COLON = '.';
 
-	public function setName($name);
+	public function __construct(string $source, array $config = null);
 
 	public function configure(array $config);
 
-	public function getConfig();
+	public function getConfiguration();
 
 	public function exists($key);
 

@@ -8,7 +8,14 @@
  * @author    曾建凯 <janpoem@163.com>
  */
 
-// 这只是一个简单的启动引导，实际项目，可根据实际情况来决定是否独立执行Bootstrap::start()
-require 'Ke/Bootstrap.php';
+namespace Ke\Adm;
 
-\Ke\Bootstrap::start();
+/**
+ * 缓存数据模型
+ *
+ * @package Ke\Adm
+ */
+class CacheModel
+{
+
+}
