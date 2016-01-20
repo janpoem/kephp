@@ -173,7 +173,7 @@ class Model extends ArrayObject
 		}
 	}
 
-	public static function dbColumns(): array
+	public static function dbColumns()
 	{
 		return [];
 	}

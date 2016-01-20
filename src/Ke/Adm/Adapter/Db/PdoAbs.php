@@ -319,6 +319,15 @@ abstract class PdoAbs implements DbAdapter
 			}
 			return false;
 		}
+		elseif ($fetch === self::FETCH_CLASS && !empty($arg) && class_exists($arg)) {
+			$st->setFetchMode(PDO::FETCH_CLASS, $arg, null);
+			if ($find === self::ONE) {
+				return $st->fetch();
+			}
+			else {
+				return $st->fetchAll();
+			}
+		}
 		else {
 			$fetch = $fetch === self::FETCH_ASSOC ? PDO::FETCH_ASSOC : PDO::FETCH_NUM;
 			if ($find === self::ONE) {

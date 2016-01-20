@@ -10,6 +10,9 @@
 
 namespace Ke\Adm\Adapter;
 
+use Ke\Adm\Sql\ForgeImpl;
+use Ke\Adm\Sql\MySQL\Forge;
+
 interface DbAdapter
 {
 
@@ -26,6 +29,8 @@ interface DbAdapter
 	const FETCH_ASSOC = 1;
 
 	const FETCH_COLUMN = 2;
+
+	const FETCH_CLASS = 3;
 
 	/**
 	 * DatabaseImpl constructor.
@@ -119,6 +124,11 @@ interface DbAdapter
 	public function query($sql, array $args = null, $find = self::MULTI, $fetch = self::FETCH_ASSOC, $arg = null);
 
 	public function getQueryBuilder();
+
+	/**
+	 * @return ForgeImpl|Forge
+	 */
+	public function getForge();
 
 	public function setOperation($operation);
 }

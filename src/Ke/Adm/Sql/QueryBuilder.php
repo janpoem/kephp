@@ -81,13 +81,13 @@ class QueryBuilder
 		$space = ' ' . ($query->debug ? "\n" : null);
 		// 预备阶段
 		$tables = new QueryTables();
-		$tables->addTable($query->from, true);
+		$from = $tables->addTable($query->from, true);
 		$join = [];
 		if (!empty($query->join))
 			$this->prepareJoin($tables, $join, $query->join);
 
 		$select = $this->filterSelect($query->select);
-		$from = $tables->tableName($query->from);
+		$from = $tables->tableName($from);
 
 		$sql .= "SELECT {$select} FROM {$from}";
 

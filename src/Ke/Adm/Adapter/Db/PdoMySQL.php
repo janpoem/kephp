@@ -11,6 +11,7 @@
 namespace Ke\Adm\Adapter\Db;
 
 
+use Ke\Adm\Sql\MySQL\Forge;
 use Ke\Adm\Sql\QueryBuilder;
 
 class PdoMySQL extends PdoAbs
@@ -30,6 +31,8 @@ class PdoMySQL extends PdoAbs
 	];
 
 	protected $queryBuilder = null;
+
+	protected $forge = null;
 
 	public function getDSN(array $config): string
 	{
@@ -51,6 +54,13 @@ class PdoMySQL extends PdoAbs
 		if (!isset($this->queryBuilder))
 			$this->queryBuilder = new QueryBuilder($this);
 		return $this->queryBuilder;
+	}
+
+	public function getForge()
+	{
+		if (!isset($this->forge))
+			$this->forge = new Forge($this);
+		return $this->forge;
 	}
 
 }
