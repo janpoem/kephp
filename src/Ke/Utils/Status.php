@@ -14,7 +14,7 @@ namespace Ke\Utils;
 class Status
 {
 
-	protected $status = true;
+	protected $status;
 
 	public $message;
 
@@ -22,9 +22,17 @@ class Status
 
 	public function __construct($status, string $message = null, array $data = null)
 	{
-		$this->status = (bool)$status;
+		$this->setStatus($status);
 		if (!empty($message))
 			$this->setMessage($message);
+		if (!empty($data))
+			$this->setData($data);
+	}
+
+	public function setStatus($status)
+	{
+		$this->status = (bool)$status;
+		return $this;
 	}
 
 	public function setMessage(string $message, $isPlus = false)
@@ -61,13 +69,18 @@ class Status
 		return $this->status !== true;
 	}
 
-	public function toJSON($mode = 0)
+	public function export()
 	{
 		$data = [];
 		$data['status'] = $this->status;
 		$data['message'] = $this->message;
 		$data['data'] = $this->data;
-		return json_encode($data, $mode);
+		return $data;
+	}
+
+	public function toJSON()
+	{
+		return json_encode($this->export());
 	}
 }
 
@@ -86,5 +99,25 @@ class Failure extends Status
 	public function __construct(string $message, array $data = null)
 	{
 		parent::__construct(false, $message, $data);
+	}
+}
+
+class CodeStatus extends Status
+{
+
+	public function setStatus($status)
+	{
+		$this->status = (int)$status;
+		return $this;
+	}
+
+	public function isSuccess()
+	{
+		return $this->status > 0;
+	}
+
+	public function isFailure()
+	{
+		return $this->status <= 0;
 	}
 }

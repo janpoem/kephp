@@ -14,46 +14,31 @@ class View extends Renderer
 
 	private $view = null;
 
-	private $isLoad = false;
-
-	private $content = '';
-
-	public function __construct(string $view = null)
+	public function __construct($view = null)
 	{
 		parent::__construct();
 		$this->view = $view;
 	}
 
-	public function getLayout()
-	{
-		if (empty($this->context->layout))
-			return false;
-		return $this->web->getComponentPath($this->context->layout, Component::LAYOUT);
-	}
-
-	public function loadView()
-	{
-		$this->content = $this->context->import($this->web->getComponentPath($this->view));
-		return $this;
-	}
-
 	protected function onRender()
 	{
 		$this->web->sendHeaders();
-		$this->loadView();
-		$buffer = $this->web->ob->getOutput('webStart', true);
-		$content = $this->context->import($this->web->getComponentPath($this->view));
-		if (!empty($buffer) && $this->web->isDebug())
-			$content .= "<pre>{$buffer}</pre>";
+		// $controller->view(false) => false => ''
+		if (!empty($this->view)) {
+			$buffer = $this->web->ob->getOutput('webStart', true);
+			$content = $this->context->import($this->web->getComponentPath($this->view));
+			if (!empty($buffer) && $this->web->isDebug())
+				$content .= "<pre>{$buffer}</pre>";
 
-		if (!empty($this->context->layout)) {
-			$layout = $this->web->getComponentPath($this->context->layout, Component::LAYOUT);
-			if ($layout === false)
-				$content = "<pre>Layout {$this->context->layout} not found!</pre>" . $content;
-			else
-				$content = $this->context->import($layout, ['content' => $content]);
+			if (!empty($this->context->layout)) {
+				$layout = $this->web->getComponentPath($this->context->layout, Component::LAYOUT);
+				if ($layout === false)
+					$content = "<pre>Layout {$this->context->layout} not found!</pre>" . $content;
+				else
+					$content = $this->context->import($layout, ['content' => $content]);
+			}
+			print $content;
 		}
-		print $content;
 	}
 
 }

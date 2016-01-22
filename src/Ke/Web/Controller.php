@@ -8,6 +8,7 @@
 
 namespace Ke\Web;
 
+use Ke\Utils\Status;
 use ReflectionClass, ReflectionObject;
 
 class Controller
@@ -91,11 +92,11 @@ class Controller
 		return $this;
 	}
 
-	protected function defaultReturn($return = null)
+	protected function defaultReturn(...$return)
 	{
-		if (!isset($return))
-			$return = $this->web->getActionView();
-		return $this->view($return);
+		if (!isset($return[0]))
+			$return[0] = $this->web->getActionView();
+		return $this->view($return[0]);
 	}
 
 	protected function onRender(Renderer $renderer)
@@ -133,6 +134,19 @@ class Controller
 	protected function json($data)
 	{
 		return $this->text(json_encode($data), 'json');
+	}
+
+	protected function status($status, $message = '', array $data = null)
+	{
+		if (!($status instanceof Status)) {
+			$status = new Status($status, $message, $data);
+		}
+		else {
+			$status->setMessage($message);
+			if (!empty($data))
+				$status->setData($data);
+		}
+		return $this->json($status->export());
 	}
 
 	protected function redirect($uri, $query = null)
