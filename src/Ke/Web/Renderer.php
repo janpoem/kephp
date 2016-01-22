@@ -12,7 +12,17 @@ namespace Ke\Web;
 abstract class Renderer
 {
 
+	protected $web = null;
+
+	protected $context = null;
+
 	private $isRender = false;
+
+	public function __construct()
+	{
+		$this->web = Web::getWeb();
+		$this->context = $this->web->getContext();
+	}
 
 	public function isRender(): bool
 	{
@@ -24,11 +34,12 @@ abstract class Renderer
 		if ($this->isRender)
 			return $this;
 		$this->isRender = true;
-		$web = Web::getWeb();
-		$web->registerRenderer($this);
-		$this->rendering($web);
+		// make sure clean all buffer
+		$this->web->ob->clean('webStart');
+		$this->web->registerRenderer($this);
+		$this->onRender();
 		return $this;
 	}
 
-	abstract protected function rendering(Web $web);
+	abstract protected function onRender();
 }

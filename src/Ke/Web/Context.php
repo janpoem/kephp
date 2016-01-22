@@ -18,6 +18,7 @@ class Context
 
 	public $layout = 'default';
 
+	public $bufferCatch = '';
 
 	public $web;
 
@@ -37,6 +38,24 @@ class Context
 				unset($_VARS);
 				require $_FILE;
 			});
+		}
+		return $content;
+	}
+
+	public function wrap(string $content, $layout = null, array $vars = null, bool $isStrict = false): string
+	{
+		if (!empty($layout)) {
+			$layoutPath = $this->web->getComponentPath($layout, Component::LAYOUT);
+			if ($layoutPath === false) {
+				$message = "Layout {$layout} not found!";
+				if ($isStrict)
+					throw new Exception($message);
+				$content = "<pre>{$message}</pre>" . $content;
+			}
+			else {
+				$vars['content'] = $content;
+				$content = $this->import($layoutPath, $vars);
+			}
 		}
 		return $content;
 	}
@@ -69,7 +88,7 @@ class Context
 			$message = "Component {$file} not found!";
 			if ($isStrict)
 				throw new Exception($message);
-			$content = "<div>{$message}</div>";
+			$content = "<pre>{$message}</pre>";
 		}
 		else {
 			$content = $this->import($filePath, $vars);
@@ -80,7 +99,7 @@ class Context
 				$message = "Layout {$layout} not found!";
 				if ($isStrict)
 					throw new Exception($message);
-				$content = "<div>{$message}</div>" . $content;
+				$content = "<pre>{$message}</pre>" . $content;
 			}
 			else {
 				$vars['content'] = $content;

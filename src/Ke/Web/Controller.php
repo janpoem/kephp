@@ -134,4 +134,12 @@ class Controller
 	{
 		return $this->text(json_encode($data), 'json');
 	}
+
+	protected function redirect($uri, $query = null)
+	{
+		if (!$this->web->isRender()) {
+			$this->rendering(new Redirection($this->web->linkTo($uri, $query)))->render();
+		}
+		return $this;
+	}
 }

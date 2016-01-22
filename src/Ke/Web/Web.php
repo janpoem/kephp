@@ -94,6 +94,8 @@ class Web
 	/** @var Context */
 	private $context = null;
 
+	private $isDebug = KE_APP_ENV === KE_DEVELOPMENT;
+
 	/**
 	 * @param Http $http
 	 * @return Web|static
@@ -112,7 +114,7 @@ class Web
 		if (!isset(self::$web))
 			self::$web = $this;
 
-		$this->ob = OutputBuffer::getInstance()->start('web');
+		$this->ob = OutputBuffer::getInstance()->start('webStart');
 		$this->app = App::getApp();
 		$this->mime = $this->app->getMime();
 		$this->http = $http ?? Http::current();
@@ -586,4 +588,14 @@ class Web
 		return $this->getBaseUri()->newUri($uri, $query);
 	}
 
+	public function setDebug(bool $debug)
+	{
+		$this->isDebug = $debug;
+		return $this;
+	}
+
+	public function isDebug(): bool
+	{
+		return $this->isDebug;
+	}
 }
