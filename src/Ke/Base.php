@@ -26,8 +26,6 @@ define('KE_SCRIPT_FILE', basename(KE_SCRIPT_PATH));
  */
 const KE_VERSION = '1.0.0';
 
-const KE_ROOT = __DIR__;
-
 /**
  * 命令行模式
  */
@@ -82,6 +80,8 @@ const KE_RETURN_PATH = 1;
 
 const KE_RETURN_HASH = 2;
 
+//const KE_RETURN_REFS = 3;
+
 
 // 必须的函数
 
@@ -108,8 +108,9 @@ if (!function_exists('import')) {
 				}
 			});
 			if (!empty($_files)) {
-				if (!empty($_vars))
+				if (!empty($_vars)) {
 					extract($_vars);
+				}
 				foreach ($_files as $_item) {
 					$_return = require $_item;
 					if ($_returnMode === KE_RETURN_PATH) {
@@ -129,8 +130,9 @@ if (!function_exists('import')) {
 			return $_result;
 		}
 		elseif (is_file($_path) && is_readable($_path)) {
-			if (!empty($_vars))
+			if (!empty($_vars)) {
 				extract($_vars);
+			}
 			$_return = require $_path;
 			if ($_returnMode === KE_RETURN_PATH) {
 				$_return = $_path;
@@ -163,7 +165,6 @@ if (!function_exists('parse_class')) {
 		return [null, $class];
 	}
 }
-
 
 if (!function_exists('error_name')) {
 	/**
@@ -229,7 +230,8 @@ if (!function_exists('depth_query')) {
 			if (strpos($keys, $keysSpr) !== false) {
 				$keys = explode($keysSpr, $keys);
 				$keysType = KE_ARY;
-			} else {
+			}
+			else {
 				// Janpoem 2014.09.21
 				// 调整了一些，原来只是检查isset，现在增加empty的判断
 				// 需要做更长时间的监控，是否有副作用
@@ -237,7 +239,8 @@ if (!function_exists('depth_query')) {
 					return !isset($data[$keys]) || ($data[$keys] != 0 && empty($data[$keys])) ? $default : $data[$keys];
 
 				elseif (is_object($data))
-					return !isset($data->{$keys}) || ($data[$keys] != 0 && empty($data->{$keys})) ? $default : $data->{$keys};
+					return !isset($data->{$keys}) ||
+					       ($data[$keys] != 0 && empty($data->{$keys})) ? $default : $data->{$keys};
 				else
 					return $default;
 			}
@@ -255,7 +258,8 @@ if (!function_exists('depth_query')) {
 						return $default;
 					else
 						$data = $data[$key];
-				} elseif (is_object($data)) {
+				}
+				elseif (is_object($data)) {
 					if (!isset($data->{$key}) || ($data->{$key} != 0 && empty($data->{$key})))
 						return $default;
 					else
@@ -263,7 +267,8 @@ if (!function_exists('depth_query')) {
 				}
 			}
 			return $data;
-		} else
+		}
+		else
 			return $default;
 	}
 }
@@ -291,7 +296,8 @@ if (!function_exists('equals')) {
 			if ($new === true) $new = 1;
 			elseif ($new === false) $new = 0;
 			return strval($old) === strval($new);
-		} else {
+		}
+		else {
 			return $old === $new;
 		}
 	}
@@ -356,7 +362,8 @@ if (!function_exists('substitute')) {
 				$matches[$key] = ''; // give a default empty string
 				if (isset($args[$key]) || isset($args->$key)) {
 					$matches[$key] = $args[$key];
-				} else {
+				}
+				else {
 					$matches[$key] = depth_query($args, $key, '');
 				}
 				return $matches[$key];
@@ -444,7 +451,8 @@ if (!function_exists('parse_path')) {
 					if (($pos = strrpos($matches[2], '.')) > 0) {
 						$return[1] = substr($matches[2], 0, $pos);
 						$return[2] = strtolower(substr($matches[2], $pos + 1));
-					} else {
+					}
+					else {
 						$return[1] = $matches[2];
 					}
 				}
@@ -552,7 +560,8 @@ if (!function_exists('purge_path')) {
 			$path = substr($path, $size);
 			$path = trim($path, KE_PATH_NOISE);
 			$isAbsPath = true; // 符合windows风格的路径名，必然是绝对路径
-		} else {
+		}
+		else {
 			if (isset($path[0]) && $path[0] === $spr)
 				$isAbsPath = true;
 			$path = trim($path, KE_PATH_NOISE);
@@ -570,16 +579,19 @@ if (!function_exists('purge_path')) {
 					elseif ($part === '..') {
 						array_pop($temp);
 						continue;
-					} else {
+					}
+					else {
 						$temp[] = $part;
 					}
 				}
 				$path = implode($spr, $temp);
-			} elseif ($dot === KE_PATH_DOT_REMOVE) {
+			}
+			elseif ($dot === KE_PATH_DOT_REMOVE) {
 				if (preg_match('#(\.{1,}[' . $sprQuote . ']{1,})#', $path))
 					$path = preg_replace('#(\.{1,}[' . $sprQuote . ']{1,})#', $spr, $path);
 				$path = preg_replace('#[' . $sprQuote . ']+#', $spr, $path);
-			} else {
+			}
+			else {
 				$path = preg_replace('#[' . $sprQuote . ']+#', $spr, $path);
 			}
 		}
@@ -587,14 +599,17 @@ if (!function_exists('purge_path')) {
 		if ($isWinPath) {
 			// windows的路径风格，就忽略$left的设置了
 			$path = $head . $path;
-		} else {
+		}
+		else {
 			if ($left === KE_PATH_LEFT_NATIVE) {
 				if ($isAbsPath && $path[0] !== $spr)
 					$path = $spr . $path;
-			} elseif ($left === KE_PATH_LEFT_TRIM) {
+			}
+			elseif ($left === KE_PATH_LEFT_TRIM) {
 				if (!empty($path) && $path[0] === $spr)
 					$path = ltrim($path, $spr);
-			} else {
+			}
+			else {
 				if (empty($path))
 					$path = $spr;
 				elseif ($path[0] !== $spr)
@@ -606,3 +621,11 @@ if (!function_exists('purge_path')) {
 	}
 }
 
+//if (!function_exists('println')) {
+//	function println(...$args)
+//	{
+//		foreach ($args as $arg)
+//			print $arg;
+//		print PHP_EOL;
+//	}
+//}

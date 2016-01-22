@@ -500,6 +500,11 @@ class Model extends ArrayObject
 		return static::$tableName . '.' . $pk;
 	}
 
+	/**
+	 * @param $pk
+	 * @return Model|static
+	 * @throws Exception
+	 */
 	public static function loadCache($pk)
 	{
 		if (!static::$_init)

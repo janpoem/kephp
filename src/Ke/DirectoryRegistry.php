@@ -10,6 +10,8 @@
 
 namespace Ke;
 
+use Agi\Component;
+
 /**
  * 目录注册器
  *
@@ -29,6 +31,8 @@ class DirectoryRegistry
 	 * @var string 默认的拼接文件后缀名称
 	 */
 	protected $extension = 'php';
+
+	protected $scopeAliases = [];
 
 	/**
 	 * @var array 范围重定向，如果指定了重定向的值
@@ -192,12 +196,30 @@ class DirectoryRegistry
 	/**
 	 * 定义范围的重定向
 	 *
-	 * @param array $scopes
+	 * @param array $rewrites
 	 * @return $this
 	 */
-	public function setRewriteScopes(array $scopes)
+	public function setScopeRewrites(array $rewrites)
 	{
-		$this->scopeRewrites = array_merge($this->scopeRewrites, $scopes);
+		$this->scopeRewrites = array_merge($this->scopeRewrites, $rewrites);
+		return $this;
+	}
+
+	public function addScopeRewrites(array $rewrites)
+	{
+		$this->scopeRewrites += $rewrites;
+		return $this;
+	}
+
+	public function setScopeAliases(array $aliases)
+	{
+		$this->scopeAliases = array_merge($this->scopeRewrites, $aliases);
+		return $this;
+	}
+
+	public function addScopeAliases(array $aliases)
+	{
+		$this->scopeAliases += $aliases;
 		return $this;
 	}
 
@@ -214,6 +236,15 @@ class DirectoryRegistry
 	public function getDefaultScopes(): array
 	{
 		return [$this->defaultScope];
+	}
+
+	public function filterScope(string $scope = null): string
+	{
+		if (isset($this->scopeAliases[$scope]))
+			$scope = $this->scopeAliases[$scope];
+		if (empty($scope) || !isset($this->scopes[$scope]))
+			$scope = $this->defaultScope;
+		return $scope;
 	}
 
 	/**
@@ -239,8 +270,7 @@ class DirectoryRegistry
 	{
 		if (!$this->isSort)
 			$this->sort();
-		if (empty($scope) || !isset($this->scopes[$scope]))
-			$scope = $this->getDefaultScope();
+		$scope = $this->filterScope($scope);
 		if (empty($this->dirs) || empty($this->scopes[$scope]))
 			return [];
 		if (!isset($this->scopeCaches[$scope])) {
@@ -261,6 +291,7 @@ class DirectoryRegistry
 	{
 		if (empty($file))
 			return false;
+		$scope = $this->filterScope($scope);
 		if (!empty($this->extension))
 			$file = ext($file, $this->extension);
 		$dir = DIRECTORY_SEPARATOR;
@@ -272,10 +303,9 @@ class DirectoryRegistry
 				continue;
 			if (($path = real_file($base . $dir . $file)) === false)
 				continue;
-			if ($isAll)
-				$result[] = $path;
-			else
-				$result = $path;
+			if (!$isAll)
+				return $path;
+			$result[] = $path;
 		}
 		return empty($result) ? false : $result;
 	}

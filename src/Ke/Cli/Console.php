@@ -31,6 +31,10 @@ class Console
 	/** @var Writer */
 	private $writer = null;
 
+	private $aliasCommands = [
+		'new' => 'add',
+	];
+
 	public static function getConsole($argv = null)
 	{
 		if (!isset(self::$context)) {
@@ -42,7 +46,7 @@ class Console
 	public function getGlobalCommandScopes(): array
 	{
 		$scopes = $this->getAppCommandScopes();
-		$scopes['Ke\\Cli\\Cmd'] =  __DIR__ . DS . 'Cmd';
+		$scopes['Ke\\Cli\\Cmd'] = __DIR__ . DS . 'Cmd';
 		return $scopes;
 	}
 
@@ -51,7 +55,7 @@ class Console
 		$scopes = [];
 		if (!empty(KE_APP_NS))
 			$scopes[KE_APP_NS . '\\Cmd'] = KE_APP_NS_PATH . DS . 'Cmd';
-		$scopes['Cmd'] = KE_APP_SRC . DS . 'Cmd';
+		$scopes['Cmd'] = App::getApp()->src('Cmd');
 		return $scopes;
 	}
 
@@ -143,6 +147,14 @@ class Console
 		return $this;
 	}
 
+	public function getAliasCommand(string $cmd)
+	{
+		$lower = strtolower($cmd);
+		if (isset($this->aliasCommands[$lower]))
+			return $this->aliasCommands[$lower];
+		return $cmd;
+	}
+
 	/**
 	 * @param Argv|null $argv
 	 * @return Command
@@ -154,10 +166,11 @@ class Console
 			$argv = $this->getArgv();
 		if (empty($argv[0]))
 			throw new Exception('No command found in argv.');
+		$cmd = $this->getAliasCommand($argv[0]);
 		$class = null;
 		$path = null;
 		$scopes = $this->getGlobalCommandScopes();
-		$commands = $this->makeCommands($argv[0]);
+		$commands = $this->makeCommands($cmd);
 		foreach ($scopes as $ns => $dir) {
 			foreach ($commands as $command) {
 				$path = real_file($dir . DS . $command . '.php');

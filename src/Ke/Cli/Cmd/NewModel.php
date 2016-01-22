@@ -12,6 +12,7 @@ namespace Ke\Cli\Cmd;
 
 use Ke\Adm\Adapter\DbAdapter;
 use Ke\Adm\Db;
+use Ke\App;
 use Ke\Cli\ReflectionCommand;
 
 /**
@@ -55,12 +56,14 @@ class NewModel extends ReflectionCommand
 	/** @var DbAdapter */
 	protected $adapter = null;
 
-	protected $src = KE_APP_NS_PATH;
+	protected $src = null;
 
 	protected $tip = 'Creating model';
 
-	protected function onConstruct($argv = null)
+	protected function onPrepare($argv = null)
 	{
+		$this->src = App::getApp()->src();
+
 		$this->adapter = Db::getAdapter($this->source);
 		$this->className = str_replace('/', '\\', $this->className);
 		list($this->namespace, $this->className) = parse_class($this->className);
@@ -86,6 +89,7 @@ class NewModel extends ReflectionCommand
 
 	public function getPath()
 	{
+
 		return $this->src . DS . str_replace('\\', DS, $this->getFullClassName()) . '.php';
 	}
 

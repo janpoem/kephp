@@ -40,3 +40,48 @@ if (!function_exists('hyphenate')) {
 		return $str;
 	}
 }
+
+if (!function_exists('add_namespace')) {
+	function add_namespace(string $class, string $namespace, bool $isStrictCase = false): string
+	{
+		$class = trim($class, KE_PATH_NOISE);
+		$namespace = trim($namespace, KE_PATH_NOISE);
+		$method = $isStrictCase ? 'strpos' : 'stripos';
+		if (!empty($namespace) && !empty($class) && call_user_func($method, $class, $namespace . '\\') !== 0) {
+			$class = $namespace . '\\' . $class;
+		}
+		return $class;
+	}
+}
+
+if (!function_exists('purge_namespace')) {
+	function purge_namespace(string $class, string $namespace, bool $isStrictCase = false): string
+	{
+		$class = trim($class, KE_PATH_NOISE);
+		$namespace = trim($namespace, KE_PATH_NOISE);
+		$method = $isStrictCase ? 'strpos' : 'stripos';
+		if (!empty($namespace) && !empty($class) && call_user_func($method, $class, $namespace . '\\') === 0) {
+			$class = substr($class, strlen($namespace . '\\'));
+		}
+		return $class;
+	}
+}
+
+if (!function_exists('path2class')) {
+	function path2class(string $class, bool $isReplaceUnderScore = false): string
+	{
+		$class = str_replace(['.', '-'], '_', trim($class, KE_PATH_NOISE));
+		$class = preg_replace_callback('#(^|[\\\\\/_])([a-z])?#', function ($matches) use ($isReplaceUnderScore) {
+			if ($matches[1] === '/')
+				$matches[1] = '\\';
+			elseif ($isReplaceUnderScore && $matches[1] === '_') {
+				$matches[1] = '';
+			}
+			$return = $matches[1];
+			if (isset($matches[2]))
+				$return .= strtoupper($matches[2]);
+			return $return;
+		}, $class);
+		return $class;
+	}
+}

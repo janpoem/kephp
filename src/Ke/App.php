@@ -35,6 +35,8 @@ class App
 
 	private $root = null;
 
+	private $loader = null;
+
 	/** @var string 项目的名称 */
 	protected $name = null;
 
@@ -79,13 +81,18 @@ class App
 
 	protected $helpers = [];
 
-	protected $aliases = [
-		'web' => 'public',
-	];
+	/**
+	 * 目录的别名，这里的目录生成，是以KE_APP_ROOT为基础展开的
+	 *
+	 * @var array 目录的别名
+	 */
+	protected $aliases = [];
 
+	/** @var array 绝对路径的文件目录存放 */
 	protected $dirs = [];
 
-	protected $loader = null;
+	/** @var MimeType */
+	protected $mime = null;
 
 	final public static function getApp(): App
 	{
@@ -104,11 +111,22 @@ class App
 		if (($this->root = real_dir($root)) === false)
 			throw new PhpException('应用程序根目录(root)不是一个目录，或者路径无效！');
 
-		// 绑定绝对路径
+		/** App的根目录的绝对路径 */
+		define('KE_APP_ROOT', $this->root);
+		/** App的目录名 */
+		define('KE_APP_DIR', basename($this->root));
+		/** 当前PHP运行的模式，只有两种，cli和web */
+		define('KE_APP_MODE', PHP_SAPI === 'cli' ? KE_CLI_MODE : KE_WEB_MODE);
+
+		// 后注册，让后继承的App类，可以以声明属性的方式来添加
+		if (!isset($this->aliases['web']))
+			$this->aliases['web'] = 'public';
+
+		/** @var string $kephp kephp的根目录 */
+		$kephp = $this->dirs['kephp'] = dirname(__DIR__);
+
 		if (!empty($dirs))
 			$this->setDirs($dirs);
-
-		define('KE_APP_MODE', PHP_SAPI === 'cli' ? KE_CLI_MODE : KE_WEB_MODE);
 
 		// CLI模式加载特定的环境配置文件
 		if (KE_APP_MODE === KE_CLI_MODE) {
@@ -122,22 +140,24 @@ class App
 			}
 		}
 
-		// 匹配当前的环境
+		// 绑定servers
 		$this->servers += self::$knownServers;
+
+		// 匹配当前的运行环境
 		$env = $this->detectEnv();
 		// 不是开发模式或者测试模式，就必然是发布模式，确保在未知的模式下，返回发布模式
 		if ($env !== KE_DEVELOPMENT && $env !== KE_TEST)
 			$env = KE_PRODUCTION;
-
+		/** App当前的运行环境 */
 		define('KE_APP_ENV', $env);
-		define('KE_APP_ROOT', $this->root);
-		define('KE_APP_DIR', basename($this->root));
-		define('KE_APP_SRC', $this->path('src'));
+
+		/** @var string $appSrc App的src目录 */
+		$appSrc = $this->path('src');
 
 		// 项目的基础的类、命名空间和命名空间对应的路径
 		$appClass = static::class;
 		$appNs = null;
-		$appNsPath = KE_APP_SRC;
+		$appNsPath = $appSrc;
 		if ($appClass !== __CLASS__) {
 			list($appNs) = parse_class($appClass);
 			if (!empty($appNs)) {
@@ -147,17 +167,22 @@ class App
 				$appNsPath = str_replace('\\', '/', $appNsPath);
 		}
 
+		/** 记录下全局的App的类名称 */
 		define('KE_APP_CLASS', $appClass);
+		/** 当前的App类名的namespace */
 		define('KE_APP_NS', $appNs);
+		/** 当前App类的Namespace指向的绝对路径 */
 		define('KE_APP_NS_PATH', $appNsPath);
+
+		$this->dirs['appNs'] = $appNsPath;
 
 		$this->loader = new Loader([
 			'dirs'    => [
-				'app_src'    => [KE_APP_SRC, 0],
-				'app_helper' => [KE_APP_SRC . '/Helper', 0, Loader::HELPER],
-				'ke_helper'  => [KE_ROOT . '/Helper', 1000, Loader::HELPER],
+				'appSrc'    => [$appSrc, 100],
+				'appHelper' => ["{$appSrc}/Helper", 100, Loader::HELPER],
+				'keHelper'  => ["{$kephp}/Ke/Helper", 1000, Loader::HELPER],
 			],
-			'classes' => import(__DIR__ . '/../classes.php'),
+			'classes' => import("{$kephp}/classes.php"),
 			'prepend' => true,
 		]);
 		$this->loader->start();
@@ -167,10 +192,12 @@ class App
 		// Uri准备
 		Uri::prepare();
 
-		$this->onConstruct();
+		$this->onConstruct($this->loader);
 	}
 
-	protected function onConstruct() { }
+	protected function onConstruct(Loader $loader)
+	{
+	}
 
 	final public function init()
 	{
@@ -330,7 +357,7 @@ class App
 
 	public function hash(string $content, string $salt = KE_APP_HASH): string
 	{
-		return hash('sha512', $content . $salt, true);
+		return hash('sha512', $content . $salt, false);
 	}
 
 	/**
@@ -348,16 +375,24 @@ class App
 	public function setDirs(array $dirs)
 	{
 		foreach ($dirs as $name => $dir) {
-			if ($dir === null) {
+			// 不为空，必须是字符串，不允许'kephp'和'root'两个关键字的写入
+			if (empty($name) || !is_string($name) || $name === 'kephp' || $name === 'root')
+				continue;
+			// dir如果为：null false，表示删除掉这个目录
+			if ($dir === null || $dir === false) {
 				unset($this->dirs[$name]);
 				continue;
 			}
-			if (($real = real_dir($dir)) !== false) {
+			elseif (empty($dir) || !is_string($dir)) {
+				// 目录也必须是字符串类型
+				// todo: 以后要增加对Object和Array类型的识别
+				continue;
+			}
+			// 这里其实有些尴尬，realpath，是基于当前执行的脚本为基础入口的，所以这里可能还有一些问题
+			if (($real = real_dir($dir)) !== false)
 				$this->dirs[$name] = $real;
-			}
-			else {
+			else
 				$this->aliases[$name] = $dir;
-			}
 		}
 		return $this;
 	}
@@ -365,7 +400,7 @@ class App
 	public function path(string $name = null, string $path = null, string $ext = null)
 	{
 		$result = false;
-		if (empty($name))
+		if (empty($name) || $name === 'root')
 			$result = $this->root;
 		elseif (isset($this->dirs[$name]))
 			$result = $this->dirs[$name];
@@ -394,4 +429,10 @@ class App
 		return $this->loader;
 	}
 
+	public function getMime()
+	{
+		if (!isset($this->mime) || !($this->mime instanceof MimeType))
+			$this->mime = new MimeType();
+		return $this->mime;
+	}
 }

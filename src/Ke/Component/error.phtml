@@ -1,0 +1,18 @@
+<?php
+/**
+ * @var \Agi\Web $web
+ * @var \Agi\Context $this
+ */
+
+?>
+<h1><?php print $this->title; ?></h1>
+<p>
+	<?php print $message ?? ''; ?>
+	<?php
+	printf('<code>[%s]</code>', $errorType);
+	if (KE_APP_ENV === KE_DEVELOPMENT)
+		printf('<code>%s#%s</code>', $file, $line);
+	?>
+</p>
+<hr />
+<address><?php print $_SERVER['SERVER_SOFTWARE'] ?? '' ?></address>

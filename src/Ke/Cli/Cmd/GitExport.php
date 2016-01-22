@@ -32,7 +32,7 @@ class GitExport extends ReflectionCommand
 	/** @var Git */
 	protected $git = null;
 
-	protected function onConstruct($argv = null)
+	protected function onPrepare($argv = null)
 	{
 		$this->git = new Git();
 		if (empty($this->version))

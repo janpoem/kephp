@@ -66,7 +66,7 @@ class NewCmd extends ReflectionCommand
 		}
 	}
 
-	protected function onExecute($argv = null)
+	protected function onPrepare($argv = null)
 	{
 		$this->prepareCommands();
 		while (true) {

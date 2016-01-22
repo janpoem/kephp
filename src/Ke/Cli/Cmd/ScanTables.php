@@ -32,15 +32,25 @@ class ScanTables extends ReflectionCommand
 	/** @var DbAdapter */
 	protected $adapter = null;
 
+	/**
+	 * @var string
+	 * @type string
+	 * @field n
+	 */
+	protected $namespace = '';
+
 	protected $prefix = '';
 
 	protected $tables = [];
 
-	protected function onConstruct($argv = null)
+	protected function onPrepare($argv = null)
 	{
 		$this->adapter = Db::getAdapter($this->source);
 		$this->prefix = trim($this->adapter->getConfiguration()['prefix'], ' -_.');
 		$this->tables = $this->adapter->getForge()->getDbTables();
+		if (!empty($this->namespace)) {
+			$this->namespace = str_replace('/', '\\', trim($this->namespace, KE_PATH_NOISE));
+		}
 	}
 
 	protected function onExecute($argv = null)
@@ -75,6 +85,8 @@ class ScanTables extends ReflectionCommand
 		$parse = explode('_', $name);
 		$namespace = ucfirst($parse[0]);
 		$class = str_replace(' ', '_', ucwords(str_replace('_', ' ', $name)));
+		if (!empty($this->namespace))
+			$namespace .= '\\' . $this->namespace;
 		return $namespace . '\\'. $class;
 	}
 }

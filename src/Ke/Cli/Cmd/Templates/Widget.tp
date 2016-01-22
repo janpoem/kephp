@@ -1,0 +1,7 @@
+<?php
+/**
+ * @var \Ke\Web\Context $this
+ * @var \Ke\Web\Web     $web
+ * @var string          $content
+ */
+

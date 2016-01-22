@@ -87,7 +87,8 @@ abstract class Command
 			if (isset($options['field'])) {
 				if (is_numeric($options['field']) && $options['field'] >= 0) {
 					$column['field'] = (int)$options['field'];
-				} elseif (!empty($options['field']) && is_string($options['field'])) {
+				}
+				elseif (!empty($options['field']) && is_string($options['field'])) {
 					$column['field'] = trim($options['field'], '-_');
 					if (empty($options['field']) || !is_string($column['field']))
 						$column['field'] = $field;
@@ -100,7 +101,8 @@ abstract class Command
 				$column['shortcut'] = false;
 			}
 //				$column['shortcut'] = $options['shortcut'];
-			$defaultValues[$name] = $column['default'] = static::verifyValue($column['type'], $column['default'], $column);
+			$defaultValues[$name] = $column['default'] = static::verifyValue($column['type'], $column['default'],
+				$column);
 			$columns[$name] = $column;
 //			$maps[$column['name']] = $name;
 			$maps[$column['field']] = $name;
@@ -117,7 +119,8 @@ abstract class Command
 	{
 		if ($type === KE_STR) {
 			return (string)$value;
-		} elseif ($type === KE_BOOL || $type === 'single') {
+		}
+		elseif ($type === KE_BOOL || $type === 'single') {
 			if ($value === 'false' || $value === '0' || $value === 0 || $value === 0.00)
 				return false;
 			if (strtolower($value) === 'off')
@@ -125,34 +128,52 @@ abstract class Command
 			if ($type === 'single' && $value === '')
 				return !$column['default'];
 			return (bool)$value;
-		} elseif ($type === KE_INT) {
+		}
+		elseif ($type === KE_INT) {
 			return (int)$value;
-		} elseif ($type === KE_FLOAT) {
+		}
+		elseif ($type === KE_FLOAT) {
 			return (float)$value;
-		} elseif ($type === KE_ARY) {
+		}
+		elseif ($type === 'array') {
+			if (is_string($value)) {
+				if (strpos($value, ',') > 0) {
+					$result = [];
+					foreach (explode(',', $value) as $item) {
+						if (!empty(($item = trim($item))))
+							$result[] = $item;
+					}
+					return $result;
+				}
+			}
 			return (array)$value;
-		} elseif ($type === 'dir') {
+		}
+		elseif ($type === 'dir') {
 			if (empty($value))
 				return false;
 			$value = realpath($value);
 			if (is_dir($value))
 				return $value;
 			return false;
-		} elseif ($type === 'file') {
+		}
+		elseif ($type === 'file') {
 			if (empty($value))
 				return false;
 			$value = realpath($value);
 			if (is_file($value) && is_readable($value))
 				return $value;
 			return false;
-		} elseif ($type === 'realpath') {
+		}
+		elseif ($type === 'realpath') {
 			if (empty($value))
 				return KE_SCRIPT_DIR;
 			return realpath($value);
-		} elseif ($type === 'json') {
+		}
+		elseif ($type === 'json') {
 			$decode = json_decode($value, true);
 			return $decode;
-		} elseif (($type === 'concat' || $type === 'dirs' || $type === 'files') && isset($column['args'][0])) {
+		}
+		elseif (($type === 'concat' || $type === 'dirs' || $type === 'files') && isset($column['args'][0])) {
 			if (empty($value))
 				return [];
 			$value = explode($column['args'][0], $value);
@@ -161,13 +182,15 @@ abstract class Command
 				foreach ($value as & $item) {
 					$item = static::verifyValue($item, 'dir', $column);
 				}
-			} elseif ($type === 'files') {
+			}
+			elseif ($type === 'files') {
 				foreach ($value as & $item) {
 					$item = static::verifyValue($item, 'file', $column);
 				}
 			}
 			return $value;
-		} else {
+		}
+		else {
 			if ($value === 'false')
 				return false;
 			if ($value === 'true')
@@ -228,7 +251,8 @@ abstract class Command
 				if ($column['require']) {
 					$sortIndex[$name] = $column['field'];
 					$sortColumns[$name] = $column;
-				} else
+				}
+				else
 					$unsortColumns[$name] = $column;
 			}
 			array_multisort($sortIndex, SORT_ASC, SORT_STRING, $sortColumns);
@@ -239,7 +263,8 @@ abstract class Command
 					continue;
 				if (is_numeric($column['field'])) {
 					$temp = "<{$name}>";
-				} else {
+				}
+				else {
 					$field = "--{$column['field']}";
 					if (!empty($column['shortcut']))
 						$field .= '|-' . $column['shortcut'];
@@ -254,7 +279,8 @@ abstract class Command
 				if ($total + $tempLength >= 120) {
 					$usage .= PHP_EOL . $padding;
 					$total = $length;
-				} else {
+				}
+				else {
 					$total += $tempLength;
 				}
 				$usage .= ' ' . $temp;
@@ -308,7 +334,8 @@ abstract class Command
 			foreach ($key as $name => $value) {
 				$this->assign($name, $value);
 			}
-		} else {
+		}
+		else {
 			if (isset(static::$columns[$key]))
 				$column = static::$columns[$key];
 			elseif (isset(static::$columnMaps[$key]))
@@ -346,10 +373,16 @@ abstract class Command
 			$argv = $this->_argv;
 		if ($this->help) {
 			static::showHelp();
-		} else {
+		}
+		else {
 			$this->verifyRequire();
+			$this->onPrepare($argv);
 			$this->onExecute($argv);
 		}
+	}
+
+	protected function onPrepare($argv = null)
+	{
 	}
 
 	abstract protected function onExecute($argv = null);

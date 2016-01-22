@@ -176,6 +176,7 @@ class OutputBuffer
 			try {
 				call_user_func($fn);
 			} catch (Throwable $throw) {
+				print $throw->getMessage();
 			}
 			$this->clean($node);
 			return $this->getOutput($node, true);
@@ -183,14 +184,15 @@ class OutputBuffer
 		return false;
 	}
 
-	public function getImportBuffer($file)
+	public function getImportBuffer($file, array & $context = null)
 	{
 		$node = $this->mkAutoNode();
-		if (!isset($this->outputs[$node]) && is_file($file) && is_readable($file)) {
+		if (!isset($this->outputs[$node])) {
 			$this->start($node);
 			try {
-				require $file;
+				import($file, $context);
 			} catch (Throwable $throw) {
+				print $throw->getMessage();
 			}
 			$this->clean($node);
 			return $this->getOutput($node, true);
