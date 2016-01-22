@@ -17,10 +17,11 @@ class Redirection extends Renderer
 
 	public function __construct(Uri $uri)
 	{
+		parent::__construct();
 		$this->uri = $uri;
 	}
 
-	protected function rendering(Web $web)
+	protected function onRender()
 	{
 		header_remove();
 		header("Location: {$this->uri->toUri()}", true, 301);

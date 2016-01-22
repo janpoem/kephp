@@ -16,14 +16,13 @@ class Writer extends Renderer
 
 	public function __construct($content)
 	{
+		parent::__construct();
 		$this->content = $content;
 	}
 
-	protected function rendering(Web $web)
+	protected function onRender()
 	{
-		if (!empty($this->format))
-			$web->setFormat($this->format);
-		$web->sendHeaders();
+		$this->web->sendHeaders();
 		exit($this->content);
 	}
 }
