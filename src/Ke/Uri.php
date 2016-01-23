@@ -588,7 +588,7 @@ class Uri
 		$uri = '';
 		if ($isWithAuthority) {
 			$uri = $this->getScheme();
-			if (!empty($this->_uri))
+			if (!empty($uri))
 				$uri .= ':';
 			$authority = $this->getAuthority();
 			if (!empty($authority)) {

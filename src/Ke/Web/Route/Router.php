@@ -423,7 +423,7 @@ class Router
 		// @todo 其实这个数据已经不是必须的了，不需要把pattern记下来，只要将keys记录即可。
 		$rule['_tokens_'] = $usedTokens;
 		// 不再拼接tail，未匹配的path尾部，自动转化为tail，减少正则容量
-		$rule['_pattern_'] = "#^({$pattern})(|\/(?<tail>.*))$#i";
+		$rule['_pattern_'] = "#^({$pattern}(|\/(?<tail>.*)))$#i";
 		return $rule;
 	}
 

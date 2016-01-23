@@ -16,18 +16,35 @@ class Context
 
 	public $title = '';
 
-	public $layout = 'default';
-
-	public $bufferCatch = '';
+	public $layout = '';
 
 	public $web;
 
-	public function __construct(Web $web)
+	public function __construct()
 	{
-		$this->web = $web;
+		$this->web = Web::getWeb();
 	}
 
-	public function import($_FILE, array $_VARS = null)
+	public function assign($key, $value = null)
+	{
+		if (is_array($key) || is_object($key)) {
+			foreach ($key as $k => $v) {
+				if (!empty($k) && is_string($k))
+					$this->{$k} = $v;
+			}
+		}
+		elseif (!empty($key) && is_string($key)) {
+			$this->{$key} = $value;
+		}
+		return $this;
+	}
+
+	public function selectLayout($layout = null)
+	{
+		return empty($this->layout) ? $layout : $this->layout;
+	}
+
+	public function import($_FILE, array $_VARS = null, bool $isStrict = false)
 	{
 		$web = $this->web;
 		$content = '';
@@ -42,8 +59,10 @@ class Context
 		return $content;
 	}
 
-	public function wrap(string $content, $layout = null, array $vars = null, bool $isStrict = false): string
+	public function layout($content, $layout = null, array $vars = null, bool $isStrict = false): string
 	{
+		if ($content instanceof Widget)
+			$content = $content->getRenderContent();
 		if (!empty($layout)) {
 			$layoutPath = $this->web->getComponentPath($layout, Component::LAYOUT);
 			if ($layoutPath === false) {
@@ -76,7 +95,7 @@ class Context
 	 * @return bool|string
 	 * @throws Exception
 	 */
-	public function getRenderContent($file, $layout = null, array $vars = null, bool $isStrict = false)
+	public function loadComponent($file, $layout = null, array $vars = null, bool $isStrict = false)
 	{
 		if (!isset($layout) || is_array($layout) || is_object($layout)) {
 			$vars = (array)$layout;
@@ -93,26 +112,15 @@ class Context
 		else {
 			$content = $this->import($filePath, $vars);
 		}
-		if (!empty($layout)) {
-			$layoutPath = $this->web->getComponentPath($layout, Component::LAYOUT);
-			if ($layoutPath === false) {
-				$message = "Layout {$layout} not found!";
-				if ($isStrict)
-					throw new Exception($message);
-				$content = "<pre>{$message}</pre>" . $content;
-			}
-			else {
-				$vars['content'] = $content;
-				$content = $this->import($layoutPath, $vars);
-			}
-		}
+		if (!empty($layout))
+			$content = $this->layout($content, $layout, $vars, $isStrict);
 		return $content;
 	}
 
-	public function render($file, $layout = null, array $vars = null, bool $isStrict = false)
+	public function component($file, $layout = null, array $vars = null, bool $isStrict = false)
 	{
-		print $this->getRenderContent($file, $layout, $vars, $isStrict);
-		print PHP_EOL;
+		print $this->loadComponent($file, $layout, $vars, $isStrict);
 		return $this;
 	}
+
 }

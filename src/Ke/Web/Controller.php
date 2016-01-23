@@ -126,7 +126,7 @@ class Controller
 		if (!$this->web->isRender()) {
 			if (!empty($format))
 				$this->web->setFormat($format);
-			$this->rendering(new Writer($text))->render();
+			$this->rendering(new TextWriter($text))->render();
 		}
 		return $this;
 	}

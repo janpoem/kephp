@@ -29,7 +29,7 @@ abstract class Renderer
 		return $this->isRender;
 	}
 
-	public function render(array $vars = null)
+	public function render()
 	{
 		if ($this->isRender)
 			return $this;
@@ -37,9 +37,13 @@ abstract class Renderer
 		// make sure clean all buffer
 		$this->web->ob->clean('webStart');
 		$this->web->registerRenderer($this);
-		$this->onRender();
+		$this->rendering();
 		return $this;
 	}
 
-	abstract protected function onRender();
+	abstract protected function rendering();
+
+	abstract public function getContent();
+
+	abstract public function setContent($content);
 }

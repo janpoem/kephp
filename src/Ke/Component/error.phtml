@@ -1,18 +1,58 @@
 <?php
 /**
- * @var \Agi\Web $web
- * @var \Agi\Context $this
+ * @var \Ke\Web\Web     $web
+ * @var \Ke\Web\Context $this
  */
 
+$uri = $web->http->toUri(true);
+$ref = (new \Ke\Uri($web->http->referer))->toUri(true);
+$title = $this->title ?? 'An error occurred';
+$message = $message ?? 'Unknown error message!';
+$isDebug = $web->isDebug();
 ?>
-<h1><?php print $this->title; ?></h1>
-<p>
-	<?php print $message ?? ''; ?>
-	<?php
-	printf('<code>[%s]</code>', $errorType);
-	if (KE_APP_ENV === KE_DEVELOPMENT)
-		printf('<code>%s#%s</code>', $file, $line);
-	?>
-</p>
-<hr />
-<address><?php print $_SERVER['SERVER_SOFTWARE'] ?? '' ?></address>
+<div class="error-show">
+	<h1><?php print $title; ?></h1>
+	<div>
+		<p>
+			<?php print $error . ' :'; ?>
+			<?php print $message; ?>
+		</p>
+		<?php if ($isDebug) { ?>
+			<?php
+			if (isset($thrown)) {
+				/** @var Throwable $thrown */
+				$trace = $thrown->getTrace();
+				if (isset($trace[0])) {
+					if (!isset($trace[0]['file']))
+						$trace[0]['file'] = $file;
+					if (!isset($trace[0]['line']))
+						$trace[0]['line'] = $line;
+				}
+				$this->render('trace', ['trace' => $trace]);
+				/////
+				$prev = $thrown->getPrevious();
+				while (!empty($prev)) {
+					$class = get_class($prev);
+					print "<p>{$class} : {$prev->getMessage()}</p>";
+					$this->render('trace', ['trace' => $prev->getTrace()]);
+					$prev = $prev->getPrevious();
+				}
+			}
+			elseif (!empty($debug)) {
+				$this->render('trace', ['trace' => $debug]);
+			}
+			?>
+		<?php } ?>
+		<ul>
+			<li>
+				<address>URI: <a href="<?php print $uri; ?>"><?php print $uri; ?></a></address>
+			</li>
+			<?php if (!empty($ref)) { ?>
+				<li>
+					<address>Referer: <a href="<?php print $ref; ?>"><?php print $ref; ?></a></address>
+				</li>
+			<?php } ?>
+		</ul>
+	</div>
+
+</div>

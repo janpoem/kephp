@@ -125,6 +125,7 @@ class Web
 		]);
 
 		$this->prepare();
+		$this->onConstruct();
 
 //		exit();
 //
@@ -172,7 +173,10 @@ class Web
 
 	protected function onExiting()
 	{
+	}
 
+	protected function onConstruct()
+	{
 	}
 
 	/**
@@ -181,37 +185,43 @@ class Web
 	public function errorHandle($err, $msg, $file, $line, $context)
 	{
 		$this->error('Runtime error', [
-			'errorType' => error_name($err),
-			'message'   => $msg,
-			'file'      => $file,
-			'line'      => $line,
-			'time'      => date('Y-m-d H:i:s'),
-			'throw'     => null,
+			'error'   => error_name($err),
+			'message' => $msg,
+			'file'    => $file,
+			'line'    => $line,
+			'time'    => date('Y-m-d H:i:s'),
+			'throw'   => null,
+			'debug'   => $this->isDebug() ? debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 0) : [],
 		]);
+		exit();
 	}
 
 	/**
 	 * @param Throwable $throw
 	 */
-	public function exceptionHandle(Throwable $throw)
+	public function exceptionHandle(Throwable $thrown)
 	{
-		$this->error('Throwable caught', [
-			'errorType' => get_class($throw),
-			'message'   => $throw->getMessage(),
-			'file'      => $throw->getFile(),
-			'line'      => $throw->getLine(),
-			'time'      => date('Y-m-d H:i:s'),
-			'throw'     => $throw,
+		$this->error('Caught an Error or Exception', [
+			'error'   => get_class($thrown),
+			'message' => $thrown->getMessage(),
+			'file'    => $thrown->getFile(),
+			'line'    => $thrown->getLine(),
+			'time'    => date('Y-m-d H:i:s'),
+			'thrown'  => $thrown,
 		]);
 	}
 
-	public function error($title = null, array $vars = null)
+	public function error(string $title = '', array $error = null)
 	{
 		$context = $this->getContext();
 		$context->title = $title;
-		$layout = empty($context->layout) ? 'default' : $context->layout;
-		$context->render('error', $layout, $vars);
+		$this->onError($error);
+		$context->component('error', $context->selectLayout('default'), $error);
 		return $this;
+	}
+
+	protected function onError(array $error = null)
+	{
 	}
 
 	public function loadHelper(...$helpers)
@@ -335,6 +345,10 @@ class Web
 		if ($this->dispatch !== false)
 			return $this;
 		$this->dispatch = $this->getRouter()->routing($this->http);
+
+		if (!$this->dispatch->matched)
+			throw new \Error("Router not matched!");
+
 		$params = $this->filterRouterResult($this->dispatch);
 		if (!empty($params))
 			$this->params = array_merge($this->params, $params);
@@ -349,12 +363,12 @@ class Web
 
 		// 做法1，严格检查controller的class是否存在
 		if (!class_exists($class, true))
-			throw new \Exception("Controller {$class} not found!");
+			throw new \Error("Controller {$class} not found!");
 		if (!is_subclass_of($class, Controller::class))
-			throw new \Exception("{$class} is not a controller class!");
+			throw new \Error("{$class} is not a controller class!");
 		$reflection = new ReflectionClass($class);
 		if (!$reflection->isInstantiable())
-			throw new \Exception("Class {$class} is not instantiable!");
+			throw new \Error("Class {$class} is not instantiable!");
 		/** @var Controller $controller */
 		$this->controller = new $class();
 		$this->controller->setReflection($reflection);
@@ -397,8 +411,13 @@ class Web
 		// format
 		if (!empty($result->format))
 			$params['format'] = $result->format;
-		if (!empty(($tail = trim($result->tail, KE_PATH_NOISE))))
-			$params['tail'] = $tail;
+		// tail
+		if (!empty(($tail = trim($result->tail, KE_PATH_NOISE)))) {
+			$params['tail'] = explode('/', $tail);
+		}
+		else {
+			$params['tail'] = [];
+		}
 		// data
 		if (!empty($result->data)) {
 			$params['data'] = array_merge($this->params['data'], $result->data);
@@ -414,6 +433,16 @@ class Web
 	public function param(string $field, $default = null)
 	{
 		return $this->params[$field] ?? $default;
+	}
+
+	public function getTail()
+	{
+		return $this->params['tail'];
+	}
+
+	public function tail(int $index, $default = null)
+	{
+		return $this->params['tail'][$index] ?? $default;
 	}
 
 	public function makeControllerClass(string $controller)
@@ -441,6 +470,10 @@ class Web
 	# render
 	###################################################
 
+	public function onRender(Renderer $renderer)
+	{
+	}
+
 	public function isRender()
 	{
 		if ($this->renderer === false)
@@ -467,15 +500,7 @@ class Web
 
 	public function assign($key, $value = null)
 	{
-		$context = $this->getContext();
-		if (is_array($key) || is_object($key)) {
-			foreach ($key as $k => $v) {
-				$context->{$k} = $v;
-			}
-		}
-		else {
-			$context->{$key} = $value;
-		}
+		$this->getContext()->assign($key, $value);
 		return $this;
 	}
 
@@ -488,12 +513,8 @@ class Web
 
 	public function setContext(Context $context)
 	{
-		if (isset($this->context)) {
-			// 转移数据
-			foreach ($this->context as $key => $value) {
-				$context->{$key} = $value;
-			}
-		}
+		if (isset($this->context))
+			$context->assign($this->context);
 		$this->context = $context;
 		return $this;
 	}
@@ -542,10 +563,12 @@ class Web
 		return $this;
 	}
 
-	public function sendHeaders()
+	public function sendHeaders(array $headers = null)
 	{
 		if (headers_sent())
 			return $this;
+		if (!empty($headers))
+			$this->addHeaders($headers);
 		if ($this->statusCode > 200 && $this->statusCode < 600)
 			header($this->statusCode, true);
 		$contentType = $this->mime->makeContentType($this->format);

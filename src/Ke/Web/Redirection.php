@@ -21,9 +21,21 @@ class Redirection extends Renderer
 		$this->uri = $uri;
 	}
 
-	protected function onRender()
+	public function getContent()
+	{
+		return $this->uri->toUri();
+	}
+
+	public function setContent($uri, $query = null)
+	{
+		$this->uri = $this->web->linkTo($uri, $query);
+		return $this;
+	}
+
+	protected function rendering()
 	{
 		header_remove();
+		$this->web->onRender($this);
 		header("Location: {$this->uri->toUri()}", true, 301);
 		exit();
 	}

@@ -1,0 +1,42 @@
+<?php
+/**
+ * @var \Ke\Web\Web     $web
+ * @var \Ke\Web\Context $this
+ */
+
+$trace = $trace ?? [];
+$i = count($trace);
+
+if (empty($trace))
+	return '';
+
+?>
+<table>
+	<tr>
+		<th>File</th>
+		<th>Line</th>
+		<th>Function</th>
+	</tr>
+	<?php
+	foreach ($trace as $index => $data) {
+		?>
+		<tr>
+			<td>
+				<address><?php print $data['file'] ?? '' ?></address>
+			</td>
+			<td><?php print $data['line'] ?? '' ?></td>
+			<td>
+				<code>
+					<?php
+					if (!empty($data['class']) && !empty($data['type']) && !empty($data['function'])) {
+						printf('%s%s%s()', $data['class'], $data['type'], $data['function']);
+					}
+					?>
+				</code>
+			</td>
+		</tr>
+		<?php
+	}
+	?>
+</table>
+<?php
