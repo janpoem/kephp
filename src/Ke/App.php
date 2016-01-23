@@ -97,19 +97,19 @@ class App
 	final public static function getApp(): App
 	{
 		if (!isset(self::$app))
-			throw new PhpException('未创建App实例！');
+			throw new PhpException('App instance is not created!');
 		return self::$app;
 	}
 
 	final public function __construct(string $root = null, array $dirs = null)
 	{
 		if (isset(self::$app))
-			throw new PhpException('重复创建App实例！');
+			throw new PhpException('Create App repeated instances!');
 		self::$app = $this;
 
 		// 检查根目录
 		if (($this->root = real_dir($root)) === false)
-			throw new PhpException('应用程序根目录(root)不是一个目录，或者路径无效！');
+			throw new PhpException('App directory (root) does not exist or is not a directory!');
 
 		/** App的根目录的绝对路径 */
 		define('KE_APP_ROOT', $this->root);

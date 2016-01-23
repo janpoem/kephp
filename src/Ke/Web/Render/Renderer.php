@@ -2,19 +2,23 @@
 /**
  * Created by PhpStorm.
  * User: Janpoem
- * Date: 2016/1/22 0022
- * Time: 11:49
+ * Date: 2016/1/23 0023
+ * Time: 23:52
  */
 
-namespace Ke\Web;
+namespace Ke\Web\Render;
 
+use Ke\Web\Web;
+use Ke\Web\Context;
 
 abstract class Renderer
 {
 
-	protected $web = null;
+	/** @var Web */
+	protected $web;
 
-	protected $context = null;
+	/** @var Context */
+	protected $context;
 
 	private $isRender = false;
 
@@ -36,6 +40,7 @@ abstract class Renderer
 		$this->isRender = true;
 		// make sure clean all buffer
 		$this->web->ob->clean('webStart');
+		$this->web->ob->start('webRender');
 		$this->web->registerRenderer($this);
 		$this->rendering();
 		return $this;
@@ -46,4 +51,5 @@ abstract class Renderer
 	abstract public function getContent();
 
 	abstract public function setContent($content);
+
 }

@@ -27,7 +27,7 @@ class Component extends DirectoryRegistry
 	protected $extension = 'phtml';
 
 	protected $scopeRewrites = [
-		'Layout' => 'Layout',
+		'Layout' => 'layout',
 	];
 
 	protected $scopeAliases = [

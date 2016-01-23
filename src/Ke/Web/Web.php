@@ -20,6 +20,8 @@ use Ke\MimeType;
 use Ke\OutputBuffer;
 use Ke\Web\Route\Router;
 use Ke\Web\Route\Result;
+use Ke\Web\Render\Renderer;
+use Ke\Web\Render\Error;
 
 class Web
 {
@@ -89,7 +91,10 @@ class Web
 	private $dispatch = false;
 
 	/** @var Renderer */
-	private $renderer = false;
+	private $renderer = null;
+
+	/** @var Error */
+	private $errorRenderer = null;
 
 	/** @var Context */
 	private $context = null;
@@ -98,7 +103,7 @@ class Web
 
 	/**
 	 * @param Http $http
-	 * @return Web|static
+	 * @return Web
 	 */
 	final public static function getWeb(Http $http = null)
 	{
@@ -184,43 +189,53 @@ class Web
 	 */
 	public function errorHandle($err, $msg, $file, $line, $context)
 	{
-		$this->error('Runtime error', [
-			'error'   => error_name($err),
+		$this->renderError([
+			'code'    => $err,
 			'message' => $msg,
 			'file'    => $file,
 			'line'    => $line,
 			'time'    => date('Y-m-d H:i:s'),
-			'throw'   => null,
-			'debug'   => $this->isDebug() ? debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 0) : [],
+			'trace'   => $this->isDebug() ? debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 0) : [],
 		]);
 		exit();
 	}
 
 	/**
-	 * @param Throwable $throw
+	 * @param Throwable $thrown
 	 */
 	public function exceptionHandle(Throwable $thrown)
 	{
-		$this->error('Caught an Error or Exception', [
-			'error'   => get_class($thrown),
-			'message' => $thrown->getMessage(),
-			'file'    => $thrown->getFile(),
-			'line'    => $thrown->getLine(),
-			'time'    => date('Y-m-d H:i:s'),
-			'thrown'  => $thrown,
-		]);
+		$this->renderError($thrown);
 	}
 
-	public function error(string $title = '', array $error = null)
+	/**
+	 * @return Error
+	 */
+	public function getErrorRenderer()
 	{
-		$context = $this->getContext();
-		$context->title = $title;
-		$this->onError($error);
-		$context->component('error', $context->selectLayout('default'), $error);
+		if (!isset($this->errorRenderer))
+			$this->errorRenderer = new Error();
+		return $this->errorRenderer;
+	}
+
+	public function setErrorRenderer(Error $renderer)
+	{
+		$this->renderer = $renderer;
 		return $this;
 	}
 
-	protected function onError(array $error = null)
+	public function renderError($error)
+	{
+		$this->getContext()->title = 'An error occurred';
+		/** @var Error $renderer */
+		$renderer = $this->getErrorRenderer()->setError($error);
+		// onError允许接管错误的处理
+		if ($this->onError($error, $renderer) !== false)
+			$renderer->render();
+		return $this;
+	}
+
+	protected function onError($error, Renderer $renderer)
 	{
 	}
 
@@ -344,12 +359,13 @@ class Web
 	{
 		if ($this->dispatch !== false)
 			return $this;
-		$this->dispatch = $this->getRouter()->routing($this->http);
+		/** @var Result $result */
+		$result = $this->getRouter()->routing($this->http);
 
-		if (!$this->dispatch->matched)
+		if (!$result->matched)
 			throw new \Error("Router not matched!");
 
-		$params = $this->filterRouterResult($this->dispatch);
+		$params = $this->filterRouterResult($result);
 		if (!empty($params))
 			$this->params = array_merge($this->params, $params);
 		$class = $this->getControllerClass();
@@ -369,10 +385,14 @@ class Web
 		$reflection = new ReflectionClass($class);
 		if (!$reflection->isInstantiable())
 			throw new \Error("Class {$class} is not instantiable!");
+
+		// 到这里才表示分发正确了
+		$this->dispatch = true;
 		/** @var Controller $controller */
 		$this->controller = new $class();
 		$this->controller->setReflection($reflection);
 		$this->controller->action($params['action']);
+
 
 		// 做法2，即使class不存在，也可以继续往下执行
 //		$controller = null;
@@ -459,11 +479,16 @@ class Web
 		return $this->makeControllerClass($this->params['controller']);
 	}
 
+	public function getControllerObject()
+	{
+		return $this->controller;
+	}
+
 	public function getActionView()
 	{
 		if (empty($this->params['controller']))
 			return "{$this->params['action']}";
-		return "view/{$this->params['controller']}/{$this->params['action']}";
+		return "{$this->params['controller']}/{$this->params['action']}";
 	}
 
 	###################################################
@@ -476,15 +501,16 @@ class Web
 
 	public function isRender()
 	{
-		if ($this->renderer === false)
+		if (empty($this->renderer))
 			return false;
 		return $this->renderer->isRender();
 	}
 
 	public function registerRenderer(Renderer $renderer, $assign = null)
 	{
-		if ($this->renderer === false) {
+		if (empty($this->renderer)) {
 			$this->renderer = $renderer;
+			$this->onRender($renderer);
 			if (isset($assign))
 				$this->assign($assign);
 		}
@@ -493,8 +519,6 @@ class Web
 
 	public function getRenderer()
 	{
-		if ($this->renderer === false)
-			return null;
 		return $this->renderer;
 	}
 
@@ -533,8 +557,11 @@ class Web
 			return false;
 		$scope = $scope ?? Component::WIDGET;
 		if (($index = strpos($path, '/')) > 0) {
-			$scope = substr($path, 0, $index);
-			$path = substr($path, $index + 1);
+			$pre = substr($path, 0, $index);
+			if ($this->component->hasScope($pre)) {
+				$path = substr($path, $index + 1);
+				$scope = $pre;
+			}
 		}
 		return $this->component->seek($scope, $path);
 	}

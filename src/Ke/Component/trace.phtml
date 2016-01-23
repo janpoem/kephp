@@ -9,14 +9,17 @@ $i = count($trace);
 
 if (empty($trace))
 	return '';
-
 ?>
-<table>
+<address><?php print $file . '#' . $line; ?></address>
+<table border="1" cellpadding="2" style="border-collapse: collapse;">
+	<thead>
 	<tr>
 		<th>File</th>
 		<th>Line</th>
 		<th>Function</th>
 	</tr>
+	</thead>
+	<tbody>
 	<?php
 	foreach ($trace as $index => $data) {
 		?>
@@ -38,5 +41,5 @@ if (empty($trace))
 		<?php
 	}
 	?>
+	</tbody>
 </table>
-<?php

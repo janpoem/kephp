@@ -64,16 +64,24 @@ class Context
 		if ($content instanceof Widget)
 			$content = $content->getRenderContent();
 		if (!empty($layout)) {
-			$layoutPath = $this->web->getComponentPath($layout, Component::LAYOUT);
-			if ($layoutPath === false) {
-				$message = "Layout {$layout} not found!";
-				if ($isStrict)
-					throw new Exception($message);
-				$content = "<pre>{$message}</pre>" . $content;
+			try {
+				$layoutPath = $this->web->getComponentPath($layout, Component::LAYOUT);
+				if ($layoutPath === false) {
+					$message = "Layout {$layout} not found!";
+					if ($isStrict) {
+						throw new \Error($message);
+					}
+					else {
+						$content = $content . "<pre>{$message}</pre>";
+					}
+				}
+				else {
+					$vars['content'] = $content;
+					$content = $this->import($layoutPath, $vars);
+				}
 			}
-			else {
-				$vars['content'] = $content;
-				$content = $this->import($layoutPath, $vars);
+			catch (\Throwable $thrown) {
+				throw $thrown;
 			}
 		}
 		return $content;
@@ -113,7 +121,7 @@ class Context
 			$content = $this->import($filePath, $vars);
 		}
 		if (!empty($layout))
-			$content = $this->layout($content, $layout, $vars, $isStrict);
+			$content = $this->layout($content, $layout, $vars);
 		return $content;
 	}
 

@@ -247,6 +247,15 @@ class DirectoryRegistry
 		return $scope;
 	}
 
+	public function hasScope(string $scope): bool
+	{
+		if (isset($this->scopeAliases[$scope]))
+			$scope = $this->scopeAliases[$scope];
+		if (empty($scope))
+			$scope = $this->defaultScope;
+		return isset($this->scopes[$scope]);
+	}
+
 	/**
 	 * 将当前目录按照优先级排序
 	 *

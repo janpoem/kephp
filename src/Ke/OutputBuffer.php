@@ -173,11 +173,7 @@ class OutputBuffer
 			$node = $this->mkAutoNode();
 		if (!isset($this->outputs[$node]) && is_callable($fn)) {
 			$this->start($node);
-			try {
-				call_user_func($fn);
-			} catch (Throwable $throw) {
-				print $throw->getMessage();
-			}
+			call_user_func($fn);
 			$this->clean($node);
 			return $this->getOutput($node, true);
 		}
@@ -189,11 +185,7 @@ class OutputBuffer
 		$node = $this->mkAutoNode();
 		if (!isset($this->outputs[$node])) {
 			$this->start($node);
-			try {
-				import($file, $context);
-			} catch (Throwable $throw) {
-				print $throw->getMessage();
-			}
+			import($file, $context);
 			$this->clean($node);
 			return $this->getOutput($node, true);
 		}

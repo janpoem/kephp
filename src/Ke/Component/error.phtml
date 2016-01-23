@@ -4,55 +4,62 @@
  * @var \Ke\Web\Context $this
  */
 
+$isDebug = $web->isDebug();
 $uri = $web->http->toUri(true);
 $ref = (new \Ke\Uri($web->http->referer))->toUri(true);
 $title = $this->title ?? 'An error occurred';
-$message = $message ?? 'Unknown error message!';
-$isDebug = $web->isDebug();
+/** @var Throwable|array|null $error */
+$error = $error ?? null;
+$messages = [];
+
+if (!empty($tip))
+	$messages[] = "<p>{$tip}</p>";
+
+if ($error instanceof Throwable) {
+	while ($error) {
+		$messages[] = '<p>' . get_class($error) . ' : ' . $error->getMessage() . '</p>';
+		if ($isDebug) {
+			$trace = $error->getTrace();
+			if (!empty($trace)) {
+				$messages[] = $this->loadComponent('trace', [
+					'trace' => $trace,
+					'file'  => $error->getFile(),
+					'line'  => $error->getLine(),
+				]);
+			}
+		}
+		$error = $error->getPrevious();
+	}
+}
+elseif (!empty($error) || is_array($error)) {
+	$messages[] = '<p>' . error_name($error['code']) . ' : ' . $error['message'] . '</p>';
+	if ($isDebug && !empty($error['trace'])) {
+		$messages[] = $this->loadComponent('trace', [
+			'trace' => $error['trace'],
+			'file'  => $error['file'],
+			'line'  => $error['line'],
+		]);
+	}
+}
+
 ?>
 <div class="error-show">
-	<h1><?php print $title; ?></h1>
-	<div>
-		<p>
-			<?php print $error . ' :'; ?>
-			<?php print $message; ?>
-		</p>
-		<?php if ($isDebug) { ?>
-			<?php
-			if (isset($thrown)) {
-				/** @var Throwable $thrown */
-				$trace = $thrown->getTrace();
-				if (isset($trace[0])) {
-					if (!isset($trace[0]['file']))
-						$trace[0]['file'] = $file;
-					if (!isset($trace[0]['line']))
-						$trace[0]['line'] = $line;
-				}
-				$this->render('trace', ['trace' => $trace]);
-				/////
-				$prev = $thrown->getPrevious();
-				while (!empty($prev)) {
-					$class = get_class($prev);
-					print "<p>{$class} : {$prev->getMessage()}</p>";
-					$this->render('trace', ['trace' => $prev->getTrace()]);
-					$prev = $prev->getPrevious();
-				}
-			}
-			elseif (!empty($debug)) {
-				$this->render('trace', ['trace' => $debug]);
-			}
-			?>
-		<?php } ?>
-		<ul>
-			<li>
-				<address>URI: <a href="<?php print $uri; ?>"><?php print $uri; ?></a></address>
-			</li>
-			<?php if (!empty($ref)) { ?>
-				<li>
-					<address>Referer: <a href="<?php print $ref; ?>"><?php print $ref; ?></a></address>
-				</li>
-			<?php } ?>
-		</ul>
-	</div>
-
+	<h1><?php print $title ?></h1>
+	<?php
+	if (empty($messages)) {
+		print '<p>Unknown error message!</p>';
+	}
+	else {
+		print implode('', $messages);
+	}
+	?>
+	<hr/>
+	<address>
+		<?php
+		print "Server: {$_SERVER['SERVER_SOFTWARE']}";
+		printf(', <a href="%s">%s</a>', $uri, $uri);
+		if (!empty($ref))
+			printf('<br />Referer: <a href="%s">%s</a>', $ref, $ref);
+		?>
+	</address>
 </div>

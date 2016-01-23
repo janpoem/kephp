@@ -10,6 +10,7 @@ namespace Ke\Web;
 
 use Ke\Utils\Status;
 use ReflectionClass, ReflectionObject;
+use Ke\Web\Render, Ke\Web\Render\Renderer;
 
 class Controller
 {
@@ -114,10 +115,10 @@ class Controller
 
 	protected function view(string $view = null, string $layout = null)
 	{
-		if (isset($layout))
-			$this->layout = $layout;
+		if (!isset($layout))
+			$layout = $this->layout;
 		if (!$this->web->isRender())
-			$this->rendering(new View($view))->render();
+			$this->rendering(new Render\View($view, $layout))->render();
 		return $this;
 	}
 
@@ -126,7 +127,7 @@ class Controller
 		if (!$this->web->isRender()) {
 			if (!empty($format))
 				$this->web->setFormat($format);
-			$this->rendering(new TextWriter($text))->render();
+			$this->rendering(new Render\Text($text))->render();
 		}
 		return $this;
 	}
@@ -152,7 +153,7 @@ class Controller
 	protected function redirect($uri, $query = null)
 	{
 		if (!$this->web->isRender()) {
-			$this->rendering(new Redirection($this->web->linkTo($uri, $query)))->render();
+			$this->rendering(new Render\Redirection($this->web->linkTo($uri, $query)))->render();
 		}
 		return $this;
 	}
