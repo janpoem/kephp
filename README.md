@@ -645,6 +645,25 @@ $baseUri->newUri('what?id=1', ['id' => 2]); // 最终生成是：/my_app/what/?i
 这是文件Media Type的匹配，本来是希望作为一个静态类来使用的，谁没事搞几个版本的Mime呢？不过为了保持这个版本的风格一致，还是使用了对象实例的方式。
 
 
+#### php ke.php scan_tables
+
+哦哦，根据当前项目配置的数据库自动生成Model文件，如果文件存在，则更新。很爽。
+
+#### \Ke\OutputBuffer
+
+```php
+
+$content = $ob->getFunctionBuffer(null, function() {
+	echo 'hello world';
+	var_dump('good!');
+});
+
+$content = $ob->getImportBuffer(null, 'test.php', ['var1' => 123]);
+
+```
+
+嗯……
+
 ## 版本说明
 
 当前为先行版本，包含实现了主要特性，不过不要放入实际项目中，还有一些东西没做。
