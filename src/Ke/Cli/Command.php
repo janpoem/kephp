@@ -120,7 +120,7 @@ abstract class Command
 		if ($type === KE_STR) {
 			return (string)$value;
 		}
-		elseif ($type === KE_BOOL || $type === 'single') {
+		elseif ($type === KE_BOOL || $type === 'bool' || $type === 'single') {
 			if ($value === 'false' || $value === '0' || $value === 0 || $value === 0.00)
 				return false;
 			if (strtolower($value) === 'off')

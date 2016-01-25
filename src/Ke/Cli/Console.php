@@ -66,6 +66,9 @@ class Console
 			self::$context = $this;
 
 		$this->app = App::getApp();
+		if (!$this->app->isInit())
+			$this->app->init();
+
 		$this->app->getLoader()->loadHelper('string');
 		$this->writer = new Writer();
 

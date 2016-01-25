@@ -1,14 +1,15 @@
 <?php
 /**
- * Created by PhpStorm.
- * User: Janpoem
- * Date: 2016/1/21 0021
- * Time: 10:06
+ * KePHP, Keep PHP easy!
+ *
+ * @license   http://www.apache.org/licenses/LICENSE-2.0
+ * @copyright Copyright 2015 KePHP Authors All Rights Reserved
+ * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp-core )
+ * @author    曾建凯 <janpoem@163.com>
  */
 
-namespace Ke\Web\Route;
 
-use Ke\Web\Web;
+namespace Ke\Web\Route;
 
 class Router
 {
@@ -75,6 +76,7 @@ class Router
 		'month'      => self::PATTERN_MONTH,
 		'day'        => self::PATTERN_DAY,
 		'format'     => self::PATTERN_FORMAT,
+		'tail'       => '',
 	];
 
 	/**
@@ -136,54 +138,56 @@ class Router
 //		'admin' => 'manage'
 	];
 
+	private $isPrepare = false;
+
 	private $web = null;
 
-	public function __construct($routes = null)
+//	public function __construct($routes = null)
+//	{
+////		$this->web = Web::getWeb(); // todo: Router应该脱离web
+//		if (isset($routes))
+//			$this->setRoutes($routes);
+//	}
+
+	public function loadFile(string $file)
 	{
-//		$this->web = Web::getWeb(); // todo: Router应该脱离web
-		if (isset($routes))
-			$this->setRoutes($routes);
+		import($file, ['router' => $this]);
+		return $this;
 	}
 
-	public function setRoutes($routes)
+	public function setRoutes(array $routes)
 	{
-		if (!empty($routes)) {
-			$type = gettype($routes);
-			if ($type === KE_STR)
-				import($routes, ['router' => $this]);
-			elseif ($type === KE_ARY)
-				$this->routes += $routes;
+		foreach ($routes as $node => $settings) {
+			if (!empty($settings) && is_array($settings))
+				$this->setNode($node, $settings);
 		}
-		return $this->filterRoutes();
+		return $this;
 	}
 
-	public function filterRoutes()
+	public function setNode(string $node, array $settings)
 	{
-		$paths = [];
+		if (!isset($this->routes[$node]))
+			$this->routes[$node] = $settings;
+		else
+			$this->routes[$node] = array_merge_recursive($this->routes[$node], $settings);
+		return $this;
+	}
+
+	private function prepareRoutes()
+	{
 		foreach ($this->routes as $node => &$route) {
 			$node = trim($node, KE_PATH_NOISE);
-			if (empty($node) || $node === self::ROOT)
-				continue;
-			if (isset($route['controller'])) {
-				$route['controller'] = trim($route['controller'], KE_PATH_NOISE);
-//				if (empty($route['controller']))
-//					unset($route['controller']);
-			}
-			if (isset($route['namespace'])) {
-				$route['namespace'] = trim($route['namespace'], KE_PATH_NOISE);
-				if (!empty($route['namespace'])) {
-					$route['namespace'] = str_replace('\\', '/', strtolower($route['namespace']));
-				}
-			}
-			if (!empty($route['path']) && !empty(($route['path'] = trim($route['path'], KE_PATH_NOISE)))) {
-				$paths[$route['path']] = $node;
-			}
-			else {
-				$paths[$node] = $node;
-			}
+			$path = isset($route['path']) ? trim($route['path'], KE_PATH_NOISE) : $node;
+			$this->paths[$path] = $node;
+			if ($node !== self::ROOT && !isset($route['namespace']))
+				$route['namespace'] = $node;
 		}
-		$this->paths = $paths;
 		return $this;
+	}
+
+	public function isPrepare()
+	{
+		return $this->isPrepare;
 	}
 
 	public function getRoutes()
@@ -191,98 +195,72 @@ class Router
 		return $this->routes;
 	}
 
+
 	/**
 	 * @param null $input
 	 * @param null $routes
 	 * @return Result
 	 */
-	public function routing($input = null, $routes = null): Result
+	public function routing($input = null): Result
 	{
-		if (isset($routes))
-			$this->setRoutes($routes);
+		if (!$this->isPrepare)
+			$this->prepareRoutes();
 
 		$rs = Result::factory($input);
 
-		// 找出匹配的节点
-		if (!empty($this->routes)) {
-			$pos = null;
-			$part = $rs->tail;
-			while (!empty($part)) {
-				if (isset($this->paths[$part])) {
-					$rs->node = $this->paths[$part];
-					$rs->head = '/' . $part;
-					$rs->tail = isset($pos) ? substr($rs->tail, $pos + 1) : '';
-					break;
-				}
-				$pos = strrpos($part, '/');
-				$part = substr($part, 0, $pos);
-			}
-		}
+		$this->fetchPaths($rs);
+		$this->fetchMappings($rs);
 
-		// 节点的配置
-		$node = null;
-		$mode = self::MODE_TRADITION;
+		return $rs;
+	}
+
+	protected function fetchPaths(Result $rs)
+	{
+		if (empty($this->paths))
+			return $this;
+
+		$pos = null;
+		$part = $rs->tail;
+		while (!empty($part)) {
+			if (isset($this->paths[$part])) {
+				$rs->node = $this->paths[$part];
+				$rs->head = $part;
+				$rs->tail = isset($pos) ? substr($rs->tail, $pos + 1) : '';
+				break;
+			}
+			$pos = strrpos($part, '/');
+			$part = substr($part, 0, $pos);
+		}
 
 		if (empty($rs->node))
 			$rs->node = self::ROOT;
 
-		// 新版本的routes匹配，有两种模式去进行匹配:
-		// 1. 指定了controller，则忽略旧版本的namespace前缀，并且默认的mappings，以$this->actionMappings进行默认的匹配
-		// 2. 没指定controller，则采用原来的namespace前缀的方式，先匹配出controller，然后在检查是否冠以namespace前缀，
-		//    以$this->controllerMappings进行默认的匹配
+		return $this;
+	}
 
-		// 先将当前节点的基础数据写入到Result
-		if (isset($this->routes[$rs->node])) {
-			$node = &$this->routes[$rs->node];
-			if (!empty($node['class'])) {
-				$mode = self::MODE_CLASS;
-				$rs->class = $node['class'];
-				if (!empty($node['controller'])) {
-					$rs->controller = $node['controller'];
-				}
-			}
-			elseif (!empty($node['controller'])) {
-				$rs->controller = $node['controller'];
-				$mode = self::MODE_CONTROLLER;
-			}
-			else {
-				if ($rs->node !== self::ROOT) {
-					$rs->namespace = empty($node['namespace']) ? $rs->node : $node['namespace'];
-					$rs->namespace = trim($rs->namespace, KE_PATH_NOISE);
-				}
+	protected function fetchMappings(Result $rs)
+	{
+		if (!isset($this->routes[$rs->node]))
+			return $this;
+		$node = &$this->routes[$rs->node];
+		if ($rs->node !== self::ROOT) {
+			if (!isset($node['namespace'])) {
 			}
 		}
+		$rs->assign($node);
 
-		// 根据节点的mappings进行匹配
 		if (!empty($node['mappings']) && is_array($node['mappings']))
 			$this->loopMappings($node['mappings'], $rs);
-
-		// 如果没匹配中mappings，则根据相应的默认mappings去进行匹配
+		// 已经设定了action，就不去匹配后面的了
 		if (!$rs->matched) {
-			if ($mode === self::MODE_TRADITION)
+			if ($rs->mode === self::MODE_CLASS && !empty($rs->action))
+				$rs->matched = true;
+			elseif ($rs->mode === self::MODE_TRADITION)
 				$this->loopMappings($this->controllerMappings, $rs);
 			else
 				$this->loopMappings($this->actionMappings, $rs);
-
-			if ($mode === self::MODE_CLASS)
-				$rs->matched = true;
 		}
-
-		// 有匹配中的，才进行进一步的数据过滤
-//		if ($rs->matched) {
-//			// todo: 这部分应该转移到web中实现
-//			if ($mode !== self::MODE_CLASS) {
-//				$rs->controller = $this->web->filterController($rs->controller, true);
-//				if ($mode === self::MODE_TRADITION && !empty($rs->namespace)) {
-//					if (stripos($rs->controller, $rs->namespace . '/') !== 0) {
-//						$rs->controller = $rs->namespace . '/' . $rs->controller;
-//					}
-//				}
-//				$rs->action = $this->web->filterAction($rs->action, true);
-//			}
-//		}
-
-		return $rs;
+		return $this;
 	}
 
 
@@ -419,11 +397,18 @@ class Router
 			$usedTokens[$symbol] = $replacements["{$this->tokenStart}{$symbol}{$this->tokenEnd}"] = $symbolPattern;
 		}
 		$pattern = strtr($pattern, $replacements);
-		// 已用tokens写入mapping缓存
+		$pattern = "#^({$pattern}(|\/(?<tail>.*)))$#i";
+//		if ($pattern[strlen($pattern) - 1] !== '$') {
+//			$pattern = "#^({$pattern}(|\/(?<tail>.*)))$#i";
+//		}
+//		else {
+//			$pattern = "#^({$pattern})$#i";
+//		}
+//		 已用tokens写入mapping缓存
 		// @todo 其实这个数据已经不是必须的了，不需要把pattern记下来，只要将keys记录即可。
 		$rule['_tokens_'] = $usedTokens;
 		// 不再拼接tail，未匹配的path尾部，自动转化为tail，减少正则容量
-		$rule['_pattern_'] = "#^({$pattern}(|\/(?<tail>.*)))$#i";
+		$rule['_pattern_'] = $pattern;
 		return $rule;
 	}
 

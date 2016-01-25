@@ -10,7 +10,6 @@
 
 namespace Ke;
 
-use Agi\Component;
 
 /**
  * 目录注册器
@@ -147,6 +146,18 @@ class DirectoryRegistry
 		foreach ($dirs as $key => $value) {
 			$this->setDir($key, ...(array)$value);
 		}
+		return $this;
+	}
+
+	public function deleteDir(string $dir)
+	{
+		if (!isset($this->dirs[$dir])) {
+			$dir = array_search($dir, $this->dirs);
+			if ($dir === false)
+				return $this;
+		}
+		unset($this->dirs[$dir]);
+		unset($this->sort[$dir]);
 		return $this;
 	}
 

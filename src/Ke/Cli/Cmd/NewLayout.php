@@ -21,7 +21,7 @@ class NewLayout extends NewWidget
 
 	public function getPath(bool $checkDir = false)
 	{
-		$path = $this->dir . DS . 'Layout' . DS . $this->name . '.phtml';
+		$path = $this->dir . DS . 'layout' . DS . $this->name . '.phtml';
 		if ($checkDir) {
 			$dir = dirname($path);
 			if (!is_dir($dir))

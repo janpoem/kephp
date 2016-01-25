@@ -121,6 +121,8 @@ class App
 		// 后注册，让后继承的App类，可以以声明属性的方式来添加
 		if (!isset($this->aliases['web']))
 			$this->aliases['web'] = 'public';
+		if (!isset($this->aliases['asset']))
+			$this->aliases['asset'] = 'assets'; // $app->asset() === $app->assets()
 
 		/** @var string $kephp kephp的根目录 */
 		$kephp = $this->dirs['kephp'] = dirname(__DIR__);
@@ -330,6 +332,11 @@ class App
 		return $this;
 	}
 
+	public function isInit()
+	{
+		return $this->isInit;
+	}
+
 	/**
 	 * 开发环境的接口
 	 */
@@ -395,6 +402,11 @@ class App
 				$this->aliases[$name] = $dir;
 		}
 		return $this;
+	}
+
+	public function getDirs(): array
+	{
+		return $this->dirs + $this->aliases;
 	}
 
 	public function path(string $name = null, string $path = null, string $ext = null)

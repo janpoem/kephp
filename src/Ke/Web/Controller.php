@@ -1,10 +1,13 @@
 <?php
 /**
- * Created by PhpStorm.
- * User: Janpoem
- * Date: 2016/1/22 0022
- * Time: 16:27
+ * KePHP, Keep PHP easy!
+ *
+ * @license   http://www.apache.org/licenses/LICENSE-2.0
+ * @copyright Copyright 2015 KePHP Authors All Rights Reserved
+ * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp-core )
+ * @author    曾建凯 <janpoem@163.com>
  */
+
 
 namespace Ke\Web;
 
@@ -58,37 +61,58 @@ class Controller
 
 	public function makeActions(string $action)
 	{
-		$actions = [$action];
+		$actions = ['default' => $action];
 		$method = $this->http->method;
-		if ($method !== Http::GET)
-			$actions[] = strtolower($method) . '_' . $action;
+		if ($method !== Http::GET) {
+			$method = strtolower($method);
+			$actions[$method] = "{$method}_{$action}";
+		}
+		$actions['render'] = "render_{$action}";
 		return $actions;
+	}
+
+	protected function onMissing(string $action)
+	{
+		throw new \Exception("Action {$action} not found!");
+	}
+
+	protected function getActionArgs(array $params): array
+	{
+		return $params['data'] ?? [];
 	}
 
 	public function action(string $action)
 	{
 		if (empty($action))
 			throw new \Exception('Empty action name!');
+		if ($this->web->isRender())
+			return $this;
 		$objectRef = $this->getReflection();
-		$vars = $this->web->param('data', []);
+		$args = $this->getActionArgs($this->web->getParams());
 		$methods = $this->makeActions($action);
-		$return = null;
-		foreach ($methods as $index => $method) {
+		$actionReturn = null;
+		$status = 0;
+		foreach ($methods as $name => $method) {
 			if ($objectRef->hasMethod($method)) {
+				if ($name === 'default')
+					$status = 1; // 方法存在
 				$methodRef = $this->_reflection->getMethod($method);
+				if ($name === 'default')
+					$status = 2; //
 				if ($methodRef->isPublic() && !$methodRef->isStatic() && !$this->web->isRender()) {
-					$re = $methodRef->invokeArgs($this, $vars);
-					if (!($re instanceof Controller) && !($re instanceof Renderer) && $re !== null)
-						$return = $re;
+					if ($name === 'default')
+						$status = 3; //
+					$return = $methodRef->invokeArgs($this, $args);
+					if ($return !== null && !($return instanceof Controller) && !($return instanceof Renderer))
+						$actionReturn = $return;
 				}
 			}
-			else {
-				if ($index === 0)
-					throw new \Exception("Action {$method} not found!");
+			if ($status === 0 && $name === 'default') {
+				$this->onMissing($method);
 			}
 		}
 
-		$this->defaultReturn(...(array)$return);
+		$this->defaultReturn(...(array)$actionReturn);
 
 		return $this;
 	}

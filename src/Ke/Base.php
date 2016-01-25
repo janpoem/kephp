@@ -439,16 +439,16 @@ if (!function_exists('parse_path')) {
 	 * @param string $path
 	 * @return array 返回数据格式：[目录, 文件名, 后缀名]
 	 */
-	function parse_path(string $path): array
+	function parse_path(string $path, bool $parseFormat = true): array
 	{
-		$return = [null, null, null];
+		$return = [null, null];
 		if (!empty($path)) {
 			if (preg_match('#^(?:(.*)[\/\\\\])?([^\/\\\\]+)?$#', $path, $matches)) {
 				if (!empty($matches[1])) {
 					$return[0] = rtrim($matches[1], KE_PATH_NOISE);
 				}
 				if (!empty($matches[2])) {
-					if (($pos = strrpos($matches[2], '.')) > 0) {
+					if ($parseFormat && ($pos = strrpos($matches[2], '.')) > 0) {
 						$return[1] = substr($matches[2], 0, $pos);
 						$return[2] = strtolower(substr($matches[2], $pos + 1));
 					}
@@ -618,6 +618,16 @@ if (!function_exists('purge_path')) {
 		}
 
 		return $path;
+	}
+}
+
+if (!function_exists('predir')) {
+	function predir(string $path, $mode = 0755)
+	{
+		$dir = dirname($path);
+		if (!is_dir($dir))
+			mkdir($dir, $mode, true);
+		return $dir;
 	}
 }
 

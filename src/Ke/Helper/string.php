@@ -42,13 +42,13 @@ if (!function_exists('hyphenate')) {
 }
 
 if (!function_exists('add_namespace')) {
-	function add_namespace(string $class, string $namespace, bool $isStrictCase = false): string
+	function add_namespace(string $class, string $namespace, bool $isStrictCase = false, string $spr = '\\'): string
 	{
 		$class = trim($class, KE_PATH_NOISE);
 		$namespace = trim($namespace, KE_PATH_NOISE);
 		$method = $isStrictCase ? 'strpos' : 'stripos';
-		if (!empty($namespace) && !empty($class) && call_user_func($method, $class, $namespace . '\\') !== 0) {
-			$class = $namespace . '\\' . $class;
+		if (!empty($namespace) && !empty($class) && call_user_func($method, $class, $namespace . $spr) !== 0) {
+			$class = $namespace . $spr . $class;
 		}
 		return $class;
 	}

@@ -53,4 +53,5 @@ return [
 	'Ke\\Utils\\Status'                   => __DIR__ . '/Ke/Utils/Status.php',
 	'Ke\\Utils\\Success'                  => __DIR__ . '/Ke/Utils/Status.php',
 	'Ke\\Utils\\Failure'                  => __DIR__ . '/Ke/Utils/Status.php',
+	'Ke\\Utils\\CodeStatus'               => __DIR__ . '/Ke/Utils/Status.php',
 ];

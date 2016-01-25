@@ -76,6 +76,8 @@ class Web
 		'data'       => [],
 	];
 
+	private $asset = null;
+
 	private $requireHelpers = ['string'];
 
 	/** @var Router|null */
@@ -101,6 +103,8 @@ class Web
 
 	private $isDebug = KE_APP_ENV === KE_DEVELOPMENT;
 
+	private $theme = false;
+
 	/**
 	 * @param Http $http
 	 * @return Web
@@ -119,40 +123,21 @@ class Web
 		if (!isset(self::$web))
 			self::$web = $this;
 
-		$this->ob = OutputBuffer::getInstance()->start('webStart');
 		$this->app = App::getApp();
+		if (!$this->app->isInit())
+			$this->app->init();
+
+		$this->ob = OutputBuffer::getInstance()->start('webStart');
 		$this->mime = $this->app->getMime();
 		$this->http = $http ?? Http::current();
 		$this->component = (new Component())->setDirs([
-			'appView'      => [$this->app->appNs('View'), 100, Component::VIEW],
-			'appComponent' => [$this->app->appNs('Component'), 100],
-			'keComponent'  => [$this->app->kephp('Ke/Component'), 1000],
+			'appView'        => [$this->app->appNs('View'), 100, Component::VIEW],
+			'appComponent'   => [$this->app->appNs('Component'), 100],
+			'kephpComponent' => [$this->app->kephp('Ke/Component'), 1000],
 		]);
 
 		$this->prepare();
 		$this->onConstruct();
-
-//		exit();
-//
-//
-//		exit();
-//
-//
-//		$this->loader = $this->app->getLoader();
-//		if (!empty($this->helpers))
-//			$this->loader->loadHelper(...$this->helpers);
-//		$this->http = Request::current();
-//
-//		$this->component = new Component();
-//		$this->component->setDirs([
-//			'app_view'      => [KE_APP_NS_PATH . '/View', 100, Component::VIEW],
-//			'app_component' => [KE_APP_NS_PATH . '/Component', 100],
-//			'ke_component'  => [KE_NS_ROOT . '/Component', 1000],
-//		]);
-//
-//		$this->setGlobalNamespace($this->globalNamespace);
-//		$this->setDefault($this->defaultController, $this->defaultAction, $this->defaultFormat);
-//
 
 	}
 
@@ -340,8 +325,10 @@ class Web
 
 	public function getRouter()
 	{
-		if (!isset($this->router))
-			$this->router = new Router($this->app->config('routes', 'php'));
+		if (!isset($this->router)) {
+			$this->router = new Router();
+			$this->router->loadFile($this->app->config('routes', 'php'));
+		}
 		return $this->router;
 	}
 
@@ -391,7 +378,7 @@ class Web
 		/** @var Controller $controller */
 		$this->controller = new $class();
 		$this->controller->setReflection($reflection);
-		$this->controller->action($params['action']);
+		$this->controller->action($this->params['action']);
 
 
 		// 做法2，即使class不存在，也可以继续往下执行
@@ -415,14 +402,13 @@ class Web
 		if (!empty($result->class)) {
 			$params['class'] = $result->class;
 			// 暂定
-			$params['controller'] = strtolower(str_replace('\\', '/', $result->class));
+			$params['controller'] = $result->node;
 		}
 		else {
 			$controller = $this->filterController($result->controller, true);
-			if (!empty($result->namespace)) {
-				if (strpos($controller, $result->namespace . '/') !== 0)
-					$controller = $result->namespace . '/' . $controller;
-			}
+			$namespace = $this->filterController($result->namespace, false);
+			if (!empty($namespace))
+				$controller = add_namespace($controller, $namespace, true, '/');
 			$params['controller'] = $controller;
 		}
 		// action过滤
@@ -433,14 +419,12 @@ class Web
 			$params['format'] = $result->format;
 		// tail
 		if (!empty(($tail = trim($result->tail, KE_PATH_NOISE)))) {
-			$params['tail'] = explode('/', $tail);
-		}
-		else {
-			$params['tail'] = [];
+			$params['tail'] = $tail;
 		}
 		// data
 		if (!empty($result->data)) {
 			$params['data'] = array_merge($this->params['data'], $result->data);
+//			$params += $result->data;
 		}
 		return $params;
 	}
@@ -633,7 +617,7 @@ class Web
 		return $this->baseUri;
 	}
 
-	public function linkTo($uri, $query = null)
+	public function uri($uri, $query = null)
 	{
 		return $this->getBaseUri()->newUri($uri, $query);
 	}
@@ -647,5 +631,43 @@ class Web
 	public function isDebug(): bool
 	{
 		return $this->isDebug;
+	}
+
+	public function getAsset()
+	{
+		if (!isset($this->asset)) {
+			$this->asset = Asset::getInstance();
+		}
+		return $this->asset;
+	}
+
+	public function setAsset(Asset $asset)
+	{
+		$this->asset = $asset;
+		return $this;
+	}
+
+	public function asset($src, string $type = null, array $props = null)
+	{
+		$this->getAsset()->load($src, $type, $props);
+		return $this;
+	}
+
+	//
+	public function useTheme(string $name, int $priority = 0)
+	{
+		if (!empty($this->theme))
+			$this->removeTheme($name);
+		$this->component->setDirs([
+			"{$name}-appView"       => [$this->component->dir('appView') . "/{$name}", $priority, Component::VIEW],
+			"{$name}-appComponent"  => [$this->component->dir('appComponent') . "/{$name}", $priority],
+			"{$name}-kephpComponent" => [$this->component->dir('kephpComponent') . "/{$name}", $priority + 900],
+		]);
+		return $this;
+	}
+
+	public function removeTheme(string $name)
+	{
+
 	}
 }

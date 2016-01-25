@@ -22,8 +22,6 @@ const KE_APP_ROOT = '';
 
 const KE_APP_DIR = '';
 
-const KE_APP_SRC = '';
-
 const KE_APP_CLASS = '';
 
 const KE_APP_NS = '';
