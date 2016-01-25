@@ -53,6 +53,7 @@ class Error extends Renderer
 
 	protected function rendering()
 	{
+		$this->web->ob->clean('startup');
 		print $this->getContent();
 	}
 
