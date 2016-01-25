@@ -67,7 +67,8 @@ class Controller
 			$method = strtolower($method);
 			$actions[$method] = "{$method}_{$action}";
 		}
-		$actions['render'] = "render_{$action}";
+		// 暂时不要
+//		$actions['render'] = "render_{$action}";
 		return $actions;
 	}
 

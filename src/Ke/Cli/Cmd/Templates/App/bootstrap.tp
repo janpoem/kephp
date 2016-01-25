@@ -1,0 +1,19 @@
+<?php
+/**
+ * kephp bootstrap file.
+ */
+
+$kephpApp = '{kephpLibEntry}';
+
+require $kephpApp;
+require 'src/{appNamespace}/App.php';
+
+/** @var \Ke\App $APP */
+global $app;
+
+try {
+	$app = new \{appNamespace}\App(__DIR__);
+}
+catch (Throwable $throw) {
+	print $throw->getMessage();
+}
