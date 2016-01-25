@@ -1,0 +1,20 @@
+<?php
+/**
+ * view: index/index
+ * @var Demo\Controller\Index
+ * @var \Ke\Web\Context $this
+ * @var \Ke\Web\Web     $web
+ * @var string          $content
+ */
+
+
+?>
+<h1><?php print $this->title ?? 'where is title ?' ?></h1>
+<ul>
+	<?php
+	foreach ($this->words as $word) {
+		printf('<li>%s</li>', $word);
+	}
+	?>
+</ul>
+<?php
