@@ -10,82 +10,12 @@
 
 namespace Ke\Adm;
 
-// 代码例子#1
-/*****************************************************************
-trait TraitA
-{
-
-	public function sayHi()
-    {
-		 echo 'hi';
-	}
-}
-
-interface ImplA
-{
-}
-
-class ClassA implements ImplA
-{
-	use TraitA;
-}
-
-class ClassA1 extends ClassA
-{
-}
-
-$a1 = new ClassA1();
-
-print_r(class_uses($a1));                                // Array ( ), empty
-print_r(class_uses(ClassA1::class));                     // Array ( ), empty
-print_r(class_uses(ClassA::class));                      // Array ( [TraitA] => TraitA ), bingo
-print_r(is_subclass_of($a1, ImplA::class));              // 1, yes
-print_r(is_subclass_of(ClassA1::class, ImplA::class));   // 1, yes
-print_r(is_subclass_of(ClassA::class, ImplA::class));    // 1, yes
-print_r($a1 instanceof ImplA);                           // 1, yes
-***************************************************************/
-
-// 代码例子#2
-/**************************************************************
-class Test extends ArrayObject
-{
-
-	private $name = null;
-
-	public function __construct(array $input)
-	{
-		parent::__construct($input, ArrayObject::ARRAY_AS_PROPS);
-//		parent::__construct($input, ArrayObject::STD_PROP_LIST);
-	}
-
-	public function setName(string $name)
-	{
-		$this->name = $name;
-		return $this;
-	}
-
-	public function getName()
-	{
-		return $this->name;
-	}
-}
-
-$test = new Test(['a' => 'a', 'b' => 'b']);
-$test->setName('ok');
-
-$ser = serialize($test);
-$unSer = unserialize($ser);
-
-var_dump($unSer->getName());
-var_dump($unSer);
-**************************************************************/
-
 /**
  * 这个接口并不约束任何接口，只是为了简化判断是否实现了缓存模型
  *
  * 在应用程序中，不需要实现这个接口，只要`use CacheModelTrait;`即可。
  *
- * 请参考上面的代码例子#1
+ * 请参考[issues#trait_deep_search.php]
  *
  * @package Ke\Adm
  */
@@ -107,7 +37,7 @@ trait CacheModelTrait
 
 	// 下面的几个属性是很重要的属性，但是php目前版本，如果一个类继承自ArrayObject，并且混入了这个Trait
 	// 当从缓存中读取的时候，private会失效，这是个很严重的bug。所以下来属性暂时保留用protected
-	// 参考上面的代码例子#2
+	// 参考[issues#array_object.php]
 	// 所以，在访问下列的属性的时候，请使用
 	protected $cacheArgs = [];
 

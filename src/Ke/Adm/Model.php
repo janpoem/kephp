@@ -106,7 +106,7 @@ class Model extends ArrayObject implements CacheModelImpl
 
 	// 下面的几个属性是很重要的属性，但是php目前版本，如果一个类继承自ArrayObject，并且混入了这个Trait
 	// 当从缓存中读取的时候，private会失效，这是个很严重的bug。所以下来属性暂时保留用protected
-	// 参考CacheModelTrait的代码例子#2
+	// 参考[issues#array_object.php]
 	// 所以，在访问下列的属性的时候，请使用
 	protected $_initData = false;
 
