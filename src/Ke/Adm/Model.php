@@ -13,8 +13,10 @@ namespace Ke\Adm;
 use Exception;
 use ArrayObject;
 
-class Model extends ArrayObject
+class Model extends ArrayObject implements CacheModelImpl
 {
+
+	use CacheModelTrait;
 
 	const SOURCE_USER = 0;
 	const SOURCE_DB   = 1;
@@ -102,6 +104,10 @@ class Model extends ArrayObject
 
 	///////////////////////////////////////////////////////////////
 
+	// 下面的几个属性是很重要的属性，但是php目前版本，如果一个类继承自ArrayObject，并且混入了这个Trait
+	// 当从缓存中读取的时候，private会失效，这是个很严重的bug。所以下来属性暂时保留用protected
+	// 参考CacheModelTrait的代码例子#2
+	// 所以，在访问下列的属性的时候，请使用
 	protected $_initData = false;
 
 	protected $sourceType = self::SOURCE_USER;
@@ -111,12 +117,6 @@ class Model extends ArrayObject
 	protected $shadowData = null;
 
 	protected $hiddenData = null;
-
-	protected $cacheStatus = 0;
-
-	protected $cacheKey = null;
-
-	protected $cacheUpdatedAt = 0;
 
 	protected $errors = null;
 
@@ -212,6 +212,11 @@ class Model extends ArrayObject
 			throw new Exception(sprintf('Model "{%s}" undefined cache source or the model without primary key!',
 				static::class));
 		return Cache::getAdapter(static::$cacheSource);
+	}
+
+	public static function getCacheDefaultTTL(): int
+	{
+		return static::$cacheTTL;
 	}
 
 	/**
@@ -493,48 +498,56 @@ class Model extends ArrayObject
 		return $obj;
 	}
 
-	public static function makeCacheKey($pk)
+	/////////////////////////////////////////////////////////////////////////////////////
+	// cache 静态方法 部分
+	/////////////////////////////////////////////////////////////////////////////////////
+
+	public static function makeCacheArgs($pk = null): array
 	{
-		if (!static::$_init)
-			static::initModel();
-		return static::$tableName . '.' . $pk;
+		return [static::$pk => $pk];
 	}
 
-	/**
-	 * @param $pk
-	 * @return Model|static
-	 * @throws Exception
-	 */
-	public static function loadCache($pk)
+	public static function makeCacheInstance(string $key, array $args)
 	{
-		if (!static::$_init)
-			static::initModel();
-		if (!static::isEnableCache())
-			throw new Exception(sprintf('Model "{%s}" undefined cache source or the model without primary key!',
-				static::class));
-		if (strlen($pk) === 0)
-			throw new Exception('Undefined primary key!');
-		global $KE_CACHES;
-		$key = static::makeCacheKey($pk);
-		$adapter = static::getCacheAdapter();
-		$cache = $KE_CACHES[$key] ?? $adapter->get($key);
-		if ($cache === false) {
-			$cache = static::findOneIn([static::$pk => $pk]);
-			if ($cache->isExists()) {
-				$cache->saveCache();
-			}
-		}
-//		if ($cache !== false) {
-//			return $cache;
-//		}
-//		$obj = static::findOneIn([static::$pk => $pk]);
-//		if ($obj->isExists()) {
-//			$obj->saveCache();
-//		}
-		if ($cache->isExists() && !isset($KE_CACHES[$key]))
-			$KE_CACHES[$key] = $cache;
-		return $cache;
+		return static::findOne($args[static::$pk] ?? null);
 	}
+
+//
+//	/**
+//	 * @param $pk
+//	 * @return Model|static
+//	 * @throws Exception
+//	 */
+//	public static function loadCache($pk)
+//	{
+//		if (!static::$_init)
+//			static::initModel();
+//		if (!static::isEnableCache())
+//			throw new Exception(sprintf('Model "{%s}" undefined cache source or the model without primary key!',
+//				static::class));
+//		if (strlen($pk) === 0)
+//			throw new Exception('Undefined primary key!');
+//		global $KE_CACHES;
+//		$key = static::makeCacheKey($pk);
+//		$adapter = static::getCacheAdapter();
+//		$cache = $KE_CACHES[$key] ?? $adapter->get($key);
+//		if ($cache === false) {
+//			$cache = static::findOneIn([static::$pk => $pk]);
+//			if ($cache->isExists()) {
+//				$cache->saveCache();
+//			}
+//		}
+////		if ($cache !== false) {
+////			return $cache;
+////		}
+////		$obj = static::findOneIn([static::$pk => $pk]);
+////		if ($obj->isExists()) {
+////			$obj->saveCache();
+////		}
+//		if ($cache->isExists() && !isset($KE_CACHES[$key]))
+//			$KE_CACHES[$key] = $cache;
+//		return $cache;
+//	}
 
 	public function __construct($data = null)
 	{
@@ -558,7 +571,7 @@ class Model extends ArrayObject
 		$this->shadowData = null;
 		if (!empty($data) && $source !== self::SOURCE_USER) {
 			if ($this->_initData) {
-				$data += (array)$this;
+				$data = array_merge((array)$this, $data);
 				if (!empty(static::$groupColumns['dummy'])) {
 					$data = array_diff_key($data, static::$groupColumns['dummy']);
 				}
@@ -827,7 +840,7 @@ class Model extends ArrayObject
 			$this->prepareData($data, self::SOURCE_DB);
 			$this->$after($data);
 			$this->afterSave($process, $data);
-			if ($this->isCache() || static::isEnableCache())
+			if ($this->isCached() || static::isEnableCache())
 				$this->saveCache();
 			return self::SAVE_SUCCESS;
 		}
@@ -900,7 +913,7 @@ class Model extends ArrayObject
 		$args = [];
 		$builder->buildDelete($table, $builder->buildIn((array)$this->referenceData), $sql, $args);
 		if ($adapter->execute($sql, $args) > 0) {
-			if ($this->isCache() || static::isEnableCache())
+			if ($this->isCached() || static::isEnableCache())
 				$this->destroyCache();
 			$this->referenceData = null;
 			$this->afterDestroy();
@@ -910,92 +923,97 @@ class Model extends ArrayObject
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////
-	// cache 部分
+	// cache 实例方法 部分
 	/////////////////////////////////////////////////////////////////////////////////////
 
-	protected function onCreateCache()
+	public function isValidCache(): bool
 	{
+		return $this->isExists();
 	}
 
-	protected function onUpdateCache()
-	{
-	}
-
-	protected function onSaveCache()
-	{
-	}
-
-	protected function onDestroyCache()
-	{
-	}
-
-	public function saveCache()
-	{
-		if (!static::isEnableCache() || $this->isNew())
-			return self::SAVE_FAILURE;
-		$process = 'Update';
-		$lastStatus = $this->cacheStatus;
-		if (empty($this->cacheStatus)) {
-			$this->cacheStatus = self::ON_CREATE;
-			$process = 'Create';
-		}
-		elseif ($this->cacheStatus === self::ON_CREATE) {
-			$this->cacheStatus = self::ON_UPDATE;
-		}
-		$lastUpdatedAt = $this->cacheUpdatedAt;
-		$this->cacheUpdatedAt = time();
-		$this->cacheKey = static::makeCacheKey($this->getPk());
-		$event = "on{$process}Cache";
-		if ($this->$event() !== false &&
-		    $this->onSaveCache() !== false &&
-		    static::getCacheAdapter()->set($this->cacheKey, $this, $this->getCacheTTL())
-		) {
-			return self::SAVE_SUCCESS;
-		}
-		// 保存失败，要还原最后更新的时间，和状态
-		$this->cacheStatus = $lastStatus;
-		$this->cacheUpdatedAt = $lastUpdatedAt;
-		return self::SAVE_FAILURE;
-	}
-
-	public function destroyCache()
-	{
-		if (!static::isEnableCache() || $this->isNew() || !$this->isCache())
-			return self::SAVE_FAILURE;
-		$status = $this->cacheStatus;
-		$this->cacheStatus = self::ON_DELETE;
-		$key = static::makeCacheKey($this->getPk());
-		$event = 'onDestroyCache';
-		if ($this->$event() === false)
-			return self::SAVE_FAILURE;
-		if (static::getCacheAdapter()->delete($key)) {
-			$this->cacheStatus = false;
-			return self::SAVE_SUCCESS;
-		}
-		$this->cacheStatus = $status;
-		return self::SAVE_FAILURE;
-	}
-
-	public function isCache()
-	{
-		return $this->cacheStatus !== 0;
-	}
-
-	public function getCacheStatus()
-	{
-		return $this->cacheStatus;
-	}
-
-	public function getCacheTTL()
-	{
-		return static::$cacheTTL;
-	}
-
-	public function getCacheExpireDate()
-	{
-		if ($this->isCache())
-			return $this->cacheUpdatedAt + $this->getCacheTTL();
-		return -1;
-	}
+//	protected function onCreateCache()
+//	{
+//	}
+//
+//	protected function onUpdateCache()
+//	{
+//	}
+//
+//	protected function onSaveCache()
+//	{
+//	}
+//
+//	protected function onDestroyCache()
+//	{
+//	}
+//
+//	public function saveCache()
+//	{
+//		if (!static::isEnableCache() || $this->isNew())
+//			return self::SAVE_FAILURE;
+//		$process = 'Update';
+//		$lastStatus = $this->cacheStatus;
+//		if (empty($this->cacheStatus)) {
+//			$this->cacheStatus = self::ON_CREATE;
+//			$process = 'Create';
+//		}
+//		elseif ($this->cacheStatus === self::ON_CREATE) {
+//			$this->cacheStatus = self::ON_UPDATE;
+//		}
+//		$lastUpdatedAt = $this->cacheUpdatedAt;
+//		$this->cacheUpdatedAt = time();
+//		$this->cacheKey = static::makeCacheKey($this->getPk());
+//		$event = "on{$process}Cache";
+//		if ($this->$event() !== false &&
+//		    $this->onSaveCache() !== false &&
+//		    static::getCacheAdapter()->set($this->cacheKey, $this, $this->getCacheTTL())
+//		) {
+//			return self::SAVE_SUCCESS;
+//		}
+//		// 保存失败，要还原最后更新的时间，和状态
+//		$this->cacheStatus = $lastStatus;
+//		$this->cacheUpdatedAt = $lastUpdatedAt;
+//		return self::SAVE_FAILURE;
+//	}
+//
+//	public function destroyCache()
+//	{
+//		if (!static::isEnableCache() || $this->isNew() || !$this->isCache())
+//			return self::SAVE_FAILURE;
+//		$status = $this->cacheStatus;
+//		$this->cacheStatus = self::ON_DELETE;
+//		$key = static::makeCacheKey($this->getPk());
+//		$event = 'onDestroyCache';
+//		if ($this->$event() === false)
+//			return self::SAVE_FAILURE;
+//		if (static::getCacheAdapter()->delete($key)) {
+//			$this->cacheStatus = false;
+//			return self::SAVE_SUCCESS;
+//		}
+//		$this->cacheStatus = $status;
+//		return self::SAVE_FAILURE;
+//	}
+//
+//	public function isCache()
+//	{
+//		return $this->cacheStatus !== 0;
+//	}
+//
+//	public function getCacheStatus()
+//	{
+//		return $this->cacheStatus;
+//	}
+//
+//	public function getCacheTTL()
+//	{
+//		return static::$cacheTTL;
+//	}
+//
+//	public function getCacheExpireDate()
+//	{
+//		if ($this->isCache())
+//			return $this->cacheUpdatedAt + $this->getCacheTTL();
+//		return -1;
+//	}
 
 }

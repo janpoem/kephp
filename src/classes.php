@@ -21,6 +21,7 @@ return [
 	'Ke\\Adm\\Cache'                      => __DIR__ . '/Ke/Adm/Cache.php',
 	'Ke\\Adm\\CacheModel'                 => __DIR__ . '/Ke/Adm/CacheModel.php',
 	'Ke\\Adm\\CacheModelTrait'            => __DIR__ . '/Ke/Adm/CacheModelTrait.php',
+	'Ke\\Adm\\CacheModelImpl'             => __DIR__ . '/Ke/Adm/CacheModelTrait.php',
 	'Ke\\Adm\\DataList'                   => __DIR__ . '/Ke/Adm/DataList.php',
 	'Ke\\Adm\\Db'                         => __DIR__ . '/Ke/Adm/Db.php',
 	'Ke\\Adm\\Filter'                     => __DIR__ . '/Ke/Adm/Filter.php',

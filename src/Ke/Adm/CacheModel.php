@@ -15,10 +15,23 @@ namespace Ke\Adm;
  *
  * @package Ke\Adm
  */
-abstract class CacheModel
+abstract class CacheModel implements CacheModelImpl
 {
 
 	use CacheModelTrait;
 
+	protected static $cacheSource = null;
+
+	protected static $cacheTTL = 60 * 60 * 12;
+
+	public static function getCacheSource()
+	{
+		return static::$cacheSource;
+	}
+
+	public static function getCacheDefaultTTL(): int
+	{
+		return static::$cacheTTL;
+	}
 
 }
