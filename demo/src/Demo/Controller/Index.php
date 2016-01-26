@@ -5,6 +5,7 @@
 
 namespace Demo\Controller;
 
+use Demo\Model\User\User;
 use Ke\Web\Controller;
 
 class Index extends Controller
@@ -16,6 +17,7 @@ class Index extends Controller
 
 	public function index()
 	{
+		$this->user = User::loadCache(1);
 		$this->words = ['abc', 'def', 'ghi'];
 	}
 
