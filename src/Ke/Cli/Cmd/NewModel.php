@@ -60,7 +60,7 @@ class NewModel extends ReflectionCommand
 
 	protected $tip = 'Creating model';
 
-	protected function onPrepare($argv = null)
+	protected function onConstruct($argv = null)
 	{
 		$this->src = App::getApp()->src();
 
@@ -71,6 +71,11 @@ class NewModel extends ReflectionCommand
 		if (empty($this->tableName))
 			$this->tableName = strtolower($this->className);
 		$this->tableName = Db::mkTableName($this->source, $this->className, $this->tableName);
+	}
+
+	protected function onPrepare($argv = null)
+	{
+
 
 		if (empty($this->tableName))
 			trigger_error('Invalid table name, please specify table -t=<tableName>', E_USER_ERROR);
