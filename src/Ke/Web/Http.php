@@ -316,15 +316,19 @@ class Http extends Uri
 		return empty($this->data['referer']) ? '' : $this->data['referer'];
 	}
 
-	public function post($keys, $default = null)
+	public function post($keys = null, $default = null)
 	{
+		if (empty($keys))
+			return $this->post;
 		if (isset($this->post[$keys]))
 			return $this->post[$keys];
 		return depth_query($this->post, $keys, $default);
 	}
 
-	public function cookie($keys, $default = null)
+	public function cookie($keys = null, $default = null)
 	{
+		if (empty($keys))
+			return $this->cookies;
 		if (isset($this->cookies[$keys]))
 			return $this->cookies[$keys];
 		return depth_query($this->cookies, $keys, $default);

@@ -76,7 +76,12 @@ class Web
 		'data'       => [],
 	];
 
+	/** @var UI */
+	private $ui = null;
+
 	private $asset = null;
+
+	private $html = null;
 
 	private $requireHelpers = ['string'];
 
@@ -103,7 +108,6 @@ class Web
 
 	private $isDebug = KE_APP_ENV === KE_DEVELOPMENT;
 
-	private $theme = false;
 
 	/**
 	 * @param Http $http
@@ -514,8 +518,12 @@ class Web
 
 	public function getContext()
 	{
-		if (!isset($this->context))
-			$this->context = new Context($this);
+		if (!isset($this->context)) {
+			if (isset($this->ui))
+				$this->context = $this->ui->getContext();
+			else
+				$this->context = new Context($this);
+		}
 		return $this->context;
 	}
 
@@ -635,7 +643,7 @@ class Web
 
 	public function getAsset()
 	{
-		if (!isset($this->asset)) {
+		if (!isset($this->asset) || !($this->asset instanceof Asset)) {
 			$this->asset = Asset::getInstance();
 		}
 		return $this->asset;
@@ -653,21 +661,49 @@ class Web
 		return $this;
 	}
 
-	//
-	public function useTheme(string $name, int $priority = 0)
+	public function getHtml()
 	{
-		if (!empty($this->theme))
-			$this->removeTheme($name);
-		$this->component->setDirs([
-			"{$name}-appView"       => [$this->component->dir('appView') . "/{$name}", $priority, Component::VIEW],
-			"{$name}-appComponent"  => [$this->component->dir('appComponent') . "/{$name}", $priority],
-			"{$name}-kephpComponent" => [$this->component->dir('kephpComponent') . "/{$name}", $priority + 900],
-		]);
+		if (!isset($this->html)) {
+			if (isset($this->ui))
+				$this->html = $this->ui->getHtml();
+			else
+				$this->html = new Html();
+		}
+		return $this->html;
+	}
+
+	public function setHtml(Html $html)
+	{
+		$this->html = $html;
 		return $this;
 	}
 
-	public function removeTheme(string $name)
+	public function setUI(UI $ui)
 	{
-
+		$this->ui = $ui;
+		return $this;
 	}
+
+	public function getUI()
+	{
+		return $this->ui;
+	}
+
+//	// 暂时不要这个
+//	public function useTheme(string $name, int $priority = 0)
+//	{
+//		if (!empty($this->theme))
+//			$this->removeTheme($name);
+//		$this->component->setDirs([
+//			"{$name}-appView"       => [$this->component->dir('appView') . "/{$name}", $priority, Component::VIEW],
+//			"{$name}-appComponent"  => [$this->component->dir('appComponent') . "/{$name}", $priority],
+//			"{$name}-kephpComponent" => [$this->component->dir('kephpComponent') . "/{$name}", $priority + 900],
+//		]);
+//		return $this;
+//	}
+//
+//	public function removeTheme(string $name)
+//	{
+//
+//	}
 }

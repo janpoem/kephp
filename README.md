@@ -664,6 +664,38 @@ $content = $ob->getImportBuffer(null, 'test.php', ['var1' => 123]);
 
 嗯……
 
+### Html
+
+html标签构造辅助器，在view层，可直接访问Context的html变量即可获取：
+
+```php
+$this->html->tag('div', 'hello world', ['id' => 'id']);
+$this->html->textInput('value');
+```
+
+诸如此类。
+
+### Web\UI接口
+
+Web\UI接口，用于整体重载Web渲染。
+
+目前版本UI只包含两个接口：
+
+```php
+interface UI
+{
+
+	public function getHtml(); // 返回当前web环境所使用的Html Helper
+
+	public function getContext(); // 返回当前Web环境所实行的Context
+
+}
+```
+
+```php
+$web->setUI(new MyUI());
+```
+
 ## 版本说明
 
 当前为先行版本，包含实现了主要特性，不过不要放入实际项目中，还有一些东西没做。

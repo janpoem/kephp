@@ -271,6 +271,9 @@ class Uri
 			$this->setQuery($data['query'], $mergeQuery);
 			unset($data['query']);
 		}
+		elseif (!empty($mergeQuery)) {
+			$this->setQuery($mergeQuery);
+		}
 
 		if (isset($data['user'])) {
 			$this->setUserInfo($data['user'], $data['pass'] ?? null);

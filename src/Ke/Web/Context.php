@@ -23,9 +23,12 @@ class Context
 
 	public $web;
 
+	public $html;
+
 	public function __construct()
 	{
 		$this->web = Web::getWeb();
+		$this->html = $this->web->getHtml();
 	}
 
 	public function assign($key, $value = null)
