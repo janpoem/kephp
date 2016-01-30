@@ -622,20 +622,26 @@ if (!function_exists('purge_path')) {
 }
 
 if (!function_exists('predir')) {
+	/**
+	 * 预先创建指定路径的目录。
+	 *
+	 * 常用于保存文件前检查文件的路径的目录是否存在。
+	 *
+	 * <code>
+	 * $savePath = '/var/www/myapp/log/abc.log';
+	 * file_put_contents(predir($savePath), 'anything...');
+	 * </code>
+	 *
+	 * @param string $path
+	 * @param int    $mode
+	 * @return string
+	 */
 	function predir(string $path, $mode = 0755)
 	{
 		$dir = dirname($path);
-		if (!is_dir($dir))
+		if (!empty($dir) && $dir !== '.' && $dir !== '/' && $dir !== '\\' && !is_dir($dir))
 			mkdir($dir, $mode, true);
-		return $dir;
+		return $path;
 	}
 }
 
-//if (!function_exists('println')) {
-//	function println(...$args)
-//	{
-//		foreach ($args as $arg)
-//			print $arg;
-//		print PHP_EOL;
-//	}
-//}

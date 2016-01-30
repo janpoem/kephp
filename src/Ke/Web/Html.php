@@ -54,18 +54,42 @@ class Html
 		],
 	];
 
+	protected $ignoreInputTypes = [
+		'submit' => true,
+		'button' => true,
+		'reset'  => true,
+	];
+
 	private $dom = null;
 
-//	public $classButton        = '';
-//	public $classButtonReset   = '';
-//	public $classButtonSubmit  = '';
+	private $autoId = 0;
+
+	public $labelColon = ' : ';
+
+	public $classButton       = 'a';
+	public $classButtonReset  = 'b';
+	public $classButtonSubmit = 'c';
 //	public $classA             = '';
 //	public $classInputText     = 'input';
 //	public $classInputPassword = '';
 //	public $classInputRadio    = '';
-//	public $classInputCheckbox = '';
+	public $classInputCheckbox = 'cccc';
 //	public $classTextarea      = '';
 //	public $classSelect        = '';
+
+	public $classInlineCheckbox = 'kf-inline';
+
+	public $classFormRow       = 'kf-row';
+	public $classFormRowSubmit = 'kf-row kf-row-submit';
+	public $classFormField     = 'kf-field';
+	public $classFormLabel     = 'kf-head';
+	public $classFormInput     = 'kf-body';
+	public $classFormStatic    = 'kf-static';
+
+	public function mkAutoId(string $prefix)
+	{
+		return $prefix . '_auto_id_' . (++$this->autoId);
+	}
 
 	/**
 	 * 拼接特定的HTML属性的值，主要针对id, name, class
@@ -273,8 +297,18 @@ class Html
 		return $result;
 	}
 
-	public function mergeAttr(array $attr, array $merges): array
+	public function filterAttr($attr, array $merges = null): array
 	{
+		$type = gettype($attr);
+		if (empty($attr)) {
+			$attr = [];
+		}
+		elseif ($type === KE_OBJ) {
+			$attr = get_object_vars($attr);
+		}
+		elseif ($type === KE_STR) {
+			$attr = $this->parseAttr($attr);
+		}
 		$make = false;
 		/////////////////////////////////////////////
 		// 特定的属性构建
@@ -334,23 +368,6 @@ class Html
 		return $attr;
 	}
 
-	public function filterAttr($attr, array $merges = null): array
-	{
-		$type = gettype($attr);
-		if (empty($attr)) {
-			$attr = [];
-		}
-		elseif ($type === KE_OBJ) {
-			$attr = get_object_vars($attr);
-		}
-		elseif ($type === KE_STR) {
-			$attr = $this->parseAttr($attr);
-		}
-		if (empty($merges))
-			return $attr;
-		return $this->mergeAttr($attr, $merges);
-	}
-
 	public function mkTag(string $tag = null, string $content, $attr = null) : string
 	{
 		$tag = strtolower(trim($tag));
@@ -385,7 +402,7 @@ class Html
 		return $this;
 	}
 
-	public function getTagBaseClass(string ...$tags)
+	public function getTagBaseClass(...$tags)
 	{
 		if (empty($tags))
 			return '';
@@ -398,7 +415,7 @@ class Html
 		return $class;
 	}
 
-	public function fillTagBaseClass(array $attr, string ...$tags)
+	public function fillTagBaseClass(array $attr, ...$tags)
 	{
 		$class = $this->getTagBaseClass(...$tags);
 		if (!empty($class)) {
@@ -408,6 +425,13 @@ class Html
 				$attr['class'] = $this->joinClass($attr['class'], $class);
 		}
 		return $attr;
+	}
+
+	public function preClass(string $class): string
+	{
+		if (!empty($class))
+			return ' class="' . $class . '"';
+		return '';
 	}
 
 	public function mkMeta(string $name = null, string $content = null, $attr = null)
@@ -514,106 +538,171 @@ class Html
 
 	public function mkInput(string $type, string $value = null, $attr = null)
 	{
-		$merges = $this->fillTagBaseClass([
-			'type' => $type, 'value' => $value,
-		], 'input', $type);
-		$attr = $this->attr($attr, $merges);
+		$attr = $this->filterAttr($attr);
+		$attr['type'] = $type;
+		$attr['value'] = $value;
+		$attr = $this->attr($this->fillTagBaseClass($attr, 'input', $type));
 		return "<input{$attr}/>";
 	}
 
-	public function input(string $type, string $value = null, $attr = null)
+	public function input(string $type = null, string $value = null, $attr = null)
 	{
 		print $this->mkInput($type, $value, $attr);
 		return $this;
 	}
 
-	public function textInput(string $value, $attr = null)
+	public function textInput(string $value = null, $attr = null)
 	{
 		echo $this->mkInput('text', $value, $attr);
 		return $this;
 	}
 
-	public function password(string $value, $attr = null)
+	public function password(string $value = null, $attr = null)
 	{
 		echo $this->mkInput('password', $value, $attr);
 		return $this;
 	}
 
-	public function hidden(string $value, $attr = null)
+	public function hidden(string $value = null, $attr = null)
 	{
 		echo $this->mkInput('hidden', $value, $attr);
 		return $this;
 	}
 
-	public function radio(string $value, $attr = null)
+	public function preInlineInputLabel(string $type, string $input, string $label)
 	{
-		print $this->mkInput('radio', $value, $attr);
+		$class = $this->preClass($this->getTagBaseClass('inline', $type));
+		return "<div{$class}>{$input}{$label}</div>";
+	}
+
+	public function mkGroupInput(string $type, $options, $value = null, $attr = null)
+	{
+		if (is_string($options)) {
+			$options = [1 => $options];
+		}
+		if (!is_array($options) || empty($options))
+			return [];
+		$attr = $this->filterAttr($attr);
+		$baseId = empty($attr['id']) ? $this->mkAutoId($type) : $attr['id'];
+		$baseName = $attr['name'] ?? '';
+		$count = count($options);
+		$isMulti = $type === 'checkbox' && $count > 1;
+		if ($isMulti && !empty($attr['name'])) {
+			if (!preg_match('#\[\]$#', $attr['name'])) {
+				$attr['name'] .= '[]';
+			}
+		}
+		$result = [];
+		if (!$isMulti && !empty($baseName)) {
+			$result[] = $this->mkInput('hidden', null, ['name' => $baseName]);
+		}
+		foreach ($options as $val => $text) {
+			$attr['checked'] = false;
+			if (is_array($value))
+				$attr['checked'] = array_search($val, $value) !== false;
+			else
+				$attr['checked'] = equals($val, $value);
+			if ($count > 1)
+				$attr['id'] = $baseId . '_' . $val;
+			else
+				$attr['id'] = $baseId;
+			$label = '';
+			$input = $this->mkInput($type, $val, $attr);
+			if (!empty($text))
+				$label = $this->mkLabel($text, $attr['id']);
+			$result[] = $this->preInlineInputLabel($type, $input, $label);
+		}
+		return implode('', $result);
+	}
+
+	public function mkCheckbox($options, $value = null, $attr = null)
+	{
+		return $this->mkGroupInput('checkbox', $options, $value, $attr);
+	}
+
+	public function checkbox($options, $value = null, $attr = null)
+	{
+		print $this->mkCheckbox($options, $value, $attr);
 		return $this;
 	}
 
-	public function checkbox(string $value, $attr = null)
+	public function mkRadio($options, $value = null, $attr = null)
 	{
-		print $this->mkInput('checkbox', $value, $attr);
+		return $this->mkGroupInput('radio', $options, $value, $attr);
+	}
+
+	public function radio($options, $value = null, $attr = null)
+	{
+		print $this->mkRadio($options, $value, $attr);
 		return $this;
 	}
 
-	public function mkLabel(string $text, $attr = null)
+	public function mkLabel(string $text, string $for = null, $attr = null)
 	{
+		if (empty($text))
+			return ''; // make sure not empty!
 		if (!empty($attr))
-			$attr = $this->attr($attr);
+			$attr = $this->filterAttr($attr);
+		else
+			$attr = [];
+		if (empty($attr['for']) && !empty($for))
+			$attr['for'] = $for;
+		$attr = $this->fillTagBaseClass($attr, 'label');
+		$attr = $this->attr($attr);
 		return "<label{$attr}>{$text}</label>";
 	}
 
-	public function label(string $text, $attr = null)
+	public function label(string $text, string $for, $attr = null)
 	{
 		print $this->mkLabel($text, $attr);
 		return $this;
 	}
 
-	public function mkTextarea(string $value, $attr = null)
+	public function mkTextarea(string $value = null, $attr = null)
 	{
 		if (!empty($attr))
 			$attr = $this->attr($attr);
 		return "<textarea{$attr}>{$value}</textarea>";
 	}
 
-	public function textarea(string $value, $attr = null)
+	public function textarea(string $value = null, $attr = null)
 	{
 		print $this->mkTextarea($value, $attr);
 		return $this;
 	}
 
 	public function mkSelectOption(array $options,
-	                               string $selected = null,
-	                               array &$result = [],
-	                               string $label = null,
+	                               $selected = null,
+	                               array &$buffer = [],
+	                               string $prefix = null,
 	                               int $deep = 0)
 	{
-		$label = trim($label);
-		if (!empty($label))
-			$result[] = sprintf('<optgroup label="%s">', $label);
+		$prefix = trim($prefix);
+		if (!empty($prefix))
+			$buffer[] = sprintf('<optgroup label="%s">', $prefix);
 		foreach ($options as $value => $text) {
 			$selectedText = '';
 			if (is_array($text) && !empty($text)) {
-				$newLabel = $value;
-				if (!empty($label))
-					$newLabel = $label . ' - ' . $newLabel;
-				$this->mkSelectOption($text, $selected, $result, $newLabel, $deep + 1);
+				$newPrefix = $value;
+				if (!empty($prefix))
+					$newPrefix = $prefix . ' - ' . $newPrefix;
+				$this->mkSelectOption($text, $selected, $buffer, $newPrefix, $deep + 1);
 			}
 			else {
-
-				if (equals($value, $selected))
+				if (is_array($selected) && !empty($selected) && array_search($value, $selected) !== false)
 					$selectedText = ' selected="selected"';
-				$result[] = sprintf('<option value="%s"%s>%s</option>', $value, $selectedText, $text);
+				elseif (equals($value, $selected))
+					$selectedText = ' selected="selected"';
+				$buffer[] = sprintf('<option value="%s"%s>%s</option>', $value, $selectedText, $text);
 
 			}
 		}
-		if (!empty($label))
-			$result[] = sprintf('</optgroup>', $label);
-		return implode(PHP_EOL, $result);
+		if (!empty($prefix))
+			$buffer[] = sprintf('</optgroup>', $prefix);
+		return implode('', $buffer);
 	}
 
-	public function mkSelect(array $options, string $selected = null, $attr = null)
+	public function mkSelect(array $options, $selected = null, $attr = null, $defaultOption = null)
 	{
 		$attr = $this->filterAttr($attr);
 		// 多选的处理，name字段的末尾，需要附加[]才能有效获取多个值
@@ -624,13 +713,184 @@ class Html
 				}
 			}
 		}
+		if (!empty($defaultOption))
+			$options = ['' => $defaultOption] + $options;
 		$attr = $this->attr($attr);
 		return "<select{$attr}>" . $this->mkSelectOption($options, $selected) . '</select>';
 	}
 
-	public function select(array $options, string $selected = null, $attr = null)
+	public function select(array $options, $selected = null, $attr = null, $defaultOption = null)
 	{
 		print $this->mkSelect($options, $selected, $attr);
 		return $this;
+	}
+
+	public function mkFormField(string $label, $value, string $type = null, $inputAttr = null)
+	{
+		if (empty($type))
+			$type = 'text';
+		$inputAttr = $this->filterAttr($inputAttr);
+		$labelFor = '';
+		$fieldAttr = [];
+		if (!empty($inputAttr['id'])) {
+			$labelFor = $inputAttr['id'];
+			$fieldAttr['data-input-id'] = $inputAttr['id'];
+		}
+		if (empty($inputAttr['placeholder']) && ($type === 'text' || $type === 'password'))
+			$inputAttr['placeholder'] = $label;
+		$label = $this->mkLabel($label, $labelFor);
+		$input = $this->mkInput($type, $value, $inputAttr);
+		$fieldAttr = $this->fillTagBaseClass($fieldAttr, 'form', 'field');
+		$fieldAttr = $this->attr($fieldAttr);
+		$fieldLabelClass = $this->preClass($this->getTagBaseClass('form', 'field', 'label'));
+		$fieldInputClass = $this->preClass($this->getTagBaseClass('form', 'field', 'input'));
+		return "<div{$fieldAttr}><div{$fieldLabelClass}>{$label}</div><div{$fieldInputClass}>{$input}</div></div>";
+	}
+
+	public function preFormColumn(string $field, $value = null, array $column = [])
+	{
+		if (!isset($value) && !empty($column['default']))
+			$value = $column['default'];
+		$label = $column['label'] ?? $column['title'] ?? $field;
+		$placeholder = $column['placeholder'] ?? $label;
+		/////////////////////////////////////////////////////////
+		$isRequire = false;
+		if (!empty($column['require']))
+			$isRequire = true;
+		elseif (isset($column['empty']) && $column['empty'] !== true)
+			$isRequire = true;
+		/////////////////////////////////////////////////////////
+		$isNumeric = false;
+		$isDouble = false;
+		// 过滤是否数值类型
+		if (!empty($column['numeric'])) {
+			$isNumeric = true;
+			if ($column['numeric'] >= 3)
+				$isDouble = true;
+		}
+		elseif (!empty($column['int']) || !empty($column['bigint'])) {
+			$isNumeric = true;
+		}
+		elseif (!empty($column['float'])) {
+			$isNumeric = $isDouble = true;
+		}
+		/////////////////////////////////////////////////////////
+		$type = 'text';
+		if (!empty($column['edit']))
+			$type = $column['edit'];
+		elseif (!empty($column['options']))
+			$type = 'select';
+		elseif (!empty($column['email']))
+			$type = 'email';
+		elseif ($isNumeric)
+			$type = 'number'; // 并不强制变为number，如果用户指定为text，则仍使用text
+
+		$inputMake = $column['prefix'] ?? [];
+		if (!is_array($inputMake))
+			$inputMake = (array)$inputMake;
+		$inputMake[] = $field;
+		$inputId = $this->id($inputMake);
+		$inputName = $this->name($inputMake);
+		$inputClass = $this->cls($inputMake);
+		$inputAttr = [
+			'id'    => $inputId,
+			'name'  => $inputName,
+			'class' => $inputClass,
+		];
+		/////////////////////////////////////////////////////////
+		// 属性绑定
+		if ($type !== 'checkbox' && $type !== 'radio') {
+			if ($isRequire)
+				$inputAttr['require'] = true;
+			if ($isNumeric && $type === 'number') {
+				if (!empty($column['min']) && is_numeric($column['min']))
+					$inputAttr['min'] = $column['min'];
+				if (!empty($column['max']) && is_numeric($column['max']))
+					$inputAttr['max'] = $column['max'];
+				if ($isDouble)
+					$inputAttr['step'] = 'any'; // html5 input type...
+			}
+			if ($type === 'text' || $type === 'password' || $type === 'email' || $type === 'url') {
+				if (!empty($column['max']))
+					$inputAttr['maxlength'] = $column['max'];
+			}
+		}
+		if (!empty($column['disabled']))
+			$inputAttr['disabled'] = true;
+		if (!empty($column['readonly']))
+			$inputAttr['readonly'] = true;
+
+		if ($type === 'hidden') {
+			$label = '';
+			$input = $this->mkInput($type, $value, $inputAttr);
+		}
+		elseif ($type === 'checkbox' || $type === 'radio') {
+			$input = '';
+			if (!empty($column['options']))
+				$input = $this->mkGroupInput($type, $column['options'], $value, $inputAttr);
+			// 没有指定options，暂时不知道该输出什么？以label内容作为输出？
+		}
+		else {
+			if (!empty($label)) {
+				$label .= $this->labelColon;
+				$label = $this->mkLabel($label, $inputId);
+			}
+
+
+			if ($type === 'select') {
+				$input = $this->mkSelect($column['options'] ?? [], $value, $inputAttr,
+					$column['defaultOption'] ?? null);
+			}
+			elseif ($type === 'static') {
+				$input = $this->mkTag('div', $value, $this->fillTagBaseClass($inputAttr, 'form', 'static'));
+			}
+			else {
+				$input = $this->mkInput($type, $value, $inputAttr);
+			}
+		}
+
+		return [
+			'type'    => $type,
+			'label'   => $label,
+			'input'   => $input,
+			'inputId' => $inputId,
+		];
+	}
+
+	public function mkFormColumn(string $field, $value = null, array $column = [], Form $form = null)
+	{
+		$data = $this->preFormColumn($field, $value, $column);
+		if ($data['type'] === 'hidden') {
+			return $data['input'];
+		}
+		else {
+			$fieldAttr = $this->fillTagBaseClass([
+				'data-field-id' => $data['inputId'],
+			], 'form', 'field');
+			$fieldAttr = $this->attr($fieldAttr);
+			$labelClass = $this->preClass($this->getTagBaseClass('form', 'label'));
+			$inputClass = $this->preClass($this->getTagBaseClass('form', 'input'));
+			return "<div{$fieldAttr}><div{$labelClass}>{$data['label']}</div><div{$inputClass}>{$data['input']}</div></div>";
+		}
+	}
+
+	public function mkFormGroup()
+	{
+
+	}
+
+	public function formColumn(string $field, $value = null, array $column = [], Form $form = null)
+	{
+		print $this->mkFormColumn($field, $value, $column);
+		return $this;
+	}
+
+	public function mkFormRow(string $content, $isSubmit = false)
+	{
+		if ($isSubmit)
+			$class = $this->preClass($this->getTagBaseClass('form', 'row', 'submit'));
+		else
+			$class = $this->preClass($this->getTagBaseClass('form', 'row'));
+		return "<div{$class}>{$content}</div>";
 	}
 }

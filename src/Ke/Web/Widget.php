@@ -14,23 +14,55 @@ namespace Ke\Web;
 /**
  * @package Ke\Web
  */
-abstract class Widget extends Context
+class Widget
 {
 
-	abstract public function getRenderContent(): string;
+	protected $isRender = false;
 
-	protected function onRender()
+	protected $publicOptions = [];
+
+	public function setOption(string $key, $option)
 	{
-
-	}
-
-	/**
-	 * @return Widget|static
-	 */
-	public function render()
-	{
-		$this->onRender();
-		print $this->getRenderContent();
+		// !(false, 0, null, '')
+		if (!empty($this->publicOptions[$key])) {
+			$handle = $this->publicOptions[$key];
+			if (is_string($handle) && is_callable([$this, $handle])) {
+				$this->{$handle}($option);
+			}
+			else {
+				$this->{$key} = $option;
+			}
+		}
 		return $this;
 	}
+
+	public function setOptions($options)
+	{
+		if (is_array($options) || is_object($options)) {
+			foreach ($options as $key => $value) {
+				$this->setOption($key, $value);
+			}
+		}
+		return $this;
+	}
+
+//	public function getRenderContent(): string
+//	{
+//		return '';
+//	}
+//
+//	protected function onRender()
+//	{
+//	}
+//
+//	/**
+//	 * @return Widget|static
+//	 */
+//	public function render()
+//	{
+//		$this->onRender();
+//		print $this->getRenderContent();
+//		$this->isRender = true;
+//		return $this;
+//	}
 }
