@@ -143,7 +143,7 @@ class Loader extends DirectoryRegistry
 	{
 		if (empty($files))
 			return $this;
-		$paths = import($files, null, KE_RETURN_HASH);
+		$paths = import($files, null, KE_IMPORT_ARRAY);
 		if (!empty($paths) && is_array($paths)) {
 			return $this->setClassPaths($paths);
 		}
@@ -194,7 +194,7 @@ class Loader extends DirectoryRegistry
 			if (!empty($this->loadHelpers[$name]))
 				continue;
 			$paths = $this->seek(self::HELPER, $name, true);
-			$this->loadHelpers[$name] = import($paths, null, KE_RETURN_PATH);
+			$this->loadHelpers[$name] = import($paths, null, KE_IMPORT_PATH);
 		}
 		return $this;
 	}
