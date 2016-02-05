@@ -121,8 +121,11 @@ trait HttpSecurityData
 			$this->prepareSecurity();
 		if (isset($field)) {
 			if (isset($this->securityData[$field]))
-				return $this->securityData[$field];
-			return depth_query($this->securityData, $field, $default);
+				$value = $this->securityData[$field];
+			else
+				$value = depth_query($this->securityData, $field, $default);
+			$value = trim($value);
+			return $value;
 		}
 		return $this->securityData;
 	}
