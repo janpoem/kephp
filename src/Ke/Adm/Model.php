@@ -70,7 +70,7 @@ class Model extends ArrayObject implements CacheModelImpl
 
 	protected static $dbSource = null;
 
-	protected static $cacheSource = null;
+	protected static $cacheSource = false;
 
 	protected static $cacheTTL = 60 * 60 * 12; /* default value: 12 hours */
 
@@ -131,24 +131,31 @@ class Model extends ArrayObject implements CacheModelImpl
 			static::$tableName = &$table;
 
 			$filter = static::getFilter();
-			$columns = static::$columns;
+
 			$groupColumns = static::$groupColumns;
 			$pk = null;
 			$pkAutoInc = false;
 			$dbColumns = static::dbColumns();
-			foreach ($columns as $field => $column) {
-				// field必须是字符类型
-				if (empty($field) || !is_string($field))
-					continue;
-				// 过滤column
+			$columns = static::$columns;
+			// =============================================================== //
+			// user : [a, b] + db : [b, c]
+			// [a(user), b(user), c(db)], b(db)
+			// when
+			// b(db) => [ a => 1, b => 2 ]
+			// b(user) => [ a => 2, c => 3 ]
+			// b(user) + b(db) => [ a => 2, c => 3, b => 2 ] (drop a => 1)
+			// =============================================================== //
+			// 数据库字段（dbColumns），全部由脚本读取数据库生成，他不包含任何用户手动定义的内容。
+			// 但用户定义的字段（static $columns），则由用户手工输入，包含了编辑类型、特定的属性声明，默认值等。
+			// 所以我们以用户定义的字段作为默认基础
+			// =============================================================== //
+			foreach ($columns + $dbColumns as $field => $column) {
 				if (is_string($column))
 					$column = ['label' => $column];
 				elseif (!is_array($column))
 					$column = [];
-				// 合并数据库的字段设置
-				if (!empty($dbColumns[$field]) && is_array($dbColumns[$field]))
-					$column = array_merge($dbColumns[$field], $column);
-				// 主键检查
+				if (isset($columns[$field]) && isset($dbColumns[$field]))
+					$column += $dbColumns[$field];
 				if (!empty($column['pk']) && empty($pk)) {
 					$pk = $field;
 					$pkAutoInc = $column['autoInc'] ?? false;
@@ -272,9 +279,9 @@ class Model extends ArrayObject implements CacheModelImpl
 		if (static::$_init === false)
 			static::initModel();
 		$columns = static::$columns;
-		if ($process !== Model::ON_CREATE && !empty(static::$groupColumns[$process])) {
+		if (!empty(static::$groupColumns[$process])) {
 //			return array_merge($columns, static::$groupColumns[$process]); // 维持默认的columns的顺序
-			return static::$groupColumns[$process] + $columns; // 此方法会打乱columns的顺序
+			return array_merge($columns, static::$groupColumns[$process]); // 此方法会打乱columns的顺序
 		}
 		return $columns;
 	}
@@ -849,7 +856,7 @@ class Model extends ArrayObject implements CacheModelImpl
 
 	public function getErrors()
 	{
-		return $this->errors;
+		return $this->errors ?? [];
 	}
 
 	public function hasErrors()
