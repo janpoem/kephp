@@ -89,12 +89,17 @@ const KE_IMPORT_CONTEXT = 0b1000;
 
 if (!function_exists('import')) {
 	/**
-	 * 无副作用加载文件
+	 * 加载文件
 	 *
-	 * @param string|array $_path
-	 * @param array        $_vars
-	 * @param int          $_mode
-	 * @param array        &$_result
+	 * @param string|array $_path    要加载的路径，可以是字符串表示加载单个文件，也可以是数组表示加载多个文件。
+	 * @param array        $_vars    需要在加载时注入的环境变量，这些环境变量在加载的文件中会作为局部变量。
+	 * @param int          $_mode    返回结果的模式，
+	 *                               `KE_IMPORT_RAW` 返回原始数据（return），如果是多个文件，则以一个数组装载。
+	 *                               `KE_IMPORT_PATH` 返回成功加载过的文件的路径，单个文件，返回路径（字符串）或false（加载失败），多个文件时，返回成功加载的路径的数组（加载失败的不会在数组中）
+	 *                               `KE_IMPORT_ARRAY` 将加载文件的返回的结果转为数组格式返回。多个文件时，会将多个数组合并为，合并模式为追加，相同的Key后来者不可覆盖前者。
+	 *                               `KE_IMPORT_MERGE` 与 `KE_IMPORT_ARRAY` 相似，但以merge的方式合并，即同Key时后来者会覆盖前者。
+	 *                               `KE_IMPORT_CONTEXT` 上下文模式，只在加载多个文件时有效。这个模式，会将 `$_vars` 以 `EXTR_REFS` 的方式解开，在当前import过程中，共享 `$_vars` 的变化。
+	 * @param array        &$_result 附加的返回数据，只对加载多个文件时有效
 	 * @return bool|array|mixed
 	 */
 	function import($_path, array $_vars = null, int $_mode = KE_IMPORT_RAW, array &$_result = null)
@@ -103,7 +108,7 @@ if (!function_exists('import')) {
 			return false;
 		$_modeArray = ($_mode & KE_IMPORT_ARRAY) === KE_IMPORT_ARRAY;
 		if (is_array($_path)) {
-			$_result = [];
+			$_result = $_result ?? [];
 			if (!empty($_vars)) {
 				$_extractMode = EXTR_SKIP;
 				if (($_mode & KE_IMPORT_CONTEXT) === KE_IMPORT_CONTEXT)
@@ -113,9 +118,15 @@ if (!function_exists('import')) {
 			foreach ($_path as $_index => $_item) {
 				$_return = false;
 				$_isImport = false;
-				if (!empty($_item) && is_file($_item) && is_readable($_item)) {
-					$_return = require $_item;
-					$_isImport = true;
+				if (!empty($_item)) {
+					if (is_array($_item)) {
+						import($_item, $_vars, $_mode, $_result);
+						continue;
+					}
+					if (is_file($_item) && is_readable($_item)) {
+						$_return = require $_item;
+						$_isImport = true;
+					}
 				}
 				if ($_isImport) {
 					if ($_modeArray) {
@@ -132,8 +143,9 @@ if (!function_exists('import')) {
 					elseif ($_mode === KE_IMPORT_PATH)
 						$_result[] = $_item;
 				}
+				// 多层数组的文件时，这里无法维持原来的索引顺序了
 				if ($_mode === KE_IMPORT_RAW)
-					$_result[$_index] = $_return;
+					$_result[] = $_return;
 			}
 			return $_result;
 		}
@@ -227,9 +239,9 @@ if (!function_exists('depth_query')) {
 	 *         );
 	 *     ),
 	 * );
-	 * depthQuery($data, 'level1->level2'); // return array(0,1,2,3,4,5)
-	 * depthQuery($data, 'level1->level2->0'); // return 0
-	 * depthQuery($data, 'not_exist', 'test'); // return 'test'
+	 * depth_query($data, 'level1->level2'); // return array(0,1,2,3,4,5)
+	 * depth_query($data, 'level1->level2->0'); // return 0
+	 * depth_query($data, 'not_exist', 'test'); // return 'test'
 	 * </code>
 	 * $keys可以为数组格式，如：array('level1', 'level2');
 	 *
