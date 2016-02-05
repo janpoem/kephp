@@ -98,6 +98,9 @@ class Query
 		return $data;
 	}
 
+	/**
+	 * @return array|mixed|Model
+	 */
 	public function findOne()
 	{
 		$this->getQueryBuilder()->buildSelect($this->limit(1), $sql, $args);
@@ -150,8 +153,12 @@ class Query
 
 	public function addSelect(...$args)
 	{
-		if (!empty($args))
+		if (!empty($args)) {
+			if (!is_array($this->select))
+				$this->select = [$this->select];
 			array_push($this->select, ...$args);
+		}
+
 		return $this;
 	}
 
