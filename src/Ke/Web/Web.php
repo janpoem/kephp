@@ -106,7 +106,7 @@ class Web
 	/** @var Context */
 	private $context = null;
 
-	private $isDebug = KE_APP_ENV === KE_DEVELOPMENT;
+	private $isDebug = KE_APP_ENV === KE_DEV;
 
 
 	/**
@@ -156,7 +156,7 @@ class Web
 		$this->setControllerNamespace($this->controllerNamespace);
 		$this->setDefault($this->defaultController, $this->defaultAction);
 		$this->setDefaultFormat($this->defaultFormat);
-		if (KE_APP_MODE === KE_WEB_MODE) {
+		if (KE_APP_MODE === KE_WEB) {
 			register_shutdown_function(function () {
 				$this->onExiting();
 			});
@@ -423,7 +423,7 @@ class Web
 			$params['format'] = $result->format;
 		// tail
 		if (!empty(($tail = trim($result->tail, KE_PATH_NOISE)))) {
-			$params['tail'] = $tail;
+			$params['tail'] = explode('/',$tail);
 		}
 		// data
 		if (!empty($result->data)) {
@@ -687,6 +687,38 @@ class Web
 	public function getUI()
 	{
 		return $this->ui;
+	}
+
+	public function isAction(string $action)
+	{
+		return $action === $this->params['action'];
+	}
+
+	public function isController(string $controller)
+	{
+		return $controller === $this->params['controller'];
+	}
+
+	public function is(string $name)
+	{
+		if (empty($name))
+			return false;
+		$parse = $this->getRouter()->parseStr($name);
+		if (isset($parse['controller']) && empty($parse['action']))
+			return false;
+		if (isset($parse['controller']) && !$this->isController($parse['controller']))
+			return false;
+		if (isset($parse['action']) && !$this->isAction($parse['action']))
+			return false;
+		return true;
+	}
+
+	public function in(string ...$names)
+	{
+		foreach ($names as $name)
+			if ($this->is($name))
+				return true;
+		return false;
 	}
 
 //	// 暂时不要这个
