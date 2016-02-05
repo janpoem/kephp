@@ -197,6 +197,7 @@ class Filter
 			if ($process === Model::ON_CREATE || $process === Model::ON_SAVE) {
 				if (isset($columnCloneDefault))
 					$defaultData[$field] = $columnCloneDefault;
+				$groupColumns[Model::ON_CREATE][$field] = $columnClone;
 			}
 		}
 		return $column;
@@ -350,15 +351,15 @@ class Filter
 		if ($this->isSerializeValue($value, $matches)) {
 			list(, $scheme, $param, $str) = $matches;
 			if ($scheme === self::SERIALIZE_JSON) {
-				return json_decode($value, true);
+				return json_decode($str, true);
 			}
 			elseif ($scheme === self::SERIALIZE_CONCAT) {
 				if (empty($param) || !is_string($param))
 					$param = self::CONCAT_DELIMITER;
-				return explode($param, $value);
+				return explode($param, $str);
 			}
 			elseif ($scheme === self::SERIALIZE_PHP) {
-				return unserialize($value);
+				return unserialize($str);
 			}
 		}
 		return $value;
