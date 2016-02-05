@@ -175,10 +175,10 @@ class Controller
 		return $this->json($status->export());
 	}
 
-	protected function redirect($uri, $query = null)
+	protected function redirect($uri = null, $query = null)
 	{
 		if (!$this->web->isRender()) {
-			$this->rendering(new Render\Redirection($this->web->linkTo($uri, $query)))->render();
+			$this->rendering(new Render\Redirection($this->web->uri($uri, $query)))->render();
 		}
 		return $this;
 	}
