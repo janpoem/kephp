@@ -241,7 +241,7 @@ abstract class Command
 	public static function getUsage()
 	{
 		if (empty(static::$commandUsage)) {
-			$usage = 'usage: php ' . (PHP_SAPI === KE_CLI_MODE ? KE_SCRIPT_FILE : 'ke.php') . ' ' . static::getName();
+			$usage = 'usage: php ' . (PHP_SAPI === KE_CLI ? KE_SCRIPT_FILE : 'ke.php') . ' ' . static::getName();
 			$total = $length = strlen($usage);
 			$padding = str_repeat(' ', $length);
 			$sortIndex = [];
