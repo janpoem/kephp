@@ -24,23 +24,23 @@ define('KE_SCRIPT_FILE', basename(KE_SCRIPT_PATH));
 /**
  * 类库的版本号
  */
-const KE_VERSION = '1.0.0';
+const KE_VER = '1.0.0';
 
 /**
  * 命令行模式
  */
-const KE_CLI_MODE = 'cli';
+const KE_CLI = 'cli';
 /**
  * 网页模式
  */
-const KE_WEB_MODE = 'web';
+const KE_WEB = 'web';
 
 /** KE_APP_ENV:开发环境 */
-const KE_DEVELOPMENT = 'development';
+const KE_DEV = 'development';
 /** KE_APP_ENV:测试环境 */
 const KE_TEST = 'test';
 /** KE_APP_ENV:开发环境 */
-const KE_PRODUCTION = 'production';
+const KE_PRO = 'production';
 
 // PHP变量类型的字面值，即为gettype方法返回的结果
 /** null类型 */
@@ -74,14 +74,16 @@ const KE_IS_WIN = DIRECTORY_SEPARATOR === KE_DS_WIN;
 /** 路径名中的噪音值，主要用trim函数中 */
 const KE_PATH_NOISE = '/\\ ';
 
-const KE_RETURN_DATA = 0;
+// 以下常量，对应的是import方法专用的参数，用于说明import返回结果的内容
+/** import返回原始的数据 */
+const KE_IMPORT_RAW = 0b0;
+/** import返回成功加载的文件名（并不转为realpath） */
+const KE_IMPORT_PATH = 0b10;
+/** import返回结果以数组形式返回，如果非数组，将强制转数组，多个文件时，为追加方式，即当出现重复key的时候，后来者不能覆盖前者 */
+const KE_IMPORT_ARRAY = 0b100;
+const KE_IMPORT_MERGE = 0b101;
 
-const KE_RETURN_PATH = 1;
-
-const KE_RETURN_HASH = 2;
-
-//const KE_RETURN_REFS = 3;
-
+const KE_IMPORT_CONTEXT = 0b1000;
 
 // 必须的函数
 
@@ -91,59 +93,75 @@ if (!function_exists('import')) {
 	 *
 	 * @param string|array $_path
 	 * @param array        $_vars
-	 * @param int          $_returnMode
-	 * @return bool
+	 * @param int          $_mode
+	 * @param array        &$_result
+	 * @return bool|array|mixed
 	 */
-	function import($_path, array $_vars = null, int $_returnMode = KE_RETURN_DATA)
+	function import($_path, array $_vars = null, int $_mode = KE_IMPORT_RAW, array &$_result = null)
 	{
 		if (empty($_path))
 			return false;
-		$_return = false;
+		$_modeArray = ($_mode & KE_IMPORT_ARRAY) === KE_IMPORT_ARRAY;
 		if (is_array($_path)) {
 			$_result = [];
-			$_files = [];
-			array_walk_recursive($_path, function ($path) use (&$_files) {
-				if (!empty($path) && is_file($path) && is_readable($path)) {
-					$_files[] = $path;
-				}
-			});
-			if (!empty($_files)) {
-				if (!empty($_vars)) {
-					extract($_vars);
-				}
-				foreach ($_files as $_item) {
+			if (!empty($_vars)) {
+				$_extractMode = EXTR_SKIP;
+				if (($_mode & KE_IMPORT_CONTEXT) === KE_IMPORT_CONTEXT)
+					$_extractMode = EXTR_SKIP | EXTR_REFS;
+				extract($_vars, $_extractMode);
+			}
+			foreach ($_path as $_index => $_item) {
+				$_return = false;
+				$_isImport = false;
+				if (!empty($_item) && is_file($_item) && is_readable($_item)) {
 					$_return = require $_item;
-					if ($_returnMode === KE_RETURN_PATH) {
-						$_result[] = $_item;
-					}
-					elseif ($_returnMode === KE_RETURN_HASH) {
-//					if (is_array($_return))
-						$_result += (array)$_return;
-					}
-					else {
-						if ($_return === false)
-							$_return = 1;
-						$_result[] = $_return;
-					}
+					$_isImport = true;
 				}
+				if ($_isImport) {
+					if ($_modeArray) {
+						if (is_object($_return))
+							$_return = (array)$_return;
+						if (!empty($_return) && is_array($_return)) {
+							if ($_mode === KE_IMPORT_MERGE)
+								$_result = $_return + $_result;
+							else
+								$_result += $_return;
+						}
+						// 其他的字符串、布尔、数值无法转化为等量的array，就放弃不管了。
+					}
+					elseif ($_mode === KE_IMPORT_PATH)
+						$_result[] = $_item;
+				}
+				if ($_mode === KE_IMPORT_RAW)
+					$_result[$_index] = $_return;
 			}
 			return $_result;
 		}
-		elseif (is_file($_path) && is_readable($_path)) {
+		else {
+			$_return = false;
+			$_isImport = false;
 			if (!empty($_vars)) {
-				extract($_vars);
+				// 上下文模式，在单个文件里面，是没效果的，只在多个文件中有意义
+				extract($_vars, EXTR_SKIP);
 			}
-			$_return = require $_path;
-			if ($_returnMode === KE_RETURN_PATH) {
-				$_return = $_path;
+			if (is_file($_path) && is_readable($_path)) {
+				$_return = require $_path;
+				$_isImport = true;
 			}
-			else {
-				if ($_return === false)
-					$_return = 1;
+			// 强转数组的格式，必须是成功加载的时候，才进行转换
+			if ($_isImport) {
+				if ($_modeArray) {
+					if (is_array($_return))
+						return $_return;
+					elseif (is_object($_return))
+						return (array)$_return;
+					return [];
+				}
+				elseif ($_mode === KE_IMPORT_PATH)
+					return $_path;
 			}
 			return $_return;
 		}
-		return $_return;
 	}
 }
 
