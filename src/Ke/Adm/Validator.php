@@ -31,7 +31,7 @@ class Validator
 		$filter = $object->getFilter();
 		$shadow = [];
 		$columns = $object->getColumns($process);
-		$groupColumns = $object->getGroupColumns();
+//		$groupColumns = $object->getGroupColumns();
 		if ($isStrict) {
 			if ($process === Model::ON_UPDATE)
 				$shadow = $object->getShadowData();
@@ -125,7 +125,7 @@ class Validator
 						$error = [Model::ERR_NOT_MATCH];
 				}
 				elseif (!empty($column['equal']) &&
-				        (!isset($data[$column['equal']]) || !equals($data[$column['equal']], $value))
+				        (!isset($obj[$column['equal']]) || !equals($obj[$column['equal']], $value))
 				) {
 					$error = [Model::ERR_NOT_EQUAL, 'equalLabel' => $obj->getLabel($column['equal'])];
 				}
