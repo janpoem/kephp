@@ -10,11 +10,15 @@
 
 namespace Ke;
 
-require 'Base.php';
-require 'DirectoryRegistry.php';
-require 'Loader.php';
+if (!defined('KE_VER'))
+	require 'Base.php';
 
-use Throwable;
+if (!class_exists(DirectoryRegistry::class))
+	require 'DirectoryRegistry.php';
+
+if (!class_exists(Loader::class))
+	require 'Loader.php';
+
 use Exception as PhpException;
 
 class App
@@ -22,10 +26,10 @@ class App
 
 	/** @var array 已知的服务器名 */
 	private static $knownServers = [
-		''          => KE_DEVELOPMENT,
-		'0.0.0.0'   => KE_DEVELOPMENT,
-		'localhost' => KE_DEVELOPMENT,
-		'127.0.0.1' => KE_DEVELOPMENT,
+		''          => KE_DEV,
+		'0.0.0.0'   => KE_DEV,
+		'localhost' => KE_DEV,
+		'127.0.0.1' => KE_DEV,
 	];
 
 	/** @var App */
@@ -116,22 +120,20 @@ class App
 		/** App的目录名 */
 		define('KE_APP_DIR', basename($this->root));
 		/** 当前PHP运行的模式，只有两种，cli和web */
-		define('KE_APP_MODE', PHP_SAPI === 'cli' ? KE_CLI_MODE : KE_WEB_MODE);
+		define('KE_APP_MODE', PHP_SAPI === 'cli' ? KE_CLI : KE_WEB);
 
 		// 后注册，让后继承的App类，可以以声明属性的方式来添加
 		if (!isset($this->aliases['web']))
 			$this->aliases['web'] = 'public';
-		if (!isset($this->aliases['asset']))
-			$this->aliases['asset'] = 'assets'; // $app->asset() === $app->assets()
 
 		/** @var string $kephp kephp的根目录 */
-		$kephp = $this->dirs['kephp'] = dirname(__DIR__);
+		$this->dirs['kephp'] = dirname(__DIR__);
 
 		if (!empty($dirs))
 			$this->setDirs($dirs);
 
 		// CLI模式加载特定的环境配置文件
-		if (KE_APP_MODE === KE_CLI_MODE) {
+		if (KE_APP_MODE === KE_CLI) {
 			// 先尝试加载环境配置文件，这个文件以后会扩展成为json格式，以装载更多的信息
 			$envFile = $this->root . '/env';
 			if (is_file($envFile) && is_readable($envFile)) {
@@ -148,8 +150,8 @@ class App
 		// 匹配当前的运行环境
 		$env = $this->detectEnv();
 		// 不是开发模式或者测试模式，就必然是发布模式，确保在未知的模式下，返回发布模式
-		if ($env !== KE_DEVELOPMENT && $env !== KE_TEST)
-			$env = KE_PRODUCTION;
+		if ($env !== KE_DEV && $env !== KE_TEST)
+			$env = KE_PRO;
 		/** App当前的运行环境 */
 		define('KE_APP_ENV', $env);
 
@@ -181,10 +183,10 @@ class App
 		$this->loader = new Loader([
 			'dirs'    => [
 				'appSrc'    => [$appSrc, 100],
-				'appHelper' => ["{$appSrc}/Helper", 100, Loader::HELPER],
-				'keHelper'  => ["{$kephp}/Ke/Helper", 1000, Loader::HELPER],
+				'appHelper' => ["{$appNsPath}/Helper", 100, Loader::HELPER],
+				'keHelper'  => ["{$this->dirs['kephp']}/Ke/Helper", 1000, Loader::HELPER],
 			],
-			'classes' => import("{$kephp}/classes.php"),
+			'classes' => import("{$this->dirs['kephp']}/classes.php"),
 			'prepend' => true,
 		]);
 		$this->loader->start();
@@ -214,7 +216,7 @@ class App
 			"{$this->root}/config/{$env}.php",
 		]);
 
-		if (KE_APP_MODE === KE_WEB_MODE) {
+		if (KE_APP_MODE === KE_WEB) {
 			$this->httpRewrite = (bool)$this->httpRewrite;
 			if (empty($this->httpBase)) {
 				$target = dirname($_SERVER['SCRIPT_NAME']);
@@ -376,7 +378,7 @@ class App
 	{
 		if (isset($this->servers[$_SERVER['SERVER_NAME']]))
 			return $this->servers[$_SERVER['SERVER_NAME']];
-		return KE_PRODUCTION;
+		return KE_PRO;
 	}
 
 	public function setDirs(array $dirs)
