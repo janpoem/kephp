@@ -116,13 +116,12 @@ class Html
 	];
 
 	protected $aliasTags = [
-		'buttons'            => 'div',
-		'inline'             => 'span',
-		'inline-group'       => 'div',
-		'message'            => 'div',
-		'pagination-wrap'    => 'div',
-		'pagination-link'    => 'a',
-		'pagination-current' => 'strong',
+		'buttons'         => 'div',
+		'inline'          => 'span',
+		'inline-group'    => 'div',
+		'message'         => 'div',
+		'pagination'      => 'div',
+		'pagination-link' => 'a',
 	];
 
 	protected $specialValueOptions = [
@@ -321,6 +320,12 @@ class Html
 		return $this;
 	}
 
+	public function setPagination(array $options)
+	{
+		$this->pagination = array_merge($this->pagination, $options);
+		return $this;
+	}
+
 	public function parseAttrByPreg(string $attr): array
 	{
 		$attr = trim($attr);
@@ -429,7 +434,7 @@ class Html
 				return false;
 			elseif ($type === KE_ARY) {
 				// todo: 数组的话，自动构建特定的属性
-				return false;
+				return $this->mkSpecialValue($name, ...$value);
 			}
 			elseif ($type === KE_STR)
 				return [$name, $value];
@@ -697,7 +702,7 @@ class Html
 			$tag = 'div';
 		if (!is_array($attr))
 			$attr = $this->attr2array($attr);
-		$preMethod = 'pre' . $tag;
+		$preMethod = 'pre' . str_replace(['_', '-'], '', $tag);
 		if (method_exists($this, $preMethod))
 			$this->{$preMethod}($tag, $content, $attr);
 		else
@@ -1225,6 +1230,7 @@ class Html
 			else
 				$value = '';
 		}
+		// todo: 这里会增加一些Model默认属性的处理
 		if (isset($column['onShow']) && is_callable($column['onShow'])) {
 			$value = call_user_func($column['onShow'], $this, $value, $column);
 		}
@@ -1306,8 +1312,11 @@ class Html
 			$ellipsis = $this->getMessage(self::PAG_ELLIPSIS);
 			if ($start > 1) {
 				if (!$firstLast) {
-					$els['links'] .= $this->mkTag('pagination-link', sprintf($item, 1), [
-						'href' => $uri->setQuery([$pageField => 1], true),
+					$els['links'] .= $this->mkTag('pagination-item', 1, [
+						'compare' => false,
+						'format'  => $item,
+						'field'   => $pageField,
+						'uri'     => $uri,
 					]);
 					$start += 1;
 					if ($start > 2)
@@ -1320,25 +1329,22 @@ class Html
 			if (!$firstLast && $over < $pageTotal)
 				$over -= 1;
 			for ($i = $start; $i <= $over; $i++) {
-				$text = sprintf($item, $i);
-				if ($i === $pageCurrent) {
-					$tag = 'pagination-current';
-					$attr = null;
-				}
-				else {
-					$tag = 'pagination-link';
-					$attr = [
-						'href' => $uri->setQuery([$pageField => $i], true),
-					];
-				}
-				$els['links'] .= $this->mkTag($tag, $text, $attr);
+				$els['links'] .= $this->mkTag('pagination-item', $i, [
+					'compare' => $pageCurrent,
+					'format'  => $item,
+					'field'   => $pageField,
+					'uri'     => $uri,
+				]);
 			}
 			if ($over < $pageTotal) {
 				if (!$firstLast) {
 					if ($over < $pageTotal - 1)
 						$els['links'] .= $ellipsis;
-					$els['links'] .= $this->mkTag('pagination-link', sprintf($item, $pageTotal), [
-						'href' => $uri->setQuery([$pageField => $pageTotal], true),
+					$els['links'] .= $this->mkTag('pagination-item', $pageTotal, [
+						'compare' => false,
+						'format'  => $item,
+						'field'   => $pageField,
+						'uri'     => $uri,
 					]);
 				}
 				else {
@@ -1348,25 +1354,34 @@ class Html
 		}
 
 		if ($firstLast) {
-			$els['first'] = $this->mkTag($start === 1 ? 'pagination-current' : 'pagination-link',
-				$this->getMessage(self::PAG_FIRST), [
-					'href' => $uri->setQuery([$pageField => 1], true),
-				]);
-			$els['last'] = $this->mkTag($over === $pageTotal ? 'pagination-current' : 'pagination-link',
-				$this->getMessage(self::PAG_LAST), [
-					'href' => $uri->setQuery([$pageField => $pageTotal], true),
-				]);
+			$els['first'] = $this->mkTag('pagination-item', 1, [
+				'compare' => $pageCurrent,
+				'format'  => $this->getMessage(self::PAG_FIRST),
+				'field'   => $pageField,
+				'uri'     => $uri,
+			]);
+			$els['last'] = $this->mkTag('pagination-item', $pageTotal, [
+				'compare' => $pageCurrent,
+				'format'  => $this->getMessage(self::PAG_LAST),
+				'field'   => $pageField,
+				'uri'     => $uri,
+			]);
 		}
 
 		if ($prevNext) {
-			$els['prev'] = $this->mkTag($pageCurrent === 1 ? 'pagination-current' : 'pagination-link',
-				$this->getMessage(self::PAG_PREV), [
-					'href' => $uri->setQuery([$pageField => $pageCurrent - 1], true),
-				]);
-			$els['next'] = $this->mkTag($pageCurrent === $pageTotal ? 'pagination-current' : 'pagination-link',
-				$this->getMessage(self::PAG_NEXT), [
-					'href' => $uri->setQuery([$pageField => $pageCurrent + 1], true),
-				]);
+			$els['prev'] = $this->mkTag('pagination-item', $pageCurrent - 1, [
+				'compare' => 1 - 1,
+				'format'  => $this->getMessage(self::PAG_PREV),
+				'field'   => $pageField,
+				'uri'     => $uri,
+			]);
+
+			$els['next'] = $this->mkTag('pagination-item', $pageCurrent + 1, [
+				'compare' => $pageTotal + 1,
+				'format'  => $this->getMessage(self::PAG_NEXT),
+				'field'   => $pageField,
+				'uri'     => $uri,
+			]);
 		}
 
 		if (!empty($jump)) {
@@ -1397,13 +1412,29 @@ class Html
 			$row = $this->mkTag('form', $row, ['action' => $uri, 'method' => 'get']);
 		}
 
-		return $this->mkTag('pagination-wrap', $row);
+		return $this->mkTag('pagination', $row);
 	}
 
 	public function paginate(Pagination $pagination = null, $attr = null)
 	{
 		print $this->mkPaginate($pagination, $attr);
 		return $this;
+	}
+
+	public function prePaginationItem(string &$tag, &$page, array &$attr)
+	{
+		$newAttr = [];
+		if (isset($attr['compare']) && $attr['compare'] !== false && equals($attr['compare'], $page)) {
+			$tag = 'strong';
+			$newAttr["date-{$attr['field']}"] = $page;
+		}
+		else {
+			$tag = 'a';
+			$newAttr['href'] = $attr['uri']->setQuery([$attr['field'] => $page <= 1 ? null : $page]);
+		}
+		if (!empty($attr['format']))
+			$page = sprintf($attr['format'], $page);
+		$attr = $newAttr;
 	}
 
 	public function wrap($content, $before = null, $after = null, $attr = null, string $type = 'div')
