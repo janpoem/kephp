@@ -40,7 +40,7 @@ class Validator
 		foreach (array_keys($data) as $field) {
 			$column = isset($columns[$field]) ? $columns[$field] : [];
 			// 过滤值，同时必须更新$data
-			$data[$field] = $filter->filterColumn($data[$field], $column);
+			$object[$field] = $data[$field] = $filter->filterColumn($data[$field], $column);
 			$isRemove = false;
 			if ($isStrict) {
 				if (!empty($column['dummy']))

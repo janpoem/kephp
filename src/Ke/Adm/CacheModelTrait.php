@@ -39,13 +39,13 @@ trait CacheModelTrait
 	// 当从缓存中读取的时候，private会失效，这是个很严重的bug。所以下来属性暂时保留用protected
 	// 参考[issues#array_object.php]
 	// 所以，在访问下列的属性的时候，请使用
-	private $cacheArgs = [];
+	protected $cacheArgs = [];
 
-	private $cacheKey = '';
+	protected $cacheKey = '';
 
-	private $cacheStatus = false;
+	protected $cacheStatus = false;
 
-	private $cacheUpdateAt = 0;
+	protected $cacheUpdateAt = 0;
 
 	public static function isEnableCache(): bool
 	{

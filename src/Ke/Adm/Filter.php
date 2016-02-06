@@ -90,7 +90,7 @@ class Filter
 		// 序列化设定
 		// $column['serialize'] => 用于在Filter中快速确定是否进行序列化
 		// $groupColumns['serialize'] => 用于在Model层面快速识别哪个字段为序列的字段
-		elseif (isset($column['concat'])) {
+		if (isset($column['concat'])) {
 			if (empty($column['concat']))
 				$column['concat'] = ',';
 			if (empty($default))
@@ -248,8 +248,9 @@ class Filter
 	{
 		// todo: 整形的处理，需要增加unsigned类型的处理
 		if ($column['numeric'] === self::INT) {
+			$value = intval($value);
 			// int类型
-			if (($value = (int)$value) === false) // 转型失败
+			if ($value === false) // 转型失败
 				$value = 0;
 		}
 		elseif ($column['numeric'] === self::BIGINT) {

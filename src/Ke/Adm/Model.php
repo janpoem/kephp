@@ -108,17 +108,17 @@ class Model extends ArrayObject implements CacheModelImpl
 	// 当从缓存中读取的时候，private会失效，这是个很严重的bug。所以下来属性暂时保留用protected
 	// 参考[issues#array_object.php]
 	// 所以，在访问下列的属性的时候，请使用
-	private $_initData = false;
+	protected $_initData = false;
 
-	private $sourceType = self::SOURCE_USER;
+	protected $sourceType = self::SOURCE_USER;
 
-	private $referenceData = false;
+	protected $referenceData = false;
 
-	private $shadowData = null;
+	protected $shadowData = null;
 
-	private $hiddenData = null;
+	protected $hiddenData = null;
 
-	private $errors = null;
+	protected $errors = null;
 
 	public static function initModel()
 	{
@@ -216,7 +216,7 @@ class Model extends ArrayObject implements CacheModelImpl
 	public static function getCacheAdapter()
 	{
 		if (!static::isEnableCache())
-			throw new Exception(sprintf('Model "{%s}" undefined cache source or the model without primary key!',
+			throw new Exception(sprintf('Model "%s" undefined cache source or the model without primary key!',
 				static::class));
 		return Cache::getAdapter(static::$cacheSource);
 	}
@@ -695,6 +695,10 @@ class Model extends ArrayObject implements CacheModelImpl
 
 	public function offsetSet($field, $value)
 	{
+		$filter = static::getFilter();
+		$columns = $this->getColumns($this->isNew() ? self::ON_CREATE : self::ON_UPDATE);
+		$value = $filter->filterColumn($value, $columns[$field] ?? []);
+		////
 		$isParent = true;
 		if ($this->sourceType !== self::SOURCE_USER) {
 			if (!isset($this->shadowData[$field])) {
@@ -720,6 +724,7 @@ class Model extends ArrayObject implements CacheModelImpl
 
 	public function merge($data)
 	{
+
 		foreach ($data as $field => $value)
 			$this[$field] = $value;
 		return $this;
