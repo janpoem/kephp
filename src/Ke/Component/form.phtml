@@ -1,0 +1,144 @@
+<?php
+/**
+ * 公共组件，Form
+ *
+ * 转为早期的组件化form，不再使用声明一个对象的form
+ *
+ * @var \Ke\Web\Web     $web
+ * @var \Ke\Web\Context $this
+ */
+
+use Ke\Web\Html;
+use Ke\Adm\Model;
+
+$http = $web->http;
+$html = $this->html;
+$data = $data ?? [];
+$dataType = false;
+
+if (is_array($data))
+	$dataType = Html::DATA_ARRAY;
+elseif ($data instanceof ArrayAccess)
+	$dataType = Html::DATA_ARRAY_ACCESS;
+
+$prefix = $prefix ?? '';
+if (!empty($prefix)) {
+	if (is_string($prefix)) {
+		$prefix = trim($prefix);
+		if (!empty($prefix))
+			$prefix = [$prefix];
+	}
+}
+
+$columns = $columns ?? [];
+$errors = $errors ?? [];
+
+/** @var \Ke\Adm\Model $model */
+$model = $model ?? false;
+$isUpdate = false;
+if ($data instanceof Model) {
+	$model = get_class($data);
+	if ($data->isExists())
+		$isUpdate = true;
+	$modelErrors = $data->getErrors();
+	foreach ($modelErrors as $field => $error) {
+		$errors[$field] = $error;
+	}
+}
+
+if (!class_exists($model) || !is_subclass_of($model, Model::class))
+	$model = false;
+else {
+	if (empty($prefix) && $prefix !== false) {
+		list($ns, $cls) = parse_class($model);
+		$prefix = [class2id($cls)];
+	}
+	$modelColumns = $model::getStaticColumns($isUpdate ? Model::ON_UPDATE : Model::ON_CREATE);
+	if (empty($columns) || !is_array($columns))
+		$columns = $modelColumns;
+	else {
+		foreach ($columns as $field => $column) {
+			if (is_string($column))
+				$column['label'] = $column;
+			if (!is_array($column))
+				continue;
+			if (isset($modelColumns[$field]))
+				$column = array_merge($modelColumns[$field], $column);
+			$columns[$field] = $column;
+		}
+	}
+}
+
+$attr = $attr ?? [];
+if (!is_array($attr))
+	$attr = $html->attr2array($attr);
+$html->addClass($attr, $html->getBaseClass('form', 'wrap'));
+
+$isForm = $isForm ?? true;
+
+$method = $method ?? 'post';
+$action = $action ?? null;
+
+$submit = $submit ?? '';
+if (empty($submit) || !is_string($submit))
+	$submit = $html->getMessage(Html::FORM_SUBMIT);
+
+$reset = $reset ?? '';
+if (empty($reset) || !is_string($reset))
+	$reset = $html->getMessage(Html::FORM_RESET);
+
+$return = $return ?? false;
+if (empty($return))
+	$return = $web->http->query('ref', null);
+
+$buttons = [
+	[$submit, 'submit'],
+    [$reset, 'reset'],
+];
+
+if (!empty($return)) {
+	$buttons[] = [$html->getMessage(Html::FORM_RETURN), $return];
+}
+
+$formAttr = [
+	'method' => $method,
+	'action' => $action,
+];
+
+$isPost = strtolower($method) === 'post';
+$postData = [];
+
+if ($isPost) {
+	if ($http->isPost($prefix)) {
+		$postData = $http->getSecurityData();
+	}
+}
+else {
+	$postData = $http->query($prefix);
+}
+
+// 新版本的form组件，如果用户不指定edit的字段，则不会变为可编辑的项。
+
+$form = '';
+$fields = [];
+foreach ($columns as $field => $column) {
+	if (empty($column['edit']))
+		continue;
+	$column['prefix'] = $prefix;
+	if (isset($errors[$field]))
+		$column['error'] = $errors[$field];
+	$value = $postData[$field] ?? $data[$field] ?? null;
+	$form .= $html->mkFormColumn($field, $value, $column);
+}
+
+if ($isForm) {
+	if ($isPost) {
+		$form .= $html->mkInput('hidden', $web->http->mkSecurityCode($prefix), [
+			'name' => KE_HTTP_SECURITY_FIELD,
+		]);
+	}
+	$form .= $html->mkButtons($buttons);
+	$form = $html->mkTag('form', $form, $formAttr);
+}
+
+$html->tag('div', $form, $attr);
