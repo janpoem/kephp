@@ -21,6 +21,12 @@ class Index extends Controller
 		$this->words = ['abc', 'def', 'ghi'];
 	}
 
+	public function post_index()
+	{
+		$post = $this->http->post();
+		var_dump($post);
+	}
+
 	public function test()
 	{
 		throw new \Exception('抛出一个错误看看！');
