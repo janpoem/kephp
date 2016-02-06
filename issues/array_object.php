@@ -1,9 +1,7 @@
 <?php
 /**
  * 这个问题，是关于继承了ArrayObject的类，在序列化-反序列化以后，private属性无法访问到，但是能看到他有效的赋值了。
- * 此bug php 7.0.3已经修复，请更新php的版本。
- * @link http://php.net/ChangeLog-7.php#7.0.3
- *       https://bugs.php.net/bug.php?id=71311
+ * 居然发现这个bug php 7.0.3还是没修复了，算了。
  */
 
 class Test extends ArrayObject
