@@ -45,6 +45,9 @@ class Html
 	const PAG_JUMP     = 'pagination:jump';
 	const PAG_ROW      = 'pagination:row';
 
+	const FORM_SUBMIT = 'form:submit';
+	const FORM_RESET  = 'form:reset';
+	const FORM_RETURN = 'form:return';
 
 	const MSG_DEFAULT = 'default'; // 默认的，正常、普通的消息
 	const MSG_SUCCESS = 'success'; // 成功，通过，很好
@@ -113,15 +116,28 @@ class Html
 //		'message:warning' => '',
 //		'message:notice'  => '',
 //		'message:error'   => '',
+//		'pagination:wrap' => 'page-wrap',
+//		'pagination:item' => 'page-item',
+//		'pagination:first' => 'page-item page-first',
+//		'pagination:last' => 'page-item page-last',
+//		'pagination:prev' => 'page-item page-prev',
+//		'pagination:next' => 'page-item page-next',
+//		'pagination:input' => 'page-input',
+//		'pagination:select' => 'page-select',
+//		'pagination:button' => 'page-button',
+'form:row'     => 'form-row',
+'form:field'   => 'form-field',
+'form:fields'  => 'form-fields',
+'form:require' => 'form-require',
 	];
 
 	protected $aliasTags = [
-		'buttons'         => 'div',
-		'inline'          => 'span',
-		'inline-group'    => 'div',
-		'message'         => 'div',
-		'pagination'      => 'div',
-		'pagination-link' => 'a',
+		'buttons'      => 'div',
+		'inline'       => 'span',
+		'inline-group' => 'div',
+		'message'      => 'div',
+		'pagination'   => 'div',
+		'input-wrap'   => 'div',
 	];
 
 	protected $specialValueOptions = [
@@ -160,6 +176,9 @@ class Html
 		self::PAG_ELLIPSIS           => '...',
 		self::PAG_JUMP               => '跳转',
 		self::PAG_ROW                => '{first}{prev}{links}{next}{last} {current} / {total} {button}',
+		self::FORM_SUBMIT            => '提交',
+		self::FORM_RESET             => '重置',
+		self::FORM_RETURN            => '返回',
 	];
 
 	protected $pagination = [
@@ -1031,7 +1050,7 @@ class Html
 			$tag = 'div';
 			$content = $label . $input;
 		}
-		$this->addClass($attr, $this->getBaseClass('field'));
+		$this->addClass($attr, $this->getBaseClass('form', 'field'));
 		return $this->mkTag($tag, $content, $attr);
 	}
 
@@ -1041,18 +1060,20 @@ class Html
 		return $this;
 	}
 
-	public function mkFormRow(string $label, string $input, $attr = null, bool $isGrouped = false)
+	public function mkFormRow(string $label, string $input, $attr = null, bool $isMultiFields = false)
 	{
 		if (!is_array($attr))
 			$attr = $this->attr2array($attr);
 		$content = $label . $input;
-		$this->addClass($attr, $this->getBaseClass('row'));
+		$this->addClass($attr, $this->getBaseClass('form', 'row'));
+		if ($isMultiFields)
+			$this->addClass($attr, $this->getBaseClass('form', 'fields'));
 		return $this->mkTag('div', $content, $attr);
 	}
 
-	public function formRow(string $label, string $input, $attr = null, bool $isGrouped = false)
+	public function formRow(string $label, string $input, $attr = null, bool $isMultiFields = false)
 	{
-		print $this->mkFormRow($label, $input, $attr, $isGrouped);
+		print $this->mkFormRow($label, $input, $attr, $isMultiFields);
 		return $this;
 	}
 
@@ -1147,13 +1168,13 @@ class Html
 	{
 		if (!isset($value) && !empty($column['default']))
 			$value = $column['default'];
-		$inputAttr = $this->filterFormColumn($field, $value = null, $column);
+		$inputAttr = $this->filterFormColumn($field, $value, $column);
 		$type = $inputAttr['type'];
 		$showLabel = true;
 		if (isset($column['showLabel']) && $column['showLabel'] === false)
 			$showLabel = false;
 		$label = $column['label'] ?? $column['title'] ?? $field;
-		$isGrouped = false;
+		$isMultiFields = false;
 		if ($type === 'hidden') {
 			return $this->mkInput($type, $value, $inputAttr);
 		}
@@ -1175,6 +1196,7 @@ class Html
 			}
 			else {
 				if (!empty($column['options'])) {
+					$isMultiFields = true;
 					$input = $this->mkGroupInput($type, $column['options'], $value, $inputAttr);
 				}
 				else {
@@ -1185,7 +1207,10 @@ class Html
 				$input = $this->wrap($input, $column['before'], $column['after'], $column['wrap'] ?? [], 'input-wrap');
 			}
 		}
-		return $this->mkFormRow($label, $input, $isGrouped);
+		$baseClass = '';
+		if (!empty($column['require']))
+			$baseClass = $this->getBaseClass('form', 'require');
+		return $this->mkFormRow($label, $input, ['class' => $baseClass], $isMultiFields);
 	}
 
 	public function formColumn(string $field, $value = null, array $column = [])
@@ -1224,11 +1249,31 @@ class Html
 
 	public function filterValueShow(string $field, $value, array $column = null): string
 	{
-		if (!empty($column['timestamp'])) {
+		if (is_string($value)) {
+			$length = strlen($value);
+			if ($length > 0) {
+				if (isset($column['summary']) && is_numeric($column['summary']) && $column['summary'] > 0)
+					$value = $this->mkLabel(str_summary($value, $column['summary']), null, ['title' => $value]);
+				elseif (isset($column['strLen']) && is_numeric($column['strLen']) && $column['strLen'] > 0)
+					$value = $this->mkLabel(str_len_cut($value, $column['strLen']), null, ['title' => $value]);
+				elseif (isset($column['strWidth']) && is_numeric($column['strWidth']) && $column['strWidth'] > 0)
+					$value = $this->mkLabel(str_width_cut($value, $column['strWidth']), null, ['title' => $value]);
+			}
+
+		}
+		elseif (!empty($column['timestamp'])) {
 			if (is_numeric($value) && $value > 0)
 				$value = date('Y-m-d H:i:s', $value);
 			else
 				$value = '';
+		}
+
+
+		if (isset($column['options'])) {
+			$value = $column['options'][$value] ?? $value;
+		}
+		if (isset($column['before']) || isset($column['after'])) {
+			$value = $this->wrap($value, $column['before'], $column['after'], $column['wrap'] ?? [], 'div');
 		}
 		// todo: 这里会增加一些Model默认属性的处理
 		if (isset($column['onShow']) && is_callable($column['onShow'])) {
@@ -1317,6 +1362,7 @@ class Html
 						'format'  => $item,
 						'field'   => $pageField,
 						'uri'     => $uri,
+						'type'    => 'item',
 					]);
 					$start += 1;
 					if ($start > 2)
@@ -1334,6 +1380,7 @@ class Html
 					'format'  => $item,
 					'field'   => $pageField,
 					'uri'     => $uri,
+					'type'    => 'item',
 				]);
 			}
 			if ($over < $pageTotal) {
@@ -1345,6 +1392,7 @@ class Html
 						'format'  => $item,
 						'field'   => $pageField,
 						'uri'     => $uri,
+						'type'    => 'item',
 					]);
 				}
 				else {
@@ -1359,12 +1407,14 @@ class Html
 				'format'  => $this->getMessage(self::PAG_FIRST),
 				'field'   => $pageField,
 				'uri'     => $uri,
+				'type'    => 'first',
 			]);
 			$els['last'] = $this->mkTag('pagination-item', $pageTotal, [
 				'compare' => $pageCurrent,
 				'format'  => $this->getMessage(self::PAG_LAST),
 				'field'   => $pageField,
 				'uri'     => $uri,
+				'type'    => 'last',
 			]);
 		}
 
@@ -1374,6 +1424,7 @@ class Html
 				'format'  => $this->getMessage(self::PAG_PREV),
 				'field'   => $pageField,
 				'uri'     => $uri,
+				'type'    => 'prev',
 			]);
 
 			$els['next'] = $this->mkTag('pagination-item', $pageCurrent + 1, [
@@ -1381,24 +1432,31 @@ class Html
 				'format'  => $this->getMessage(self::PAG_NEXT),
 				'field'   => $pageField,
 				'uri'     => $uri,
+				'type'    => 'next',
 			]);
 		}
 
 		if (!empty($jump)) {
 			if ($jump === 'input') {
 				$el = $this->mkInput('number', $pageCurrent, [
-					'step' => 1,
-					'min'  => 1,
-					'max'  => $pageTotal,
-					'name' => $pageField,
+					'step'  => 1,
+					'min'   => 1,
+					'max'   => $pageTotal,
+					'name'  => $pageField,
+					'class' => $this->getBaseClass('pagination', 'input'),
 				]);
 			}
 			else {
 				$pages = range(1, $pageTotal);
-				$el = $this->mkSelect(array_combine($pages, $pages), $pageCurrent, ['name' => $pageField]);
+				$el = $this->mkSelect(array_combine($pages, $pages), $pageCurrent, [
+					'name'  => $pageField,
+					'class' => $this->getBaseClass('pagination', 'select'),
+				]);
 			}
 			$els['current'] = $this->mkLabel(sprintf($this->getMessage(self::PAG_CUR), $el));
-			$els['button'] = $this->mkButton($this->getMessage(self::PAG_JUMP), 'submit');
+			$els['button'] = $this->mkButton($this->getMessage(self::PAG_JUMP), 'submit', [
+				'class' => $this->getBaseClass('pagination', 'button'),
+			]);
 		}
 		else {
 			$els['current'] = sprintf($this->getMessage(self::PAG_CUR), $pageCurrent);
@@ -1412,7 +1470,13 @@ class Html
 			$row = $this->mkTag('form', $row, ['action' => $uri, 'method' => 'get']);
 		}
 
-		return $this->mkTag('pagination', $row);
+		if (!is_array($attr)) {
+			$attr = $this->attr2array($attr);
+			$this->addClass($attr, $this->getBaseClass('pagination', 'wrap'));
+		}
+
+
+		return $this->mkTag('pagination', $row, $attr);
 	}
 
 	public function paginate(Pagination $pagination = null, $attr = null)
@@ -1425,13 +1489,14 @@ class Html
 	{
 		$newAttr = [];
 		if (isset($attr['compare']) && $attr['compare'] !== false && equals($attr['compare'], $page)) {
-			$tag = 'strong';
+			$tag = 'span';
 			$newAttr["date-{$attr['field']}"] = $page;
 		}
 		else {
 			$tag = 'a';
 			$newAttr['href'] = $attr['uri']->setQuery([$attr['field'] => $page <= 1 ? null : $page]);
 		}
+		$this->addClass($newAttr, $this->getBaseClass('pagination', $attr['type'] ?? null));
 		if (!empty($attr['format']))
 			$page = sprintf($attr['format'], $page);
 		$attr = $newAttr;

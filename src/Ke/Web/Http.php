@@ -320,8 +320,8 @@ class Http extends Uri
 	{
 		if (empty($keys))
 			return $this->post;
-		if (isset($this->post[$keys]))
-			return $this->post[$keys];
+//		if (isset($this->post[$keys]))
+//			return $this->post[$keys];
 		return depth_query($this->post, $keys, $default);
 	}
 
@@ -329,8 +329,8 @@ class Http extends Uri
 	{
 		if (empty($keys))
 			return $this->cookies;
-		if (isset($this->cookies[$keys]))
-			return $this->cookies[$keys];
+//		if (isset($this->cookies[$keys]))
+//			return $this->cookies[$keys];
 		return depth_query($this->cookies, $keys, $default);
 	}
 
