@@ -94,3 +94,39 @@ if (!function_exists('class2id')) {
 		return strtolower($class);
 	}
 }
+
+if (!function_exists('str_len_cut')) {
+	function str_len_cut($str, $length, $suffix = '...')
+	{
+		$strLen = mb_strlen($str);
+		$suffixLen = mb_strlen($suffix);
+		if ($strLen <= $length || $strLen <= $suffixLen)
+			return $str;
+		return (mb_substr($str, 0, $length - $suffixLen)) . $suffix;
+	}
+}
+
+if (!function_exists('str_width_cut')) {
+	function str_width_cut($str, $width, $suffix = '...')
+	{
+		$strWidth = mb_strwidth($str);
+		$suffixWidth = mb_strwidth($suffix);
+		if ($strWidth <= $width || $strWidth <= $suffixWidth)
+			return $str;
+		$newStr = mb_strimwidth($str, 0, $width, $suffix);
+		return $newStr;
+	}
+}
+
+if (!function_exists('str_summary')) {
+	function str_summary($content, $len = 256)
+	{
+		$content = nl2br($content);
+		$content = strip_tags($content);
+		$content = str_replace('&nbsp;', ' ', $content);
+		$content = trim($content);
+		$content = preg_replace('/([\r\n]+|[\s]{2,})/i', ' ', $content);
+		$content = str_len_cut($content, $len);
+		return $content;
+	}
+}
