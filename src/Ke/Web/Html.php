@@ -1282,6 +1282,18 @@ class Html
 		return $value;
 	}
 
+	public function mkForm($data, array $options = null)
+	{
+		$options['data'] = $data;
+		return Web::getWeb()->getContext()->loadComponent('form', $options);
+	}
+
+	public function form($data, array $options = null)
+	{
+		print $this->mkForm($data, $options);
+		return $this;
+	}
+
 	public function mkTableList($rows, array $options = null)
 	{
 		$options['rows'] = $rows;
