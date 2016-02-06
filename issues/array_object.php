@@ -15,7 +15,7 @@ class Test extends ArrayObject
 //		parent::__construct($input, ArrayObject::STD_PROP_LIST);
 	}
 
-	public function setName(string $name)
+	public function setName($name)
 	{
 		$this->name = $name;
 		return $this;
@@ -35,10 +35,25 @@ $unSer = unserialize($ser);
 
 var_dump($unSer->getName()); // null 为什么
 var_dump($unSer);            // 你会看到，$name属性是有内容的。
-/// output :
+/// output : php 7.0.3
 /**
+D:\htdocs\array_object.php:36:null
+
+D:\htdocs\array_object.php:37:
 object(Test)[2]
-	private 'name' => string 'ok' (length=2) // name是有值的
+	private 'name' => string 'ok' (length=2)
+		private 'storage' (ArrayObject) =>
+			array (size=2)
+				'a' => string 'a' (length=1)
+				'b' => string 'b' (length=1)
+
+ */
+// php 5.6.8
+/**
+string 'ok' (length=2)
+
+object(Test)[2]
+	private 'name' => string 'ok' (length=2)
 	private 'storage' (ArrayObject) =>
 		array (size=2)
 			'a' => string 'a' (length=1)
