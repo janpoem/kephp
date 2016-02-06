@@ -57,6 +57,3 @@ const KE_REQUEST_URI = '';
 const KE_REQUEST_PATH = '';
 
 const KE_PROTOCOL_VER = '';
-
-/** @var \Ke\App $app */
-global $app;

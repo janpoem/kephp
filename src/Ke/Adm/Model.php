@@ -489,16 +489,18 @@ class Model extends ArrayObject implements CacheModelImpl
 		return $query->in($keyValues)->findOne();
 	}
 
-	public static function newList($data, $query, $source = null)
+	public static function newList($data, Query $query, $source = null)
 	{
 		$list = new DataList();
+		$list->setModel($query->getModel());
+		$list->setPagination($query->getPagination());
 		foreach ($data as $row) {
 			$list[] = self::newInstance($row, $query, $source);
 		}
 		return $list;
 	}
 
-	public static function newInstance($data, $query, $source = null)
+	public static function newInstance($data, Query $query, $source = null)
 	{
 		$obj = new static(false);
 		$obj->prepareData($data, $source);

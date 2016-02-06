@@ -11,6 +11,9 @@
 namespace Ke\Web;
 
 
+use Ke\Adm\Model;
+use Ke\Utils\Status;
+
 class Form extends Widget
 {
 
@@ -19,21 +22,25 @@ class Form extends Widget
 	const GROUP_SPEC_WIDTH = 1;
 
 	protected $publicOptions = [
-		'prefix'  => true,
-		'data'    => 'setData',
-		'columns' => 'setColumns',
-		'groups'  => 'setColumnsGroups',
-		'method'  => 'setMethod',
-		'action'  => true,
-		'submit'  => true,
-		'reset'   => true,
-		'return'  => true,
-		'ref'     => true,
+		'prefix'     => true,
+		'data'       => 'setData',
+		'columns'    => 'setColumns',
+		'groups'     => 'setColumnsGroups',
+		'method'     => 'setMethod',
+		'action'     => true,
+		'submit'     => true,
+		'reset'      => true,
+		'return'     => true,
+		'ref'        => true,
+		'errors'     => 'setErrors',
+		'errorTitle' => true,
 	];
 
 	public $prefix = '';
 
 	public $data = [];
+
+	private $object = null;
 
 	private $dataClass = '';
 
@@ -51,23 +58,25 @@ class Form extends Widget
 
 	public $action = '';
 
-	public $submit = 'Submit';
+	public $submit = '提交';
 
-	public $reset = null;
-
-	public $return = null;
-
-	public $returnHref = null;
+	public $reset = '重置';
 
 	public $errors = [];
+
+	public $errorTitle = '';
 
 	protected $web = null;
 
 	protected $http = null;
 
 
-	public function __construct(array $options = null)
+	public function __construct($data = null, array $columns = null, array $options = null)
 	{
+		if (isset($data))
+			$this->setData($data);
+		if (isset($columns))
+			$this->setColumns($columns);
 		if (isset($options))
 			$this->setOptions($options);
 		$this->web = Web::getWeb();
@@ -77,6 +86,11 @@ class Form extends Widget
 	public function setData($data)
 	{
 		if (is_object($data)) {
+			if ($data instanceof Model) {
+				$this->setColumns($data->getStaticColumns());
+				$this->errors = $data->getErrors();
+			}
+			$this->object = $data;
 			$this->mergeData((array)$data);
 			$this->dataClass = get_class($data);
 		}
@@ -228,18 +242,31 @@ class Form extends Widget
 	public function getButtons()
 	{
 		$buttons = [
-			'submit' => [empty($this->submit) || !is_string($this->submit) ? 'Submit' : $this->submit, 'submit'],
+			['submit', empty($this->submit) || !is_string($this->submit) ? 'Submit' : $this->submit],
 		];
 		if (!empty($this->reset))
-			$buttons['reset'] = [!is_string($this->reset) ? 'Reset' : $this->reset, 'reset'];
+			$buttons[] = ['reset', !is_string($this->reset) ? 'Reset' : $this->reset];
 		if (!empty($this->return))
-			$buttons['return'] = [!is_string($this->return) ? 'Return' : $this->return, 'button'];
+			$buttons[] = ['button', '返回', $this->return];
 		return $buttons;
 	}
 
 	public function getError($field)
 	{
 		return $this->errors[$field] ?? false;
+	}
+
+	public function setErrors($errors)
+	{
+		if ($errors instanceof Status) {
+			$this->errorTitle = $errors->message;
+			if (!empty($errors->data))
+				$this->errors = array_merge($this->errors, $errors->data);
+		}
+		elseif (is_array($errors)) {
+			$this->errors = array_merge($this->errors, $errors);
+		}
+		return $this;
 	}
 
 	public function render(array $fields = null): string
@@ -249,15 +276,22 @@ class Form extends Widget
 		if (empty($fields))
 			$fields = array_keys($this->columns);
 		$completeGroups = [];
+		$errors = [];
 		foreach ($fields as $field) {
+			if (!isset($this->columns[$field]))
+				continue;
 			$index = $this->indexOfColumnsGroup($field);
 //			if ($index > -1 && !isset($completeGroups[$index])) {
 //				$group = $this->getColumnsGroup($index);
 //				$completeGroups[$index] = true;
 //				continue;
 //			}
+			$column = $this->getColumn($field);
+			if (!empty($column['error']))
+				$errors[] = $html->mkTag('li', $column['error']);
 			$rows[] = $html->mkFormRow($html->mkFormColumn($field, $this->getColumnData($field),
-				$this->getColumn($field)));
+				$column));
+
 		}
 		$securityInput = '';
 		if ($this->method !== 'get') {
@@ -265,14 +299,25 @@ class Form extends Widget
 				'name' => KE_HTTP_SECURITY_FIELD,
 			]);
 		}
-		$buttons = [];
-		foreach ($this->getButtons() as $type => $button) {
-			$buttons[] = $html->mkButton($button[0], $button[1]);
+		$rows[] = $html->mkFormButtons($this->getButtons());
+		$rows[] = $securityInput;
+//		$buttons = [];
+//		foreach ($this->getButtons() as $type => $button) {
+//			$buttons[] = $html->mkButton($button[0], $button[1]);
+//		}
+//		$rows[] = $html->mkFormRow(implode('', $buttons) . $securityInput, true);
+
+		if (!empty($errors)) {
+			$error = $html->mkTag('div', empty($this->errorTitle) ? '表单填写有误' : $this->errorTitle, ['class' => 'header']) .
+			         $html->mkTag('ul', implode('', $errors), ['class' => 'list']);
+			$rows[] = $html->mkTag('div', $error, ['class' => 'ui error message']);
 		}
-		$rows[] = $html->mkFormRow(implode('', $buttons) . $securityInput, true);
+		if (empty($this->action))
+			$this->action = $this->web->http;
 		$form = $html->mkTag('form', implode('', $rows), [
 			'method' => $this->method,
 			'action' => $html->filterHref($this->action),
+			'class'  => !empty($errors) ? 'error' : null,
 		]);
 		print $form;
 		return '';

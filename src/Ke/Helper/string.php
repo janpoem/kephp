@@ -85,3 +85,12 @@ if (!function_exists('path2class')) {
 		return $class;
 	}
 }
+
+if (!function_exists('class2id')) {
+	function class2id(string $class): string
+	{
+		$class = trim($class, KE_PATH_NOISE);
+		$class = str_replace(['\\', '/'], '_', $class);
+		return strtolower($class);
+	}
+}

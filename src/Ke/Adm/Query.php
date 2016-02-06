@@ -40,7 +40,8 @@ class Query
 
 	public $offset = -1;
 
-	public $pagination = null;
+	/** @var Pagination */
+	protected $pagination = null;
 
 	public function setModel(string $class)
 	{
@@ -51,6 +52,11 @@ class Query
 				$this->from = $class::getTable();
 		}
 		return $this;
+	}
+
+	public function getModel()
+	{
+		return $this->model;
 	}
 
 	public function source(string $source = null)
@@ -68,8 +74,15 @@ class Query
 	public function load($query)
 	{
 		if (is_array($query)) {
-			foreach ($query as $key => $value)
+			$isPage = false;
+			foreach ($query as $key => $value) {
+				if (!$isPage && $key === 'page') {
+					$isPage = true;
+					$this->paginate($value);
+					continue;
+				}
 				$this->$key = $value;
+			}
 		}
 		return $this;
 	}
@@ -91,6 +104,8 @@ class Query
 
 	public function find()
 	{
+		if (isset($this->pagination))
+			$this->pagination->prepare($this);
 		$this->getQueryBuilder()->buildSelect($this, $sql, $args);
 		$data = $this->getAdapter()->query($sql, $args, DbAdapter::MULTI, DbAdapter::FETCH_ASSOC, null);
 		if (isset($this->model))
@@ -419,6 +434,19 @@ class Query
 		return $this;
 	}
 
+	public function getPagination()
+	{
+		if (!isset($this->pagination))
+			$this->pagination = new Pagination();
+		return $this->pagination;
+	}
+
+	public function paginate($options)
+	{
+		$this->getPagination()->setOptions($options);
+		return $this;
+	}
+
 	public function sql()
 	{
 		$debug = $this->debug;
@@ -426,4 +454,6 @@ class Query
 		$this->debug = $debug;
 		return $sql;
 	}
+
+
 }

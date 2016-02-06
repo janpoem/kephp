@@ -16,7 +16,8 @@ use ArrayObject;
 class DataList extends ArrayObject
 {
 
-	protected $pagination = array();
+	/** @var null|Pagination */
+	protected $pagination = null;
 
 	protected $model = null;
 
@@ -31,7 +32,7 @@ class DataList extends ArrayObject
 		return $this->count() <= 0;
 	}
 
-	public function setPagination(array $pagination)
+	public function setPagination(Pagination $pagination = null)
 	{
 		$this->pagination = $pagination;
 		return $this;

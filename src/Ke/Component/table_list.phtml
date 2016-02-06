@@ -1,0 +1,201 @@
+<?php
+/**
+ * 公共组件，Table List
+ *
+ * @var \Ke\Web\Web     $web
+ * @var \Ke\Web\Context $this
+ */
+
+use Ke\Web\Html;
+
+$html = $this->html;
+$rows = $rows ?? [];
+
+$rowsType = false;
+if (is_array($rows))
+	$rowsType = Html::DATA_ARRAY;
+elseif ($rows instanceof \ArrayAccess)
+	$rowsType = Html::DATA_ARRAY_ACCESS;
+elseif ($rows instanceof \Generator)
+	$rowsType = Html::DATA_GENERATOR;
+
+if ($rowsType === false) {
+	$html->message($html->getMessage(Html::ERR_INVALID_TABLE_DATA), Html::MSG_WARN);
+	return true;
+}
+
+// 取出数据的第一行，作为一个数据参考
+if ($rowsType === Html::DATA_GENERATOR)
+	$firstRow = $rows->current();
+else {
+	$firstRow = $rows[0] ?? [];
+	if (is_object($firstRow))
+		$firstRow = (array)$firstRow;
+}
+
+$checkbox = $checkbox ?? false;
+if (!isset($firstRow[$checkbox]) && !isset($firstRow->{$checkbox}))
+	$checkbox = false;
+
+$checked = $checked ?? [];
+if (!is_array($checked))
+	$checked = (array)$checked;
+$checked = array_values($checked);
+$checked = array_combine($checked, $checked);
+
+$pagination = $pagination ?? null;
+
+$columnsType = Html::TABLE_HEAD_FROM_COLUMNS;
+$columnsCount = 0;
+if (!isset($columns)) {
+	$columnsType = Html::TABLE_HEAD_FROM_DATA;
+	$columns = $firstRow;
+}
+if (!is_array($columns))
+	$columns = [];
+
+$prefix = $prefix ?? '';
+$modelColumns = [];
+if ($rows instanceof \Ke\Adm\DataList) {
+	/** @var \Ke\Adm\Model|null $model */
+	$model = $rows->getModel();
+	if (!empty($model) && is_subclass_of($model, \Ke\Adm\Model::class)) {
+		$modelColumns = $model::getStaticColumns();
+		list($ns, $cls) = parse_class($model);
+		$prefix = class2id($cls);
+	}
+	if (!isset($pagination))
+		$pagination = $rows->getPagination();
+}
+if (!empty($prefix))
+	$prefix .= '_table';
+else
+	$prefix = 'table_list';
+
+$tail = $tail ?? false;
+if (!is_callable($tail))
+	$tail = false;
+
+//$row = $row ?? false;
+//if (!is_callable($row))
+//	$row = false;
+
+$attr = $attr ?? [];
+if (!empty($attr) && !is_array($attr))
+	$attr = $html->attr2array($attr);
+
+if (!isset($attr['id']))
+	$attr['id'] = $html->mkAutoId($prefix);
+
+$attr['data-ui'] = 'table-list';
+
+$html->addClass($attr, $html->getBaseClass('table', 'list'));
+
+$checkboxClass = $html->getBaseClass('input', 'checkbox');
+?>
+<table <?php $html->attr($attr); ?>>
+	<thead>
+	<tr>
+		<?php
+		if ($checkbox) {
+			$columnsCount += 1;
+			?>
+			<th><input type="checkbox" class="<?php print $checkboxClass; ?>" data-field="<?php print $checkbox ?>"
+					   data-ui="check-all"/></th>
+			<?php
+		}
+		?>
+		<?php if (empty($columns)) { ?>
+			<th><?php print $html->getMessage(Html::ERR_EMPTY_TABLE_HEAD); ?></th>
+			<?php
+		}
+		else {
+			foreach ($columns as $field => $column) {
+				$column = $html->filterTableHead($field, $column, $columnsType, $modelColumns[$field] ?? null);
+				$columns[$field] = $column;
+				if (isset($column['showTable']) && $column['showTable'] === false)
+					continue;
+				$columnsCount += 1;
+				$cellClass = $column['class'] ?? '';
+				?>
+				<th <?php print $cellClass ?>data-field="<?php print $field; ?>"><?php
+					print $column['label'];
+					?></th>
+				<?php
+			}
+		}
+		?>
+		<?php if ($tail !== false) {
+			?>
+			<th><?php print $html->getMessage('table:tail'); ?></th>
+			<?php
+		}
+		?>
+	</tr>
+	</thead>
+	<tbody>
+	<?php
+	if (empty($rows)) {
+		?>
+		<tr>
+			<td colspan="<?php print $columnsCount; ?>">
+				<?php $html->message($html->getMessage(Html::ERR_EMPTY_TABLE_DATA), Html::MSG_WARN); ?>
+			</td>
+		</tr>
+		<?php
+	}
+	else {
+		foreach ($rows as $index => $row) {
+			?>
+			<tr>
+				<?php if ($checkbox) { ?>
+					<?php
+					$value = null;
+					$disabledAttr = '';
+					$checkedAttr = '';
+					if (isset($row[$checkbox]))
+						$value = $row[$checkbox];
+					elseif (isset($row->{$checkbox}))
+						$value = $row->{$checkbox};
+					else {
+						$disabledAttr = ' disabled="disabled"';
+					}
+					if (empty($disabledAttr)) {
+						if (isset($checked[$value]))
+							$checkedAttr = ' checked="checked"';
+					}
+					?>
+					<td><input type="checkbox" class="<?php print $checkboxClass; ?>"
+							   data-field="<?php print $checkbox ?>"
+							   data-value="<?php print $value; ?>"
+							   data-ui="check-row"<?php print $disabledAttr . $checkedAttr ?>
+						/></td>
+				<?php } ?>
+				<?php
+				foreach ($columns as $field => $column) {
+					if (isset($column['showTable']) && $column['showTable'] === false)
+						continue;
+					$value = $row[$field] ?? '';
+					?>
+					<td<?php print ($column['class'] ?? ''); ?>
+							data-field="<?php print $field ?>"
+							data-value="<?php print $value ?>"><?php
+						print $html->filterValueShow($field, $row[$field] ?? '', $column);
+						?></td>
+					<?php
+				}
+				?>
+				<?php if ($tail !== false) {
+					?>
+					<th><?php call_user_func($tail, $html, $row); ?></th>
+					<?php
+				}
+				?>
+			</tr>
+			<?php
+		}
+	}
+	?>
+	</tbody>
+</table>
+<?php $html->paginate($pagination); ?>
