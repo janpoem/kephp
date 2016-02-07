@@ -4,3 +4,4 @@ public/
 .htaccess/
 .logs/
 /nbproject/private/
+apigen.phar

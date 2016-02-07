@@ -35,6 +35,10 @@ class Console
 		'new' => 'add',
 	];
 
+	/**
+	 * @param null $argv
+	 * @return Console
+	 */
 	public static function getConsole($argv = null)
 	{
 		if (!isset(self::$context)) {

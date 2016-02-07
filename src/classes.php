@@ -65,6 +65,10 @@ return [
 	'Ke\\Utils\\Failure'                  => __DIR__ . '/Ke/Utils/Status.php',
 	'Ke\\Utils\\CodeStatus'               => __DIR__ . '/Ke/Utils/Status.php',
 	'Ke\\Utils\\References'               => __DIR__ . '/Ke/Utils/References.php',
+	'Ke\\Utils\\DocMen\\SourceScanner'    => __DIR__ . '/Ke/Utils/DocMen/SourceScanner.php',
+	'Ke\\Utils\\DocMen\\FileParser'       => __DIR__ . '/Ke/Utils/DocMen/FileParser.php',
+	'Ke\\Utils\\DocMen\\ClassParser'      => __DIR__ . '/Ke/Utils/DocMen/ClassParser.php',
+	'Ke\\Utils\\DocMen\\DocLoader'        => __DIR__ . '/Ke/Utils/DocMen/DocLoader.php',
 	// Web
 	'Ke\\Web\\Asset'                      => __DIR__ . '/Ke/Web/Asset.php',
 	'Ke\\Web\\Component'                  => __DIR__ . '/Ke/Web/Component.php',

@@ -308,6 +308,7 @@ abstract class Command
 
 	protected $help = false;
 
+	/** @var Console */
 	protected $console = null;
 
 	public function __construct($argv = null)

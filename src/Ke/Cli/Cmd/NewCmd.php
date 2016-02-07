@@ -82,6 +82,11 @@ class NewCmd extends ReflectionCommand
 			implode(PHP_EOL, $this->createClass()));
 	}
 
+	protected function onExecute($argv = null)
+	{
+		// TODO: Implement onExecute() method.
+	}
+
 	protected function createClass()
 	{
 		$class = $this->prepareClasses[$this->selected];
