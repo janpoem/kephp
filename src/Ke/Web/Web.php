@@ -76,6 +76,8 @@ class Web
 		'data'       => [],
 	];
 
+	private $tailSplit = false;
+
 	/** @var UI */
 	private $ui = null;
 
@@ -423,7 +425,7 @@ class Web
 			$params['format'] = $result->format;
 		// tail
 		if (!empty(($tail = trim($result->tail, KE_PATH_NOISE)))) {
-			$params['tail'] = explode('/',$tail);
+			$params['tail'] = $tail;
 		}
 		// data
 		if (!empty($result->data)) {
@@ -433,24 +435,21 @@ class Web
 		return $params;
 	}
 
-	public function getParams(): array
+	public function params(string $field = null, $default = null)
 	{
-		return $this->params;
-	}
-
-	public function param(string $field, $default = null)
-	{
+		if (!isset($field))
+			return $this->params;
 		return $this->params[$field] ?? $default;
 	}
 
-	public function getTail()
+	public function tail(int $index = -1, $default = null)
 	{
-		return $this->params['tail'];
-	}
-
-	public function tail(int $index, $default = null)
-	{
-		return $this->params['tail'][$index] ?? $default;
+		if ($index < 0)
+			return $this->params['tail'];
+		if ($this->tailSplit === false) {
+			$this->tailSplit = explode('/', $this->params['tail']);
+		}
+		return $this->tailSplit[$index] ?? $default;
 	}
 
 	public function makeControllerClass(string $controller)
@@ -458,6 +457,34 @@ class Web
 		$class = path2class($controller);
 		$class = add_namespace($class, $this->controllerNamespace);
 		return $class;
+	}
+
+	public function getController()
+	{
+		return $this->params['controller'];
+	}
+
+	public function controllerOf(string $path = null, $query = null)
+	{
+		$uri = $this->params['controller'];
+		if ($path !== '' && !empty($path = trim($path, KE_PATH_NOISE)))
+			$uri .= '/' . $path;
+		return $this->uri($uri, $query);
+	}
+
+	public function getAction()
+	{
+		return $this->params['action'];
+	}
+
+	public function getFormat()
+	{
+		return $this->params['format'];
+	}
+
+	public function isFormat(string $format)
+	{
+		return $this->params['format'] === $format;
 	}
 
 	public function getControllerClass()
