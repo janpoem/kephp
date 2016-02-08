@@ -14,9 +14,11 @@ use Ke\Adm\Pagination;
 use Ke\Uri;
 
 /**
- * Html辅助器重构版本
+ * 第二次重构Html构造器
  *
- * @package Ke\Web
+ * 1. 使用数组的配置，并不方便于后续继承的类重载属性
+ * 2. preTag的方法，容易造成混乱的情况。
+ * 3. 不再区分mk的方法，所有构建的方法，都直接返回字符串，不再直接输出
  */
 class Html
 {
@@ -25,35 +27,34 @@ class Html
 	const DATA_ARRAY_ACCESS = 1;
 	const DATA_GENERATOR    = 2;
 
-	const TABLE_BODY              = 'table_body';
-	const TABLE_HEAD_FROM_COLUMNS = 'table_head_columns';
-	const TABLE_HEAD_FROM_DATA    = 'table_head_data';
-
-	const ERR_EMPTY_TABLE_DATA   = 400;
-	const ERR_EMPTY_TABLE_HEAD   = 401;
-	const ERR_INVALID_TABLE_DATA = 402;
-	const TABLE_TAIL_HEAD        = 'table:tail';
-
-	const PAG_FIRST    = 'pagination:first';
-	const PAG_LAST     = 'pagination:last';
-	const PAG_PREV     = 'pagination:prev';
-	const PAG_NEXT     = 'pagination:next';
-	const PAG_CUR      = 'pagination:current';
-	const PAG_TOTAL    = 'pagination:total';
-	const PAG_ITEM     = 'pagination:item';
-	const PAG_ELLIPSIS = 'pagination:ellipsis';
-	const PAG_JUMP     = 'pagination:jump';
-	const PAG_ROW      = 'pagination:row';
-
-	const FORM_SUBMIT = 'form:submit';
-	const FORM_RESET  = 'form:reset';
-	const FORM_RETURN = 'form:return';
+	const TABLE_HEAD_FROM_COLUMNS = 'columns';
+	const TABLE_HEAD_FROM_DATA    = 'data';
 
 	const MSG_DEFAULT = 'default'; // 默认的，正常、普通的消息
 	const MSG_SUCCESS = 'success'; // 成功，通过，很好
 	const MSG_NOTICE  = 'notice'; // 提示、通知，可忽略
 	const MSG_WARN    = 'warning'; // 警告，但不中断，不致命
 	const MSG_ERROR   = 'error'; // 错误，中断，致命
+
+	const PAGE_FIRST    = 'pageFirst';
+	const PAGE_LAST     = 'pageLast';
+	const PAGE_PREV     = 'pagePrev';
+	const PAGE_NEXT     = 'pageNext';
+	const PAGE_CUR      = 'pageCurrent';
+	const PAGE_TOTAL    = 'pageTotal';
+	const PAGE_ITEM     = 'pageLink';
+	const PAGE_ELLIPSIS = 'pageEllipsis';
+	const PAGE_GOTO     = 'pageGoto';
+	const PAGE_ROW      = 'pageRow';
+
+	const SUBMIT = 'submit';
+	const RESET  = 'reset';
+	const RETURN = 'return';
+
+	const TABLE_EMPTY        = 'tableEmpty';
+	const TABLE_HEAD_INVALID = 'tableHeadInvalid';
+	const TABLE_HEAD_EMPTY   = 'tableHeadEmpty';
+	const TABLE_HEAD_TAIL    = 'tableHeadTail';
 
 	/** @var \DOMDocument */
 	private $DOM = null;
@@ -63,7 +64,7 @@ class Html
 	protected $xhtmlStyle = true;
 
 	/** @var array 属性定义 */
-	protected $attrs = [
+	protected $attributes = [
 		'readonly'    => ['type' => 'bool'],
 		'disabled'    => ['type' => 'bool'],
 		'checked'     => ['type' => 'bool'],
@@ -89,104 +90,43 @@ class Html
 		'isindex' => true, 'wbr' => true, 'command' => true, 'track' => true,
 	];
 
-	/** @var array 标签的基础样式class */
-	protected $baseClasses = [
-//		'buttons'         => '',
-//		'button'          => '',
-//		'button:link'     => '',
-//		'button:button'   => '',
-//		'button:submit'   => '',
-//		'button:reset'    => '',
-//		'select'          => '',
-//		'select:multiple' => '',
-//		'input'           => '',
-//		'input:text'      => '',
-//		'input:password'  => '',
-//		'input:hidden'    => '',
-//		'input:number'    => '',
-//		'input:email'     => '',
-//		'input:url'       => '',
-//		'inline-group'    => '',
-//		'inline:radio'    => '',
-//		'inline:checkbox' => '',
-//		'label:inline'    => '',
-//		'table:list'      => '',
-//		'message:default' => '',
-//		'message:success' => '',
-//		'message:warning' => '',
-//		'message:notice'  => '',
-//		'message:error'   => '',
-//		'pagination:wrap' => 'page-wrap',
-//		'pagination:item' => 'page-item',
-//		'pagination:first' => 'page-item page-first',
-//		'pagination:last' => 'page-item page-last',
-//		'pagination:prev' => 'page-item page-prev',
-//		'pagination:next' => 'page-item page-next',
-//		'pagination:input' => 'page-input',
-//		'pagination:select' => 'page-select',
-//		'pagination:button' => 'page-button',
-'form:row'     => 'form-row',
-'form:field'   => 'form-field',
-'form:fields'  => 'form-fields',
-'form:require' => 'form-require',
+	protected $texts = [
+		self::TABLE_EMPTY        => '输入的表(Table)数据为空！',
+		self::TABLE_HEAD_INVALID => '输入了无效的表(Table)数据！',
+		self::TABLE_HEAD_EMPTY   => '表头(Table Head)字段为空！',
+		self::TABLE_HEAD_TAIL    => '操作',
+		self::PAGE_FIRST         => '首页',
+		self::PAGE_LAST          => '末页',
+		self::PAGE_PREV          => '上一页',
+		self::PAGE_NEXT          => '下一页',
+		self::PAGE_CUR           => '第 %s 页',
+		self::PAGE_TOTAL         => '共 %s 页',
+		self::PAGE_ITEM          => '%d',
+		self::PAGE_ELLIPSIS      => '...',
+		self::PAGE_GOTO          => '跳转',
+		self::PAGE_ROW           => '{first}{prev}{links}{next}{last} {current} / {total} {button}',
+		self::SUBMIT             => '提交',
+		self::RESET              => '重置',
+		self::RETURN             => '返回',
 	];
 
-	protected $aliasTags = [
-		'buttons'      => 'div',
-		'inline'       => 'span',
-		'inline-group' => 'div',
-		'message'      => 'div',
-		'pagination'   => 'div',
-		'input-wrap'   => 'div',
-	];
+	public $labelColon = ' : ';
 
-	protected $specialValueOptions = [
-		'id'    => [
-			'wrap'    => ['_', null],
-			'replace' => [
-				['-', '[', ']'],
-				['_', '_', ''],
-			],
-		],
-		'name'  => [
-			'wrap'    => ['[', ']'],
-			'replace' => ['-', '_'],
-			'multi'   => true,
-		],
-		'class' => [
-			'wrap'    => ['-', null],
-			'replace' => ['_', '-'],
-		],
-	];
+	// 分页的设置
+	public $pageLinks     = 8;
+	public $pageFirstLast = false;
+	public $pagePrevNext  = true;
+	public $pageGoto      = false; // 'input', 'select'
 
-	protected $labelColon = ' : ';
+	public $tagPageWrap       = 'div';
+	public $tagPageLink       = 'a';
+	public $tagPageLinkSubmit = 'button';
+	public $tagPageSpan       = 'span';
+	public $tagPageEllipsis   = 'span';
+	public $tagPageCurrent    = 'span';
 
-	protected $messages = [
-		self::ERR_EMPTY_TABLE_DATA   => '输入的表(Table)数据为空！',
-		self::ERR_INVALID_TABLE_DATA => '输入了无效的表(Table)数据！',
-		self::ERR_EMPTY_TABLE_HEAD   => '表头(Table Head)字段为空！',
-		self::TABLE_TAIL_HEAD        => '操作',
-		self::PAG_FIRST              => '首页',
-		self::PAG_LAST               => '末页',
-		self::PAG_PREV               => '上一页',
-		self::PAG_NEXT               => '下一页',
-		self::PAG_CUR                => '第 %s 页',
-		self::PAG_TOTAL              => '共 %s 页',
-		self::PAG_ITEM               => '%d',
-		self::PAG_ELLIPSIS           => '...',
-		self::PAG_JUMP               => '跳转',
-		self::PAG_ROW                => '{first}{prev}{links}{next}{last} {current} / {total} {button}',
-		self::FORM_SUBMIT            => '提交',
-		self::FORM_RESET             => '重置',
-		self::FORM_RETURN            => '返回',
-	];
-
-	protected $pagination = [
-		'links'     => 6,
-		'firstLast' => true,
-		'prevNext'  => true,
-		'jump'      => 'input',
-	];
+	public $classPageWrap  = 'pagination';
+	public $classTableList = 'table-list';
 
 	public function isClosingTag(string $tag): bool
 	{
@@ -204,65 +144,6 @@ class Html
 		return $this;
 	}
 
-	public function mkAutoId(string $prefix)
-	{
-		return $prefix . '_auto_id_' . (++$this->autoId);
-	}
-
-	/**
-	 * 拼接特定的HTML属性的值，主要针对id, name, class
-	 *
-	 * 默认
-	 *
-	 * @param string $type
-	 * @param array  ...$fragments
-	 * @return string
-	 */
-	public function mkSpecialValue(string $type, ...$fragments): string
-	{
-		if (empty($fragments))
-			return '';
-		if (!isset($this->specialValueOptions[$type]))
-			$type = 'id';
-		$ops = $this->specialValueOptions[$type];
-		$result = '';
-		$isMulti = false;
-		$count = count($fragments);
-		if ($fragments[$count - 1] === true)
-			$isMulti = array_pop($fragments);
-		array_walk_recursive($fragments, function ($fragment) use (&$result, $ops) {
-			$fragment = trim($fragment);
-			if (strlen($fragment) > 0) {
-				if (empty($result))
-					$result = $fragment;
-				else
-					$result .= "{$ops['wrap'][0]}{$fragment}{$ops['wrap'][1]}";
-			}
-		});
-		if (!empty($result)) {
-			if ($isMulti && isset($ops['multi']) && $ops['multi'])
-				$result .= "{$ops['wrap'][0]}{$ops['wrap'][1]}";
-			if (isset($ops['replace']) && isset($ops['replace'][0]) && isset($ops['replace'][1]))
-				$result = str_replace($ops['replace'][0], $ops['replace'][1], $result);
-		}
-		return $result;
-	}
-
-	public function mkId(...$fragments): string
-	{
-		return $this->mkSpecialValue('id', ...$fragments);
-	}
-
-	public function mkClass(...$fragments): string
-	{
-		return $this->mkSpecialValue('class', ...$fragments);
-	}
-
-	public function mkName(...$fragments): string
-	{
-		return $this->mkSpecialValue('name', ...$fragments);
-	}
-
 	public function setXhtmlStyle(bool $isXhtmlStyle)
 	{
 		$this->xhtmlStyle = $isXhtmlStyle;
@@ -274,75 +155,57 @@ class Html
 		return $this->xhtmlStyle;
 	}
 
-	public function setBaseClasses(array $classes)
+	public function defineAttributes(array $attributes)
 	{
-		$this->baseClasses = array_merge($this->baseClasses, $classes);
+		foreach ($attributes as $attr => $setting) {
+			$type = gettype($setting);
+			if ($type === KE_STR) {
+				$type = KE_ARY;
+				$setting = ['type' => $setting];
+			}
+			elseif ($type === KE_OBJ) {
+				$type = KE_ARY;
+				$setting = (array)$setting;
+			}
+			if ($type !== KE_ARY)
+				continue;
+			if (!isset($this->attributes[$attr]))
+				$this->attributes[$attr] = $setting;
+			else
+				$this->attributes[$attr] = array_merge($this->attributes[$attr], $setting);
+		}
 		return $this;
 	}
 
-	public function getBaseClasses(): array
+	public function getText($key)
 	{
-		return $this->baseClasses;
-	}
-
-	public function getMessage($key)
-	{
-		if (isset($this->messages[$key]))
-			return $this->messages[$key];
+		if (isset($this->texts[$key]))
+			return $this->texts[$key];
 		if (is_string($key))
 			return $key;
 		return false;
 	}
 
-	public function setMessage($key, string $message)
+	public function setText($key, string $text)
 	{
-		$this->messages[$key] = $message;
+		$this->texts[$key] = $text;
 		return $this;
 	}
 
-	public function getMessages(): array
+	public function getTexts(): array
 	{
-		return $this->messages;
+		return $this->texts;
 	}
 
-	public function setMessages(array $messages)
+	public function setTexts(array $texts)
 	{
-		$this->messages = $messages + $this->messages;
+		$this->texts = $texts + $this->texts;
 		return $this;
 	}
 
-	public function aliasTags(array $tags)
+	public function autoId(string $prefix): string
 	{
-		$this->aliasTags = array_merge($this->aliasTags, $tags);
-		return $this;
-	}
-
-	public function aliasTag(string $specialTag, string $htmlTag)
-	{
-		$this->aliasTags[$specialTag] = $htmlTag;
-		return $this;
-	}
-
-	public function getAliasTags()
-	{
-		return $this->aliasTags;
-	}
-
-	public function getAliasTag(string $specialTag, string $defaultTag = 'div')
-	{
-		return $this->aliasTags[$specialTag] ?? $defaultTag;
-	}
-
-	public function defineAttrs(array $attrs)
-	{
-		$this->attrs = array_merge($this->attrs, $attrs);
-		return $this;
-	}
-
-	public function setPagination(array $options)
-	{
-		$this->pagination = array_merge($this->pagination, $options);
-		return $this;
+		return $prefix . '_auto_id_' . (++$this->autoId);
 	}
 
 	public function parseAttrByPreg(string $attr): array
@@ -410,20 +273,35 @@ class Html
 		}
 	}
 
-	public function filterLink($link)
+	public function specialAttr($name, ...$segments): string
 	{
-		$type = gettype($link);
-		if ($type === KE_ARY) {
-			$link = Web::getWeb()->uri(array_shift($link), $link);
+		if (empty($segments))
+			return '';
+		if ($name === 'name') {
+			$result = '';
+			foreach ($segments as $segment) {
+				$segment = trim($segment);
+				if (empty($result)) {
+					// 确保先保证name的第一节不能为空, any[]，这样是可以的，但是[any]这样是不行的
+					if (!empty($segment))
+						$result = $segment;
+					continue;
+				}
+				$result .= "[{$segment}]";
+			}
+			return $result;
 		}
-		elseif ($type === KE_OBJ) {
-			if (!($link instanceof Uri))
-				$link = new Uri($link);
-		}
-		else {
-			$link = Web::getWeb()->uri((string)$link);
-		}
-		return $link;
+		return implode(($name === 'class' ? '-' : '_'), $segments);
+	}
+
+	public function id(...$segments)
+	{
+		return $this->specialAttr('id', ...$segments);
+	}
+
+	public function name(...$segments)
+	{
+		return $this->specialAttr('name', ...$segments);
 	}
 
 	public function filterAttr(string $name, $value, array $attr)
@@ -433,7 +311,7 @@ class Html
 			return false;
 		if ($this->xhtmlStyle) // 强制转小写
 			$name = strtolower($name);
-		$setting = $this->attrs[$name] ?? [];
+		$setting = $this->attributes[$name] ?? [];
 		if (isset($setting['type'])) {
 			if ($setting['type'] === 'bool') {
 				if (empty($value))
@@ -453,7 +331,7 @@ class Html
 				return false;
 			elseif ($type === KE_ARY) {
 				// todo: 数组的话，自动构建特定的属性
-				return $this->mkSpecialValue($name, ...$value);
+				return [$name, $this->specialAttr($name, ...$value)];
 			}
 			elseif ($type === KE_STR)
 				return [$name, $value];
@@ -471,7 +349,7 @@ class Html
 					return false;
 			}
 			elseif ($type === KE_STR)
-				return [$name, $value]; // 字符串，就直接返回给他
+				return [$name, $value]; // 字符串，不再过滤了，直接输出
 			else
 				return false;
 		}
@@ -491,59 +369,39 @@ class Html
 		}
 	}
 
-	public function attr2array($attr): array
+	public function filterLink($link)
 	{
-		$type = gettype($attr);
-		if ($type === KE_STR) {
-			// 解析字符串，就没有打扁不打扁的问题了
-			$attr = ['class' => $attr];
+		$web = Web::getWeb();
+		$type = gettype($link);
+		if ($type === KE_ARY) {
+			// 数组分两种情况：
+			if (isset($link[0])) {
+				// ['uri', 'id' => '1', 'name' => 'jan']
+				$first = array_shift($link);
+				// 这里还得细分，如果传入的是#开头，如：'#hello'，尝试理解为当前的uri转换
+				if (is_string($first) && isset($first[0]) && $first[0] === '#') {
+					return $web->http->newUri($first, $link);
+				}
+				return $web->uri($first, $link);
+			}
+			else {
+				// 如果没有指定0的路径，尝试理解为，基于当前的uri，并且设置查询字符串
+				return $web->http->newUri()->setQuery($link);
+			}
 		}
 		elseif ($type === KE_OBJ) {
-			$attr = get_object_vars($attr);
+			// 对象
+			if (!($link instanceof Uri))
+				$link = new Uri($link);
+			return $link;
 		}
-		elseif ($type !== KE_ARY) {
-			$attr = [];
-		}
-		return $attr;
-	}
-
-	public function mergeAttr(array $attr, array $merges): array
-	{
-		if (empty($attr))
-			return $merges;
-		if (isset($merges['class'])) {
-			$this->addClass($attr, $merges['class']);
-			unset($merges['class']);
-		}
-		return array_merge($attr, $merges);
-	}
-
-	public function mkAttr($attr, array $merges = null): string
-	{
-		// 不再支持多层的数组传入，除了特定一些属性以外，但会将整个数组传递过去，不会再循环递进的生成属性名
-		if (!is_array($attr))
-			$attr = $this->attr2array($attr);
-		if (!empty($merges))
-			$attr = $this->mergeAttr($attr, $merges);
-		$result = '';
-		foreach ($attr as $name => $value) {
-			if (($segment = $this->filterAttr($name, $value, $attr)) === false)
-				continue;
-			$result .= ' ' . $segment[0];
-			if ($segment[1] === $segment[0]) {
-				if ($this->xhtmlStyle)
-					$result .= '="' . $segment[0] . '"';
-				continue;
+		else {
+			$link = (string)$link;
+			if (isset($link[0]) && $link[0] === '#') {
+				return $web->http->newUri($link);
 			}
-			$result .= '="' . $segment[1] . '"';
+			return $web->uri($web);
 		}
-		return $result;
-	}
-
-	public function attr($attr, array $merges = null)
-	{
-		print $this->mkAttr($attr, $merges);
-		return $this;
 	}
 
 	public function filterClass($class, array &$result = []): array
@@ -559,7 +417,9 @@ class Html
 				$result[$class] = 1;
 			}
 		}
-		elseif ($type === KE_ARY) {
+		elseif ($type === KE_ARY || $type === KE_OBJ) {
+			if ($type === KE_OBJ)
+				$class = (array)$class;
 			array_walk_recursive($class, function ($item) use (&$result) {
 				$item = trim($item);
 				if (!empty($item)) {
@@ -575,21 +435,17 @@ class Html
 
 	public function joinClass(...$classes): string
 	{
-		return implode(' ', $this->filterClass($classes));
+		if (!empty($classes))
+			return implode(' ', $this->filterClass($classes));
+		return '';
 	}
 
-	public function mkClassAttr(...$classes): string
+	public function attrClass(...$classes)
 	{
 		$classes = $this->filterClass($classes);
 		if (!empty($classes))
 			return ' class="' . implode(' ', $classes) . '"';
 		return '';
-	}
-
-	public function classAttr(...$classes)
-	{
-		print $this->mkClassAttr(...$classes);
-		return $this;
 	}
 
 	public function addClass(array &$attr, $class): array
@@ -607,32 +463,49 @@ class Html
 		return $attr;
 	}
 
-	public function getBaseClass(string $tag, ...$types): string
+	public function attr2array($attr): array
 	{
-		// 模式1
-//		$key = $tag;
-//		$baseClass = $this->baseClasses[$tag] ?? '';
-//		if (!empty($types)) {
-//			$types = array_filter($types);
-//			if (!empty($types)) {
-//				$key .= ':' . implode('_', $types);
-//			}
-//			if (!empty($this->baseClasses[$key]))
-//				$baseClass .= (empty($baseClass) ? '' : ' ') . $this->baseClasses[$key];
-//		}
-//		return $baseClass;
-		// 模式2
-		$key = $tag;
-		$baseClass = $this->baseClasses[$tag] ?? '';
-		if (!empty($types)) {
-			$types = array_filter($types);
-			if (!empty($types)) {
-				$key .= ':' . implode('_', $types);
-			}
-			if (!empty($this->baseClasses[$key]))
-				$baseClass = $this->baseClasses[$key];
+		$type = gettype($attr);
+		if ($type === KE_STR) {
+			// 解析字符串，就没有打扁不打扁的问题了
+			$attr = ['class' => $attr];
 		}
-		return $baseClass;
+		elseif ($type === KE_OBJ) {
+			$attr = get_object_vars($attr);
+		}
+		elseif ($type !== KE_ARY) {
+			$attr = [];
+		}
+		return $attr;
+	}
+
+	public function attr($attr, array $merges = null): string
+	{
+		// 不再支持多层的数组传入，除了特定一些属性以外，但会将整个数组传递过去，不会再循环递进的生成属性名
+		if (!is_array($attr))
+			$attr = $this->attr2array($attr);
+		// 去掉原来的mergeAttr方法，尽量节省，不要轻易的去调用方法，而交给更细节的控制。
+		if (!empty($merges)) {
+			if (isset($merges['class'])) {
+				$this->addClass($attr, $merges['class']);
+				unset($merges['class']);
+			}
+			if (!empty($merges))
+				$attr = array_merge($attr, $merges);
+		}
+		$result = '';
+		foreach ($attr as $name => $value) {
+			if (($segment = $this->filterAttr($name, $value, $attr)) === false)
+				continue;
+			$result .= ' ' . $segment[0];
+			if ($segment[1] === $segment[0]) {
+				if ($this->xhtmlStyle)
+					$result .= '="' . $segment[0] . '"';
+				continue;
+			}
+			$result .= '="' . $segment[1] . '"';
+		}
+		return $result;
 	}
 
 	public function filterContent($content, array &$buffer = null): string
@@ -647,7 +520,7 @@ class Html
 			$buffer = $buffer ?? [];
 			foreach ($content as $item) {
 				if (is_array($item)) {
-					$buffer[] = $this->mkTag(...$item);
+					$buffer[] = $this->tag(...$item);
 				}
 				else {
 					$buffer[] = (string)$item;
@@ -659,217 +532,162 @@ class Html
 			return (string)$content;
 	}
 
-	public function preTag(string &$tag, &$content, array &$attr = null)
+	public function tag2field(string $tag, array $attr)
 	{
-		/////////////////////////////////////////////////////////////////
-		// step.1
-		// filter the require attributes for the tag.
-		// We try to alias some special tag(types) to another tag,
-		// and then we can use the base class to fill them.
-		// As this to make the html UI methods can be reuse.
-		// So do not modify the tag name to the right name at this step.
-		/////////////////////////////////////////////////////////////////
+		$tag = $field = str_replace(['_', '-', ':'], ' ', $tag);
+		if (!empty($attr['type']))
+			$field .= ' ' . $attr['type'];
+		$field = str_replace(' ', '', ucwords($field));
+		return [$tag, $field];
+	}
 
-		if ($tag === 'button') {
-			if (empty($attr['type']))
-				$attr['type'] = 'button';
-			elseif ($attr['type'] !== 'button' && $attr['type'] !== 'submit' && $attr['type'] !== 'reset') {
-				/** @link http://www.w3schools.com/tags/tag_button.asp */
-				$attr['href'] = $attr['type'];
-				$attr['type'] = 'link';
+	// 这个应该尽量省略掉
+	public function getBaseClass(string $tag, ...$types)
+	{
+		$key = str_replace(['_', '-', ':'], ' ', $tag);
+		if (!empty($types)) {
+			$types = array_filter($types);
+			if (!empty($types)) {
+				$key .= ' ' . implode(' ', $types);
 			}
 		}
+		$key = str_replace(' ', '', ucwords($key));
+		$key = 'class' . $key;
+		if (isset($this->{$key}))
+			return $this->{$key};
+		return '';
+	}
 
-		/////////////////////////////////////////////////////////////////
-		// step.2
-		// Get special tag(types) css class and add them to the attributes.
-		/////////////////////////////////////////////////////////////////
-
-		$this->addClass($attr, $this->getBaseClass($tag, $attr['type'] ?? null));
-
-		/////////////////////////////////////////////////////////////////
-		// step.3
-		// convert special tag(types) to right name.
-		/////////////////////////////////////////////////////////////////
-
-		if ($tag === 'button') {
-			if ($attr['type'] === 'link') {
-				$tag = 'a';
-				unset($attr['type']); // forget type
-			}
+	// tag:type 转 _ : - => ' ' => ucwords() =>
+	public function tag(string $tag = null, $content = null, $attr = null): string
+	{
+		// 原来的preTag方法，去除
+		// 先过滤标签，确保标签是正确的
+		$tag = strtolower(trim($tag));
+		// 属性转数组
+		if (!is_array($attr))
+			$attr = $this->attr2array($attr);
+		// 过滤和转换标签
+		if (!empty($tag)) {
+			$field = $this->tag2field($tag, $attr);
+			// php7以后，list方法，性能损耗太多，不使用list了。
+			// tagButtonButton, tagButtons, tagButtonSubmit
+			// classInputText
+			$tagField = 'tag' . $field[1];
+			$classField = 'class' . $field[1];
+//			$method = 'pre' . $field[0];
+			// 调用标签前置过滤器
+			// 如果不是为了后面继承的考虑，其实连这个前置过滤器都不想要
+			// todo: 这里暂时不要，请以实际情况说明需求度
+//			if (is_callable([$this, $method]))
+//				$this->{$method}($tag, $content, $attr);
+			// 重置标签
+			if (!empty($this->{$tagField}))
+				$tag = $this->{$tagField};
+			// 追加特定的标签属性
+			if (!empty($this->{$classField}))
+				$this->addClass($attr, $this->{$classField});
 		}
-		else {
-			if (isset($this->aliasTags[$tag]))
-				$tag = $this->aliasTags[$tag];
-		}
-
-		/////////////////////////////////////////////////////////////////
-		// step.4
-		// At the last, filter the non-string content
-		/////////////////////////////////////////////////////////////////
-
 		if (!empty($content) && !is_string($content))
 			$content = $this->filterContent($content);
-
-		// preTagName method do not need return anything, please use reference var
-	}
-
-	public function mkTag(string $tag = null, $content = null, $attr = null): string
-	{
-		$tag = strtolower(trim($tag));
+		// 没有标签，直接返回内容
 		if (empty($tag))
-			$tag = 'div';
-		if (!is_array($attr))
-			$attr = $this->attr2array($attr);
-		$preMethod = 'pre' . str_replace(['_', '-'], '', $tag);
-		if (method_exists($this, $preMethod))
-			$this->{$preMethod}($tag, $content, $attr);
-		else
-			$this->preTag($tag, $content, $attr);
-		$result = $content;
-		if (!empty($tag)) {
-			$attr = $this->mkAttr($attr);
-			if ($this->isClosingTag($tag)) {
-				if ($this->xhtmlStyle)
-					$result = "<{$tag}{$attr}/>";
-				else
-					$result = "<{$tag}{$attr}>";
-			}
-			else {
-				$result = "<{$tag}{$attr}>{$content}</{$tag}>";
-			}
+			return $content;
+		$attr = $this->attr($attr);
+		if ($this->isClosingTag($tag)) {
+			if ($this->xhtmlStyle)
+				return "<{$tag}{$attr}/>";
+			else
+				return "<{$tag}{$attr}>";
 		}
-//		if (isset($attr['before']) || isset($attr['after'])) {
-//			return $this->wrap($result, $attr['before'], $attr['after'], $attr['wrap'] ?? [],
-//				$attr['wrapTag'] ?? 'div');
-//		}
-		return $result;
+		else {
+			return "<{$tag}{$attr}>{$content}</{$tag}>";
+		}
 	}
 
-	public function tag(string $tag = null, $content, $attr = null)
+	public function wrap($content, $before = null, $after = null, $attr = null, string $tag = 'div')
 	{
-		print $this->mkTag($tag, $content, $attr);
-		return $this;
-	}
-
-	public function mkButton(string $text, $type = 'button', $attr = null)
-	{
-		if (!is_array($attr))
-			$attr = $this->attr2array($attr);
-		$attr['type'] = $type;
-		return $this->mkTag('button', $text, $attr);
+		if (!is_string($content))
+			$content = $this->filterContent($content);
+		if (!empty($before) && !is_string($before))
+			$before = $this->filterContent($before);
+		if (!empty($after) && !is_string($after))
+			$after .= $this->filterContent($after);
+		return $this->tag($tag, $before . $content . $after, $attr);
 	}
 
 	public function button(string $text, $type = 'button', $attr = null)
 	{
-		print $this->mkButton($text, $type, $attr);
-		return $this;
-	}
-
-	public function preButtons(string &$tag, &$buttons, array &$attr = null)
-	{
-		if (empty($buttons) || !is_array($buttons)) {
-			$buttons = empty($buttons) ? 'Button' : (string)$buttons;
-			$tag = 'button'; // return the default button
-			$attr['type'] = 'button';
-			$this->addClass($attr, $this->getBaseClass('button', 'button'));
+		if (!is_array($attr))
+			$attr = $this->attr2array($attr);
+		if (empty($type))
+			$attr['type'] = $type;
+		elseif ($type !== 'button' || $type !== 'submit' || $type !== 'reset') {
+			// 这里其实主要是应对各大css框架，生成一个button like like
+			$attr['href'] = $type;
+			$attr['type'] = 'link'; // tagButtonLink, classButtonLink
 		}
-		else {
-			$content = '';
-			foreach ($buttons as $button) {
-				$content .= $this->mkButton(...(array)$button);
-			}
-			$buttons = $content;
-			$tag = 'div';
-			$this->addClass($attr, $this->getBaseClass('buttons'));
+		else
+			$attr['type'] = $type;
+		return $this->tag('button', $text, $attr);
+	}
+
+	public function buttons(array $buttons, $attr = null)
+	{
+		$content = '';
+		foreach ($buttons as $button) {
+			$content .= $this->button(...(array)$button);
 		}
+		return $this->tag('buttons', $content, $attr); // tagButtons, classButtons
 	}
 
-	public function mkButtons($buttons, $attr = null)
-	{
-		return $this->mkTag('buttons', $buttons, $attr);
-	}
-
-	public function buttons($buttons, $attr = null)
-	{
-		print $this->mkButtons($buttons, $attr);
-		return $this;
-	}
-
-	public function mkLink(string $text, $href, $attr = null)
+	public function link(string $text, $href = null, $attr = null)
 	{
 		if (!is_array($attr))
 			$attr = $this->attr2array($attr);
+		if (empty($href))
+			$href = '#';
 		$attr['href'] = $href;
-		return $this->mkTag('a', $text, $attr);
-	}
-
-	public function link(string $text, $href, $attr = null)
-	{
-		print $this->mkLink($text, $href, $attr);
-		return $this;
-	}
-
-	public function mkImg($src, $attr = null)
-	{
-		if (!is_array($attr))
-			$attr = $this->attr2array($attr);
-		$attr['src'] = $src;
-		return $this->mkTag('img', null, $attr);
+		return $this->tag('a', $text, $attr);
 	}
 
 	public function img($src, $attr = null)
 	{
-		print $this->mkImg($src, $attr);
-		return $this;
-	}
-
-	public function preSelect(string &$tag, &$value = null, &$attr = null)
-	{
-		$tag = 'select';
-		$value = $this->mkSelectOptions($attr['options'] ?? [], $value, $attr['defaultOption'] ?? null);
-		unset($attr['options'], $attr['defaultOption']);
-		if (!empty($attr['name'])) {
-			if (!empty($attr['multiple'])) {
-				if (!preg_match('#\[\]$#', $attr['name'])) {
-					$attr['name'] .= '[]';
-				}
-			}
-		}
-		$this->addClass($attr, $this->getBaseClass($tag, empty($attr['multiple']) ? null : 'multiple'));
-	}
-
-	public function mkSelect($options, $selected = null, $attr = null, string $defaultOption = null)
-	{
 		if (!is_array($attr))
 			$attr = $this->attr2array($attr);
-		$attr['options'] = $options;
-		$attr['defaultOption'] = $defaultOption;
-		return $this->mkTag('select', $selected, $attr);
+		$attr['src'] = $src;
+		return $this->tag('img', null, $attr);
 	}
 
 	public function select($options, $selected = null, $attr = null, string $defaultOption = null)
 	{
-		print $this->mkSelect($options, $selected, $attr, $defaultOption);
-		return $this;
+		if (!is_array($attr))
+			$attr = $this->attr2array($attr);
+		if (!empty($attr['multiple']) && !empty($attr['name'])) {
+			if (!preg_match('#\[\]$#', $attr['name'])) {
+				$attr['name'] .= '[]';
+			}
+		}
+		return $this->tag('select', $this->selectOptions($options, $selected, $defaultOption), $attr);
 	}
 
 	public function filterOptions($options): array
 	{
-		if (is_object($options))
-			return get_object_vars($options);
-		elseif (is_array($options))
+		$type = gettype($options);
+		if ($type === KE_OBJ)
+			return (array)$options;
+		elseif ($type === KE_ARY)
 			return $options;
 		else
 			return [1 => (string)$options];
 	}
 
-	public function mkSelectOptions($options,
-	                                $selected = null,
-	                                string $defaultOption = null,
-	                                $groupLabel = null,
-	                                array &$buffer = null,
-	                                int $deep = 0)
+	public function selectOptions($options,
+	                              $selected = null,
+	                              string $defaultOption = null,
+	                              $groupLabel = null,
+	                              array &$buffer = null,
+	                              int $deep = 0)
 	{
 		if (!is_array($options))
 			$options = $this->filterOptions($options);
@@ -884,7 +702,7 @@ class Html
 				$newLabel = $value;
 				if (!empty($groupLabel))
 					$newLabel = $groupLabel . ' - ' . $newLabel;
-				$this->mkSelectOptions($text, $selected, null, $newLabel, $buffer, $deep + 1);
+				$this->selectOptions($text, $selected, null, $newLabel, $buffer, $deep + 1);
 				continue;
 			}
 			$isSelected = false;
@@ -892,13 +710,13 @@ class Html
 				$isSelected = true;
 			elseif (equals($value, $selected))
 				$isSelected = true;
-			$result .= $this->mkTag('option', (string)$text, [
+			$result .= $this->tag('option', (string)$text, [
 				'value'    => $value,
 				'selected' => $isSelected,
 			]);
 		}
 		if (!empty($groupLabel))
-			$result = $this->mkTag('optgroup', $result, ['label' => $groupLabel]);
+			$result = $this->tag('optgroup', $result, ['label' => $groupLabel]);
 		$buffer[] = $result;
 		if (count($buffer) > 1) {
 			rsort($buffer);
@@ -907,78 +725,73 @@ class Html
 		return $result;
 	}
 
-	public function selectOptions($options, $selected = null, string $defaultOption = null)
-	{
-		print $this->mkSelectOptions($options, $selected, $defaultOption);
-		return $this;
-	}
-
-	public function preInput(string &$tag, &$value = null, array &$attr = null)
-	{
-		if (empty($attr['type']))
-			$attr['type'] = 'text';
-		$type = $attr['type'];
-		$attr['value'] = $value;
-		$value = null;
-		$this->addClass($attr, $this->getBaseClass($tag, $type));
-	}
-
-	public function mkInput(string $type, $value = null, $attr = null)
+	public function input(string $type, string $value = null, $attr = null)
 	{
 		if (!is_array($attr))
 			$attr = $this->attr2array($attr);
-		// input:select 还是太诡异
-//		if ($type === 'select') {
-//			return $this->mkTag('select', $value, $attr);
-//		}
-//		elseif ($type === 'textarea') {
-//			return $this->mkTextarea($value, $attr);
-//		}
-		if (!empty($type))
-			$attr['type'] = $type;
-		return $this->mkTag('input', $value, $attr);
+		if (empty($type))
+			$type = 'text';
+		$attr['type'] = $type;
+		// value这里比较啰嗦
+		if (!isset($attr['value']))
+			$attr['value'] = $value;
+		return $this->tag('input', null, $attr);
 	}
 
-	public function input(string $type, $value = null, $attr = null)
+	public function text(string $value = null, $attr = null)
 	{
-		print $this->mkInput($type, $value, $attr);
-		return $this;
+		return $this->input('text', $value, $attr);
 	}
 
-	public function mkTextarea(string $value = null, $attr = null)
+	public function hidden(string $value = null, $attr = null)
 	{
-		return $this->mkTag('textarea', $value, $attr);
+		return $this->input('hidden', $value, $attr);
+	}
+
+	public function password(string $value = null, $attr = null)
+	{
+		return $this->input('password', $value, $attr);
 	}
 
 	public function textarea(string $value = null, $attr = null)
 	{
-		print $this->mkTextarea($value, $attr);
-		return $this;
+		if (!empty($value))
+			$value = htmlentities($value);
+		return $this->tag('textarea', $value, $attr);
 	}
 
-	public function mkLabel(string $text, string $for = null, $attr = null)
+	public function label(string $text, string $for = null, $attr = null)
 	{
 		if (!is_array($attr))
 			$attr = $this->attr2array($attr);
 		if (!empty($for))
 			$attr['for'] = $for;
-		return $this->mkTag('label', $text, $attr);
+		return $this->tag('label', $text, $attr);
 	}
 
-	public function label(string $text, string $for, $attr = null)
+	public function labelInput(string $label, string $type, $attr = null)
 	{
-		print $this->mkLabel($text, $for, $attr);
-		return $this;
+		$labelAttr = [];
+		if (!empty($attr['id']))
+			$labelAttr['for'] = $attr['id'];
+		$label = $this->tag('label-inline', $label, $labelAttr);
+		$input = $this->input($type, null, $attr);
+		if ($type === 'checkbox' || $type === 'radio') {
+			return $input . $label;
+		}
+		else {
+			return $label . $input;
+		}
 	}
 
-	public function mkGroupInput(string $type, $options, $value = null, $attr = null)
+	public function groupInputs(string $type, $options, $value = null, $attr = null)
 	{
 		if (!is_array($options))
 			$options = $this->filterOptions($options);
 		if (!is_array($attr))
 			$attr = $this->attr2array($attr);
 		$attr['type'] = $type;
-		$baseId = empty($attr['id']) ? $this->mkAutoId($type) : $attr['id'];
+		$baseId = empty($attr['id']) ? $this->autoId($type) : $attr['id'];
 		$baseName = $attr['name'] ?? '';
 		$count = count($options);
 		$isMulti = $type !== 'radio' && $count > 1;
@@ -989,7 +802,7 @@ class Html
 		}
 		$result = '';
 		if (!empty($baseName)) {
-			$result .= $this->mkInput('hidden', null, ['name' => $baseName]);
+			$result .= $this->input('hidden', null, ['name' => $baseName]);
 		}
 		foreach ($options as $val => $text) {
 			$attr['checked'] = false;
@@ -1001,18 +814,24 @@ class Html
 				$attr['id'] = $baseId . '_' . $val;
 			else
 				$attr['id'] = $baseId;
-			$label = '';
-			$input = $this->mkInput($type, $val, $attr);
-			if (!empty($text))
-				$label = $this->mkLabel($text, $attr['id'], ['class' => $this->getBaseClass('label', 'inline')]);
-			$result .= $this->mkFormField($label, $input, ['type' => $type]);
+			$attr['value'] = $val;
+			$result .= $this->labelInput($text, $type, $attr);
+//			$label = '';
+//			$input = $this->input($type, $val, $attr);
+//			if (!empty($text))
+//				$label = $this->tag('label-inline', $text, ['for' => $attr['id']]); // tagLabelInline, classLabelInline
+//			$result .= $input . $label;
 		}
 		return $result;
 	}
 
-	public function mkGroupHidden(array $values, array $ignores = [], string &$html = null, array $prefix = [])
+	public function inputSet(array $values,
+	                         string $type = 'hidden',
+	                         array $ignores = [],
+	                         string &$result = null,
+	                         array $prefix = [])
 	{
-		$html = $html ?? '';
+		$result = $result ?? '';
 		$index = 0;
 		foreach ($values as $field => $value) {
 			if (isset($ignores[$field]))
@@ -1020,65 +839,28 @@ class Html
 			if (is_array($value)) {
 				$newPrefix = $prefix;
 				$newPrefix[] = $field;
-				$this->mkGroupHidden($value, $ignores, $html, $newPrefix);
+				$this->inputSet($value, $type, $ignores, $result, $newPrefix);
 				continue;
 			}
 			$name = $prefix;
 			if (is_string($field) || (is_numeric($field) && intval($field) !== $index)) {
 				$name[] = $field;
-				$name = $this->mkSpecialValue('name', $name);
 			}
 			else {
-				$name = $this->mkSpecialValue('name', $name);
-				$name .= '[]';
+				$name[] = '';
 			}
-			$html .= $this->mkInput('hidden', (string)$value, ['name' => $name]);
+			$result .= $this->input($type, (string)$value, ['name' => $name]);
 			$index++;
 		}
-		return $html;
+		return $result;
 	}
 
-	public function mkFormField(string $label, string $input, $attr = null)
+	public function fieldSet(string $label, $content = null, $attr = null)
 	{
-		if (!is_array($attr))
-			$attr = $this->attr2array($attr);
-		if ($attr['type'] === 'checkbox' || $attr['type'] === 'radio') {
-			$tag = 'span';
-			$content = $input . $label;
-		}
-		else {
-			$tag = 'div';
-			$content = $label . $input;
-		}
-		$this->addClass($attr, $this->getBaseClass('form', 'field'));
-		return $this->mkTag($tag, $content, $attr);
+		return $this->tag('fieldset', [$this->tag('fieldset-label', $label), $content], $attr);
 	}
 
-	public function formField(string $label, string $input, $attr = null)
-	{
-		print $this->mkFormField($label, $input, $attr);
-		return $this;
-	}
-
-	public function mkFormRow(string $label, string $input, $attr = null, bool $isMultiFields = false)
-	{
-		if (!is_array($attr))
-			$attr = $this->attr2array($attr);
-		$content = $label . $input;
-		$this->addClass($attr, $this->getBaseClass('form', 'row'));
-		if ($isMultiFields)
-			$this->addClass($attr, $this->getBaseClass('form', 'fields'));
-		return $this->mkTag('div', $content, $attr);
-	}
-
-	public function formRow(string $label, string $input, $attr = null, bool $isMultiFields = false)
-	{
-		print $this->mkFormRow($label, $input, $attr, $isMultiFields);
-		return $this;
-	}
-
-
-	public function filterFormColumn(string $field, $value = null, array $column = []): array
+	public function mkInputAttr(string $field, $value = null, array $column = []): array
 	{
 		if (!empty($column['placeholder']))
 			$placeholder = $column['placeholder'];
@@ -1127,12 +909,12 @@ class Html
 			$fields = [(string)$fields];
 		$fields[] = $field;
 
-		$id = $this->mkId($fields);
+		$id = $this->id($fields);
 		$attr = [
 			'type'  => $type,
 			'id'    => $id,
-			'name'  => $this->mkName($fields),
-			'class' => 'field_' . $id,
+			'name'  => $this->name($fields),
+			'class' => 'field_' . $id, // 这个是比较特殊的，用于通过css来控制具体每个字段的样式
 		];
 
 		/////////////////////////////////////////////////////////
@@ -1151,7 +933,7 @@ class Html
 				if (!empty($column['max']) && is_numeric($column['max']))
 					$attr['max'] = $column['max'];
 				if ($isDouble)
-					$attr['step'] = 'any'; // html5 input type...
+					$attr['step'] = 'any'; // html5 input type non-include float
 			}
 			if ($type === 'text' || $type === 'password' || $type === 'email' || $type === 'url') {
 				if (!empty($column['max']))
@@ -1168,7 +950,7 @@ class Html
 	{
 		if (!isset($value) && !empty($column['default']))
 			$value = $column['default'];
-		$inputAttr = $this->filterFormColumn($field, $value, $column);
+		$inputAttr = $this->mkInputAttr($field, $value, $column);
 		$type = $inputAttr['type'];
 		$showLabel = true;
 		if (isset($column['showLabel']) && $column['showLabel'] === false)
@@ -1176,53 +958,75 @@ class Html
 		$label = $column['label'] ?? $column['title'] ?? $field;
 		$isMultiFields = false;
 		if ($type === 'hidden') {
-			return $this->mkInput($type, $value, $inputAttr);
+			return $this->input($type, $value, $inputAttr);
 		}
 		else {
 			if ($showLabel && !empty($label)) {
 				$label .= $this->labelColon;
-				$label = $this->mkLabel($label, $inputAttr['id']);
+				$label = $this->label($label, $inputAttr['id']);
 			}
 			else {
 				$label = '';
 			}
 			if ($type === 'select') {
-				$input = $this->mkSelect($column['options'] ?? [], $value, $inputAttr,
+				$input = $this->select($column['options'] ?? [], $value, $inputAttr,
 					$column['defaultOption'] ?? null);
 			}
 			elseif ($type === 'static') {
-				$input = $this->mkTag('div', $value,
-					$this->addClass($inputAttr, $this->getBaseClass('form', 'static')));
+				$input = $this->tag('form-static', $value, $inputAttr);
 			}
 			else {
 				if (!empty($column['options'])) {
 					$isMultiFields = true;
-					$input = $this->mkGroupInput($type, $column['options'], $value, $inputAttr);
+					$input = $this->groupInputs($type, $column['options'], $value, $inputAttr);
 				}
 				else {
-					$input = $this->mkInput($type, $value, $inputAttr);
+					$input = $this->input($type, $value, $inputAttr);
 				}
 			}
 			if (isset($column['before']) || isset($column['after'])) {
 				$input = $this->wrap($input, $column['before'], $column['after'], $column['wrap'] ?? [], 'input-wrap');
 			}
 		}
-		$baseClass = '';
-		if (!empty($column['require']))
-			$baseClass = $this->getBaseClass('form', 'require');
-		return $this->mkFormRow($label, $input, ['class' => $baseClass], $isMultiFields);
+		$fieldSetAttr = [
+			'require'     => !empty($column['require']),
+			'multiFields' => $isMultiFields,
+		];
+		return $this->fieldSet($label, $input, $fieldSetAttr);
 	}
 
-	public function formColumn(string $field, $value = null, array $column = [])
+	public function message($message, string $type = self::MSG_DEFAULT, $attr = null)
 	{
-		print $this->mkFormColumn($field, $value, $column);
-		return $this;
+		$tag = 'message';
+		if ($type !== self::MSG_DEFAULT)
+			$tag .= '-' . $type; // message-warning => tagMessageWarning, classMessageWarning
+		return $this->tag($tag, $message, $attr);
 	}
 
-	public function filterTableHead(string $field,
-	                                $column,
-	                                $type = self::TABLE_HEAD_FROM_COLUMNS,
-	                                array $mergeColumn = null)
+	public function success($message, $attr = null)
+	{
+		return $this->message($message, self::MSG_SUCCESS, $attr);
+	}
+
+	public function notice($message, $attr = null)
+	{
+		return $this->message($message, self::MSG_NOTICE, $attr);
+	}
+
+	public function warning($message, $attr = null)
+	{
+		return $this->message($message, self::MSG_WARN, $attr);
+	}
+
+	public function error($message, $attr = null)
+	{
+		return $this->message($message, self::MSG_ERROR, $attr);
+	}
+
+	public function mkTableColumn(string $field,
+	                              $column,
+	                              $type = self::TABLE_HEAD_FROM_COLUMNS,
+	                              array $mergeColumn = null)
 	{
 		if ($type === self::TABLE_HEAD_FROM_DATA) {
 			$column = ['label' => $field];
@@ -1241,23 +1045,23 @@ class Html
 		if (!isset($column['label']))
 			$column['label'] = $column['title'] ?? $field;
 		if (isset($column['tableClass']))
-			$column['class'] = $this->mkClassAttr($column['tableClass'] ?? null);
+			$column['class'] = $this->attrClass($column['tableClass'] ?? null);
 		if (!empty($column['hidden']))
 			$column = ['showTable' => false];
 		return $column;
 	}
 
-	public function filterValueShow(string $field, $value, array $column = null): string
+	public function filterColumnValue(string $field, $value, array $column = null): string
 	{
 		if (is_string($value)) {
 			$length = strlen($value);
 			if ($length > 0) {
 				if (isset($column['summary']) && is_numeric($column['summary']) && $column['summary'] > 0)
-					$value = $this->mkLabel(str_summary($value, $column['summary']), null, ['title' => $value]);
+					$value = $this->label(str_summary($value, $column['summary']), null, ['title' => $value]);
 				elseif (isset($column['strLen']) && is_numeric($column['strLen']) && $column['strLen'] > 0)
-					$value = $this->mkLabel(str_len_cut($value, $column['strLen']), null, ['title' => $value]);
+					$value = $this->label(str_len_cut($value, $column['strLen']), null, ['title' => $value]);
 				elseif (isset($column['strWidth']) && is_numeric($column['strWidth']) && $column['strWidth'] > 0)
-					$value = $this->mkLabel(str_width_cut($value, $column['strWidth']), null, ['title' => $value]);
+					$value = $this->label(str_width_cut($value, $column['strWidth']), null, ['title' => $value]);
 			}
 
 		}
@@ -1282,55 +1086,29 @@ class Html
 		return $value;
 	}
 
-	public function mkForm($data, array $options = null)
+	public function form($data, array $options = null)
 	{
 		$options['data'] = $data;
 		return Web::getWeb()->getContext()->loadComponent('form', $options);
 	}
 
-	public function form($data, array $options = null)
-	{
-		print $this->mkForm($data, $options);
-		return $this;
-	}
-
-	public function mkTableList($rows, array $options = null)
+	public function tableList($rows, array $options = null)
 	{
 		$options['rows'] = $rows;
 		return Web::getWeb()->getContext()->loadComponent('table_list', $options);
 	}
 
-	public function tableList($rows, array $options = null)
-	{
-		print $this->mkTableList($rows, $options);
-		return $this;
-	}
-
-	public function mkMessage($message, $type = self::MSG_DEFAULT, $attr = null)
-	{
-		if (!is_array($attr))
-			$attr = $this->attr2array($attr);
-		$attr['type'] = $type;
-		return $this->mkTag('message', $message, $attr);
-	}
-
-	public function message($message, $type = self::MSG_DEFAULT, $attr = null)
-	{
-		print $this->mkMessage($message, $type, $attr);
-		return $this;
-	}
-
-	public function mkPaginate(Pagination $pagination = null, $attr = null)
+	public function paginate(Pagination $pagination = null, $attr = null)
 	{
 		if (!isset($pagination))
 			return '';
 
-		$linksCount = intval($this->pagination['links']);
-		$prevNext = !empty($this->pagination['prevNext']);
-		$firstLast = !empty($this->pagination['firstLast']);
-		$jump = $this->pagination['jump'];
+		$linksCount = intval($this->pageLinks);
+		$prevNext = !empty($this->pagePrevNext);
+		$firstLast = !empty($this->pageFirstLast);
+		$goto = $this->pageGoto;
 
-		$pageField = $pagination->field;
+		$field = $pagination->field;
 		$pageTotal = $pagination->total;
 		$pageCurrent = $pagination->current;
 
@@ -1340,8 +1118,8 @@ class Html
 			'next'    => '',
 			'first'   => '',
 			'last'    => '',
-			'total'   => '',
 			'current' => '',
+			'total'   => '',
 			'button'  => '',
 		];
 
@@ -1363,19 +1141,12 @@ class Html
 		}
 
 		$uri = Web::getWeb()->http->newUri();
+		$ellipsis = $this->paginationLink(self::PAGE_ELLIPSIS, 0);
 
 		if ($linksCount > 0) {
-			$item = $this->getMessage(self::PAG_ITEM);
-			$ellipsis = $this->getMessage(self::PAG_ELLIPSIS);
 			if ($start > 1) {
 				if (!$firstLast) {
-					$els['links'] .= $this->mkTag('pagination-item', 1, [
-						'compare' => false,
-						'format'  => $item,
-						'field'   => $pageField,
-						'uri'     => $uri,
-						'type'    => 'item',
-					]);
+					$els['links'] .= $this->paginationLink(self::PAGE_ITEM, 1, $uri, $field, false);
 					$start += 1;
 					if ($start > 2)
 						$els['links'] .= $ellipsis;
@@ -1387,25 +1158,13 @@ class Html
 			if (!$firstLast && $over < $pageTotal)
 				$over -= 1;
 			for ($i = $start; $i <= $over; $i++) {
-				$els['links'] .= $this->mkTag('pagination-item', $i, [
-					'compare' => $pageCurrent,
-					'format'  => $item,
-					'field'   => $pageField,
-					'uri'     => $uri,
-					'type'    => 'item',
-				]);
+				$els['links'] .= $this->paginationLink(self::PAGE_ITEM, $i, $uri, $field, $pageCurrent);
 			}
 			if ($over < $pageTotal) {
 				if (!$firstLast) {
 					if ($over < $pageTotal - 1)
 						$els['links'] .= $ellipsis;
-					$els['links'] .= $this->mkTag('pagination-item', $pageTotal, [
-						'compare' => false,
-						'format'  => $item,
-						'field'   => $pageField,
-						'uri'     => $uri,
-						'type'    => 'item',
-					]);
+					$els['links'] .= $this->paginationLink(self::PAGE_ITEM, $pageTotal, $uri, $field, false);
 				}
 				else {
 					$els['links'] .= $ellipsis;
@@ -1414,114 +1173,66 @@ class Html
 		}
 
 		if ($firstLast) {
-			$els['first'] = $this->mkTag('pagination-item', 1, [
-				'compare' => $pageCurrent,
-				'format'  => $this->getMessage(self::PAG_FIRST),
-				'field'   => $pageField,
-				'uri'     => $uri,
-				'type'    => 'first',
-			]);
-			$els['last'] = $this->mkTag('pagination-item', $pageTotal, [
-				'compare' => $pageCurrent,
-				'format'  => $this->getMessage(self::PAG_LAST),
-				'field'   => $pageField,
-				'uri'     => $uri,
-				'type'    => 'last',
-			]);
+			$els['first'] = $this->paginationLink(self::PAGE_FIRST, 1, $uri, $field, $pageCurrent);
+			$els['last'] = $this->paginationLink(self::PAGE_LAST, $pageTotal, $uri, $field, $pageCurrent);
 		}
 
 		if ($prevNext) {
-			$els['prev'] = $this->mkTag('pagination-item', $pageCurrent - 1, [
-				'compare' => 1 - 1,
-				'format'  => $this->getMessage(self::PAG_PREV),
-				'field'   => $pageField,
-				'uri'     => $uri,
-				'type'    => 'prev',
-			]);
-
-			$els['next'] = $this->mkTag('pagination-item', $pageCurrent + 1, [
-				'compare' => $pageTotal + 1,
-				'format'  => $this->getMessage(self::PAG_NEXT),
-				'field'   => $pageField,
-				'uri'     => $uri,
-				'type'    => 'next',
-			]);
+			$els['prev'] = $this->paginationLink(self::PAGE_PREV, $pageCurrent - 1, $uri, $field, 1 - 1);
+			$els['next'] = $this->paginationLink(self::PAGE_NEXT, $pageCurrent + 1, $uri, $field, $pageTotal + 1);
 		}
 
-		if (!empty($jump)) {
-			if ($jump === 'input') {
-				$el = $this->mkInput('number', $pageCurrent, [
-					'step'  => 1,
-					'min'   => 1,
-					'max'   => $pageTotal,
-					'name'  => $pageField,
-					'class' => $this->getBaseClass('pagination', 'input'),
+		if (!empty($goto)) {
+			if ($goto === 'input') {
+				$el = $this->input('number', $pageCurrent, [
+					'step' => 1,
+					'min'  => 1,
+					'max'  => $pageTotal,
+					'name' => $field,
 				]);
 			}
 			else {
 				$pages = range(1, $pageTotal);
-				$el = $this->mkSelect(array_combine($pages, $pages), $pageCurrent, [
-					'name'  => $pageField,
-					'class' => $this->getBaseClass('pagination', 'select'),
+				$el = $this->select(array_combine($pages, $pages), $pageCurrent, [
+					'name' => $field,
 				]);
 			}
-			$els['current'] = $this->mkLabel(sprintf($this->getMessage(self::PAG_CUR), $el));
-			$els['button'] = $this->mkButton($this->getMessage(self::PAG_JUMP), 'submit', [
-				'class' => $this->getBaseClass('pagination', 'button'),
-			]);
+			$els['current'] = $this->tag('page-current', sprintf($this->getText(self::PAGE_CUR), $el));
+			$els['button'] = $this->tag('page-link', $this->getText(self::PAGE_GOTO), ['type' => 'submit']);
 		}
 		else {
-			$els['current'] = sprintf($this->getMessage(self::PAG_CUR), $pageCurrent);
+			$els['current'] = sprintf($this->getText(self::PAGE_CUR), $pageCurrent);
 		}
 
-		$els['total'] = sprintf($this->getMessage(self::PAG_TOTAL), $pageTotal);
+		$els['total'] = sprintf($this->getText(self::PAGE_TOTAL), $pageTotal);
 
-		$row = substitute($this->getMessage(self::PAG_ROW), $els);
-		if (!empty($jump)) {
-			$row .= $this->mkGroupHidden($uri->getQueryData(), [$pageField => 1]);
-			$row = $this->mkTag('form', $row, ['action' => $uri, 'method' => 'get']);
+		$row = substitute($this->getText(self::PAGE_ROW), $els);
+
+		if (!empty($goto)) {
+			$row .= $this->inputSet($uri->getQueryData(), 'hidden', [$field => 1]);
+			$row = $this->tag('form', $row, ['action' => $uri, 'method' => 'get']);
 		}
 
-		if (!is_array($attr)) {
-			$attr = $this->attr2array($attr);
-			$this->addClass($attr, $this->getBaseClass('pagination', 'wrap'));
-		}
-
-
-		return $this->mkTag('pagination', $row, $attr);
+		return $this->tag('page-wrap', $row, $attr);
 	}
 
-	public function paginate(Pagination $pagination = null, $attr = null)
+	public function paginationLink(string $item, int $number, Uri $uri = null, string $field = 'page', $compare = false)
 	{
-		print $this->mkPaginate($pagination, $attr);
-		return $this;
-	}
-
-	public function prePaginationItem(string &$tag, &$page, array &$attr)
-	{
-		$newAttr = [];
-		if (isset($attr['compare']) && $attr['compare'] !== false && equals($attr['compare'], $page)) {
-			$tag = 'span';
-			$newAttr["date-{$attr['field']}"] = $page;
+		$attr = [];
+		$text = $item;
+		if (isset($this->texts[$item])) {
+			$text = sprintf($this->texts[$item], $number);
+		}
+		if ($item === self::PAGE_ELLIPSIS) {
+			$tag = 'page-ellipsis';
+		}
+		elseif (isset($uri) && ($compare === false || !equals($compare, $number))) {
+			$tag = 'page-link';
+			$attr['href'] = $uri->setQuery([$field => $number <= 1 ? null : $number]);
 		}
 		else {
-			$tag = 'a';
-			$newAttr['href'] = $attr['uri']->setQuery([$attr['field'] => $page <= 1 ? null : $page]);
+			$tag = 'page-span';
 		}
-		$this->addClass($newAttr, $this->getBaseClass('pagination', $attr['type'] ?? null));
-		if (!empty($attr['format']))
-			$page = sprintf($attr['format'], $page);
-		$attr = $newAttr;
-	}
-
-	public function wrap($content, $before = null, $after = null, $attr = null, string $type = 'div')
-	{
-		if (!is_string($content))
-			$this->filterContent($content);
-		if (!empty($before) && !is_string($before))
-			$this->filterContent($before);
-		if (!empty($after) && !is_string($after))
-			$this->filterContent($after);
-		return $this->mkTag($type, [$before, $content, $after,], $attr);
+		return $this->tag($tag, $text, $attr);
 	}
 }
