@@ -89,7 +89,7 @@ class Controller
 		if ($this->web->isRender())
 			return $this;
 		$objectRef = $this->getReflection();
-		$args = $this->getActionArgs($this->web->getParams());
+		$args = $this->getActionArgs($this->web->params());
 		$methods = $this->makeActions($action);
 		$actionReturn = null;
 		$status = 0;
