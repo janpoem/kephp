@@ -3,7 +3,9 @@
  * kephp bootstrap file.
  */
 
-require __DIR__ . '/../src/Ke/App.php';
+$kephpApp = 'D:\htdocs\kephp\src\Ke\App.php';
+
+require $kephpApp;
 require 'src/Demo/App.php';
 
 /** @var \Ke\App $APP */

@@ -7,30 +7,9 @@
  * @var string          $content
  */
 
-/** @var \Demo\Model\User\User $user */
-$user = $this->user ?? new User();
+/** @var \Ke\Web\Html $html */
+$html = $this->html;
+/** @var \Ke\Web\Http $http */
+$http = $web->http;
+
 ?>
-	<h1><?php print $this->title ?? 'where is title ?' ?></h1>
-	<ul>
-		<?php
-		foreach ($this->words as $word) {
-			printf('<li>%s</li>', $word);
-		}
-		?>
-	</ul>
-	<strong><?php print $user->email; ?></strong>
-<?php
-
-$this->component('semantic-ui/form', [
-	'method' => 'post',
-	'data'   => [
-		'id'         => 1,
-		'first_name' => '建凯',
-		'last_name'  => 'Zeng',
-		'status'     => 1,
-	],
-	'group'  => [
-		['first_name' => 0.5, 'last_name' => 0.5],
-	],
-]);
-

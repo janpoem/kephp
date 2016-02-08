@@ -8,7 +8,7 @@ class App extends \Ke\App
 {
 
 	/** @var string 项目的名称 */
-	protected $name = 'Kephp Demo Site';
+	protected $name = null;
 
 	/** @var string 项目的基础Hash */
 	protected $salt = null;

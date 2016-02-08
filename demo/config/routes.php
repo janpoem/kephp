@@ -6,12 +6,11 @@
 
 $router->routes = [
 	'*'              => [
-		'controller' => 'index',
+//		'controller' => 'index',
 	],
-//	'path_namespace' => [
-//		'path'      => 'any',
-//		'namespace' => 'namespace',
-//	],
+	'docmen' => [
+		'class' => Ke\Utils\DocMen\DocController::class,
+	],
 //	'path_class'     => [
 //		'class'  => 'classFullName',
 //		'action' => 'ok',
