@@ -5,3 +5,9 @@
  * @var string          $content
  */
 
+/** @var \Ke\Web\Html $html */
+$html = $this->html;
+/** @var \Ke\Web\Http $http */
+$http = $web->http;
+
+?>
