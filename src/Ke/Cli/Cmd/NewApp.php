@@ -90,6 +90,12 @@ class NewApp extends ReflectionCommand
 		'appNamespace'  => '',
 	];
 
+	/**
+	 * @var string
+	 * @type string
+	 * @field    ns
+	 * @shortcut n
+	 */
 	protected $appNamespace = '';
 
 	protected function onPrepare($argv = null)
@@ -99,7 +105,15 @@ class NewApp extends ReflectionCommand
 		if (is_dir($root))
 			throw new \Exception("Directory {$root} is existing!");
 		$this->context['kephpLibEntry'] = realpath($this->thisApp->kephp('Ke/App.php'));
-		$this->appNamespace = $this->context['appNamespace'] = path2class($this->name);
+		if (empty($this->appNamespace))
+			$this->appNamespace = path2class($this->name);
+		else {
+			if (!preg_match('#^[a-z0-9_]+$#i', $this->appNamespace)) {
+				throw new \Exception("App namespace only can use char in a-z0-9_.");
+			}
+		}
+
+		$this->context['appNamespace'] = $this->appNamespace;
 	}
 
 	protected function onExecute($argv = null)
