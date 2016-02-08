@@ -75,7 +75,6 @@ return [
 	'Ke\\Web\\Context'                    => __DIR__ . '/Ke/Web/Context.php',
 	'Ke\\Web\\Controller'                 => __DIR__ . '/Ke/Web/Controller.php',
 	'Ke\\Web\\Html'                       => __DIR__ . '/Ke/Web/Html.php',
-	'Ke\\Web\\HtmlTrait'                  => __DIR__ . '/Ke/Web/HtmlTrait.php',
 	'Ke\\Web\\Http'                       => __DIR__ . '/Ke/Web/Http.php',
 	'Ke\\Web\\HttpSecurityData'           => __DIR__ . '/Ke/Web/HttpSecurityData.php',
 	'Ke\\Web\\UI'                         => __DIR__ . '/Ke/Web/UI.php',

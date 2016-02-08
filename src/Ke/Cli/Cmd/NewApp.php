@@ -22,14 +22,14 @@ class NewApp extends ReflectionCommand
 	protected $directories = [
 		'type'     => 'dir',
 		'children' => [
-			'.gitignore'    => ['type' => 'file', 'tpl' => 'App/gitignore.tp'],
-			'.htaccess'     => ['type' => 'file', 'tpl' => 'App/htaccess.tp'],
+			'.gitignore'    => ['type' => 'file', 'tpl' => 'App/gitignore.tp', 'replace' => false],
+			'.htaccess'     => ['type' => 'file', 'tpl' => 'App/htaccess.tp', 'replace' => false],
 			'bootstrap.php' => ['type' => 'file', 'tpl' => 'App/bootstrap.tp'],
 			'ke.php'        => ['type' => 'file', 'tpl' => 'App/kephp.tp'],
 			'public'        => [
 				'type'     => 'dir',
 				'children' => [
-					'.htaccess' => ['type' => 'file', 'tpl' => 'App/public_htaccess.tp'],
+					'.htaccess' => ['type' => 'file', 'tpl' => 'App/public_htaccess.tp', 'replace' => false],
 					'index.php' => ['type' => 'file', 'tpl' => 'App/public_index.tp'],
 					'vendor'    => ['type' => 'dir'],
 					'js'        => [
@@ -40,16 +40,16 @@ class NewApp extends ReflectionCommand
 						],
 					],
 					'css'       => [
-						'type'     => 'dir',
-//						'children' => [
-//							'main.less' => ['type' => 'file', 'tpl' => 'App/less_main.tp'],
-//							'less'      => [
-//								'type'     => 'dir',
-//								'children' => [
-//									'common.less' => ['type' => 'file', 'tpl' => 'App/less_common.tp'],
-//								],
-//							],
-//						],
+						'type' => 'dir',
+						//						'children' => [
+						//							'main.less' => ['type' => 'file', 'tpl' => 'App/less_main.tp'],
+						//							'less'      => [
+						//								'type'     => 'dir',
+						//								'children' => [
+						//									'common.less' => ['type' => 'file', 'tpl' => 'App/less_common.tp'],
+						//								],
+						//							],
+						//						],
 					],
 					'img'       => ['type' => 'dir'],
 				],
@@ -138,7 +138,7 @@ class NewApp extends ReflectionCommand
 			}
 		}
 		elseif ($data['type'] === 'file') {
-			$this->createFile($path, $data['tpl']);
+			$this->createFile($path, $data['tpl'], $data);
 		}
 		if (isset($data['handle']) && is_callable([$this, $data['handle']])) {
 			$handleData = call_user_func([$this, $data['handle']], $path);
@@ -158,14 +158,16 @@ class NewApp extends ReflectionCommand
 		}
 	}
 
-	public function createFile($file, string $tpl = null)
+	public function createFile($file, string $tpl = null, array $options)
 	{
 		$this->console->println("create file {$file}");
 		$tpl = __DIR__ . '/Templates/' . $tpl;
 		if (is_file($tpl)) {
 			$tplContent = file_get_contents($tpl);
 			predir($file);
-			if (file_put_contents($file, substitute($tplContent, $this->context))) {
+			if ((!isset($options['replace']) || $options['replace'] !== false) &&
+			    file_put_contents($file, substitute($tplContent, $this->context))
+			) {
 				$this->console->println("create file {$file} success!");
 			}
 			else {

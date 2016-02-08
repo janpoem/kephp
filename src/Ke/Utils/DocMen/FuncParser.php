@@ -24,7 +24,7 @@ class FuncParser
 		$this->func = $func;
 	}
 
-	public function parse()
+	public function parse(SourceScanner $scanner)
 	{
 		$ref = $this->func;
 		$args = [];
@@ -74,7 +74,7 @@ class FuncParser
 			'isConstructor' => false,
 			'isDestructor'  => false,
 			'access'        => \ReflectionProperty::IS_PUBLIC,
-			'file'          => $ref->getFileName(),
+			'file'          => $scanner->filterPath($ref->getFileName()),
 			'args'          => $args,
 			'startLine'     => $ref->getStartLine(),
 			'endLine'       => $ref->getEndLine(),

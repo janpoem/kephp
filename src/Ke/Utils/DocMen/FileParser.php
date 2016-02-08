@@ -116,7 +116,7 @@ class FileParser
 				}
 				if (!isset($this->functions[$fn])) {
 					$parser = new FuncParser(new \ReflectionFunction($fn));
-					$this->functions[$fn] = $parser->parse();
+					$this->functions[$fn] = $parser->parse($scanner);
 				}
 			}
 		}

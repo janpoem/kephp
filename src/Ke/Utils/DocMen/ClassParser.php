@@ -31,6 +31,8 @@ class ClassParser
 
 	public $isAbstract = false;
 
+	public $isInternal = false;
+
 	public $doc = null;
 
 	public $startLine = -1;
@@ -81,13 +83,14 @@ class ClassParser
 		$this->doc = $ref->getDocComment();
 		if (!empty($this->doc))
 			$this->doc = htmlentities($this->doc);
-		$this->file = $ref->getFileName();
+		$this->file = $scanner->filterPath($ref->getFileName());
 		$this->startLine = $ref->getStartLine();
 		$this->endLine = $ref->getEndLine();
 		$this->isAbstract = $ref->isAbstract();
 		$this->isFinal = $ref->isFinal();
+		$this->isInternal = $ref->isInternal();
 
-		$defaultProps = $ref->getDefaultProperties();
+		$defaultProps = [];
 
 		$traits = $ref->getTraits();
 		foreach ($traits as $trait) {
@@ -118,7 +121,7 @@ class ClassParser
 		$methods = $ref->getMethods();
 		foreach ($methods as $method) {
 			$parser = new FuncParser($method);
-			$this->methods[$method->getShortName()] = $parser->parse();
+			$this->methods[$method->getShortName()] = $parser->parse($scanner);
 		}
 
 		$scanner->addClass($this->className, $this);

@@ -46,11 +46,6 @@ class SourceScanner
 	public function start()
 	{
 		$this->entry(new DirectoryIterator($this->source));
-
-//		$this->parseFile('D:\htdocs\kephp\src\Ke\Base.php');
-//		$this->parseFile('D:\htdocs\kephp\src\Ke\Adm\Adapter\DbAdapter.php');
-//		$this->parseFile('D:\htdocs\kephp\src\Ke\Adm\CacheModel.php');
-
 		return $this;
 	}
 
@@ -83,15 +78,15 @@ class SourceScanner
 		];
 	}
 
-	public function getDataFile(string $hash)
+	public function getHashDataFile(string $hash)
 	{
-		return $this->export . DS . 'data' . DS . $hash . '.php';
+		return $this->export . DS . $hash . '.php';
 	}
 
 	private function writeData()
 	{
 		foreach ($this->data as $hash => $data) {
-			$path = $this->getDataFile($hash);
+			$path = $this->getHashDataFile($hash);
 			file_put_contents(predir($path),
 				"<?php\r\nreturn " . var_export($data, true) . ";\r\n");
 		}
@@ -99,7 +94,7 @@ class SourceScanner
 
 	public function getMainDataFile()
 	{
-		return $this->export . DS . 'data' . DS . 'main.php';
+		return $this->export . DS . 'main.php';
 	}
 
 	public function entry(DirectoryIterator $dir)
@@ -150,9 +145,9 @@ class SourceScanner
 		if (!isset($this->files[$savePath])) {
 			$this->files[$savePath] = [
 				'name'     => $savePath,
-				'atime'    => fileatime($fullPath),
-				'ctime'    => filectime($fullPath),
-				'mtime'    => filemtime($fullPath),
+//				'atime'    => fileatime($fullPath),
+//				'ctime'    => filectime($fullPath),
+//				'mtime'    => filemtime($fullPath),
 				'clsCount' => 0,
 				'fnCount'  => 0,
 				'fn'       => [],

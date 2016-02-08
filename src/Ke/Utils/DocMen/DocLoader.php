@@ -45,12 +45,12 @@ class DocLoader
 
 	public function getMainDataFile()
 	{
-		return $this->dir . DS . 'data' . DS . 'main.php';
+		return $this->dir . DS . 'main.php';
 	}
 
 	public function getHashDataFile(string $hash)
 	{
-		return $this->dir . DS . 'data' . DS . $hash . '.php';
+		return $this->dir . DS . $hash . '.php';
 	}
 
 	public function loadMainData()
@@ -69,47 +69,100 @@ class DocLoader
 		return $this->data[$hash];
 	}
 
+	public function convertFileNameToUri(string $file)
+	{
+		return str_replace(['\\', '.'], ['/', '_'], $file);
+	}
+
+	public function getSource()
+	{
+		return $this->source;
+	}
+
 	public function getFiles()
 	{
-		return $this->files;
+		foreach ($this->files as $file => $data) {
+			yield $file => $this->convertFileNameToUri($file);
+		}
+	}
+
+	public function convertClassToUri(string $class = null)
+	{
+		return str_replace(['\\'], ['/'], $class);
+	}
+
+	public function revertClass(string $class)
+	{
+		return str_replace(['/'], ['\\'], $class);
+	}
+
+	public function filterNamespace(string $ns = null)
+	{
+		return empty($ns) ? '&ltGlobal&gt' : $ns;
 	}
 
 	public function getNamespaces()
 	{
-		return $this->namespaces;
+		foreach ($this->namespaces as $ns => $hash) {
+			yield $this->filterNamespace($ns) => $this->convertClassToUri($ns);
+		}
+	}
+
+	public function getNamespacesCount()
+	{
+		return count($this->namespaces);
 	}
 
 	public function getClasses()
 	{
-		return $this->classes;
+		foreach ($this->classes as $cls => $hash) {
+			yield $cls => $this->convertClassToUri($cls);
+		}
 	}
 
 	public function getFunctions()
 	{
-		return $this->functions;
+		foreach ($this->functions as $fn => $hash) {
+			yield $fn => $fn;
+		}
+	}
+
+	public function getNamespace(string $ns)
+	{
+
 	}
 
 	public function seek(string $scope, string $name)
 	{
-//		$data = [];
-//		switch ($scope) {
-//			case 'fn' :
-//				$data = $this->functions;
-//				if (isset($data[$name])) {
-//					$hashData = $this->loadHashData($data[$name]);
-//					var_dump($hashData['fn'][$name]);
-//				}
-//				break;
-//			case 'ns' :
-//				$data = $this->namespaces;
-//				break;
-//			case 'cls' :
-//				$data = $this->classes;
-//
-//				break;
-//			default :
-//				$data = $this->files;
-//		}
-
+		$data = [];
+		switch ($scope) {
+			case 'fn' :
+				$data = $this->functions;
+				if (isset($data[$name])) {
+					$hashData = $this->loadHashData($data[$name]);
+				}
+				break;
+			case 'ns' :
+				$data = $this->namespaces;
+				$name = $this->revertClass($name);
+				if (isset($data[$name])) {
+					$data[$name]['children'] = $this->loadHashData($data[$name]['hash']);
+					$data[$name]['name'] = $this->filterNamespace($data[$name]['name']);
+					return $data[$name];
+				}
+				return false;
+				break;
+			case 'cls' :
+				$data = $this->classes;
+				$name = $this->revertClass($name);
+				if (isset($data[$name])) {
+					$hashData = $this->loadHashData($data[$name]);
+					return $hashData['cls'][$name] ?? false;
+				}
+				break;
+			default :
+				$data = $this->files;
+		}
+		return false;
 	}
 }
