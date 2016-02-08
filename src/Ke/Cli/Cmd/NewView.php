@@ -93,7 +93,7 @@ class NewView extends ReflectionCommand
 
 	public function buildContent(): string
 	{
-		$tpl = __DIR__ . '/Templates/View.tp';
+		$tpl = __DIR__ . '/Templates/view2.tp';
 		$content = file_get_contents($tpl);
 		$vars = [
 			'path' => "{$this->controller}/{$this->view}",
