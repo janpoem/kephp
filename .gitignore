@@ -1,7 +1,5 @@
 .idea/
 tests/
-public/
-.htaccess/
 .logs/
 /nbproject/private/
 apigen.phar
