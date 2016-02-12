@@ -76,9 +76,9 @@ $tail = $tail ?? false;
 if (!is_callable($tail))
 	$tail = false;
 
-//$row = $row ?? false;
-//if (!is_callable($row))
-//	$row = false;
+$onRow = $onRow ?? false;
+if (!is_callable($onRow))
+	$onRow = false;
 
 $attr = $attr ?? [];
 if (!empty($attr) && !is_array($attr))
@@ -146,6 +146,13 @@ $checkboxClass = $html->getBaseClass('input', 'checkbox');
 	}
 	else {
 		foreach ($rows as $index => $row) {
+			$clone = $row;
+			if (is_object($row))
+				$clone = (array)$row;
+			$clone = new ArrayObject($clone);
+			if ($onRow) {
+				call_user_func($onRow, $html, $row, $clone);
+			}
 			?>
 			<tr>
 				<?php if ($checkbox) { ?>
@@ -175,12 +182,13 @@ $checkboxClass = $html->getBaseClass('input', 'checkbox');
 				foreach ($columns as $field => $column) {
 					if (isset($column['showTable']) && $column['showTable'] === false)
 						continue;
-					$value = $row[$field] ?? '';
+					$value = $clone[$field] ?? '';
+					$value = $html->filterColumnValue($field, $value, $column);
 					?>
 					<td<?php print ($column['class'] ?? ''); ?>
 							data-field="<?php print $field ?>"
 							data-value="<?php print $value ?>"><?php
-						print $html->filterColumnValue($field, $row[$field] ?? '', $column);
+						print ($value);
 						?></td>
 					<?php
 				}

@@ -1,0 +1,141 @@
+<?php
+/**
+ * @var \Ke\Web\Web     $web
+ * @var \Ke\Web\Context $this
+ * @var string          $content
+ */
+
+/** @var \Ke\Web\Html $html */
+$html = $this->html;
+/** @var \Ke\Web\Http $http */
+$http = $web->http;
+
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title><?php print $this->title; ?></title>
+	<?php $web->asset('docmen'); ?>
+	<style>
+		@import url(http://fonts.useso.com/css?family=Bitter|Roboto+Mono:400,400italic,500,500italic,700,700italic,300italic,300);
+
+		.main {
+		}
+
+		.header small {
+			color: #a0a0a0;
+		}
+
+		.count:before {
+			content: "[";
+		}
+
+		.count:after {
+			content: "]";
+		}
+
+		.scope-name, code, pre, header, .source-file, .func-args {
+			font-family: "Roboto Mono", "Cousine", "Source Code Pro", "Consolas", "Courier New", monospace;
+			font-weight: 300;
+		}
+
+		.label.scope-name {
+			font-weight: 500;
+		}
+
+		.header .scope-name {
+			font-weight: 500;
+		}
+
+		.func-args {
+			font-size: 80%;
+			font-weight: normal;
+			margin-left: 6px;
+		}
+
+		.source-file {
+			margin-top: -15px;
+			margin-bottom: 10px;
+			color: #a0a0a0;
+		}
+
+		.func-args-equal {
+			margin: 0 6px;
+		}
+
+		.func-args-comma {
+			margin-right: 6px;
+		}
+
+		.var-type {
+			color: blue;
+		}
+
+		.var.string {
+			color: brown;
+		}
+
+		.var.integer {
+			color: red;
+		}
+
+		.var.NULL,
+		.var.boolean,
+		.var.array {
+			color: green;
+		}
+
+		.logo {
+			font-family: 'Bitter';
+			font-size: 16px;
+		}
+
+		.foot {
+			font-family: 'Bitter';
+			padding: 1.5em 0;
+			color: #909090;
+		}
+	</style>
+</head>
+<body>
+<?php $this->component('docmen/menu'); ?>
+<div class="ui main container">
+	<div class="ui segment">
+		<?php $this->component('docmen/side'); ?>
+		<?php print $content; ?>
+	</div>
+</div>
+<div class="ui divider hidden"></div>
+<div class="foot ui center aligned container">
+	Power by Kephp, page execute <?php print round(diff_milli(KE_BOOTSTRAP_TIME), 4); ?>ms.
+</div>
+<div id="alert_box" class="ui small basic test modal transition">
+	<div class="header"></div>
+	<div class="content"></div>
+	<div class="actions">
+		<div class="ui green ok inverted button"><i class="checkmark icon"></i> Yes</div>
+	</div>
+</div>
+<script type="text/javascript">
+	$(document).ready(function () {
+		$('a[data-ajax]').click(function () {
+			$.getJSON($(this).attr('href'), function (data) {
+				$('#alert_box .header').html(data.status ? 'Operation success!' : 'Operation failure!');
+				$('#alert_box .content').html(data.message);
+				$('#alert_box').modal({
+					closable: false,
+					onApprove: function () {
+						if (data.status)
+							location.reload(true);
+						else
+							$('#alert_box').modal('hide');
+					}
+				}).modal('show');
+			});
+			return false;
+		});
+	})
+</script>
+</body>
+</html>

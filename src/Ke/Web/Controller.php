@@ -100,10 +100,10 @@ class Controller
 				$methodRef = $this->_reflection->getMethod($method);
 				if ($name === 'default')
 					$status = 2; //
-				if ($methodRef->isPublic() && !$methodRef->isStatic() && !$this->web->isRender()) {
+				if (!$methodRef->isStatic() && is_callable([$this, $method]) && !$this->web->isRender()) {
 					if ($name === 'default')
 						$status = 3; //
-					$return = $methodRef->invokeArgs($this, $args);
+					$return = call_user_func_array([$this, $method], $args);
 					if ($return !== null && !($return instanceof Controller) && !($return instanceof Renderer))
 						$actionReturn = $return;
 				}

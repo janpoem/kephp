@@ -1,0 +1,20 @@
+<?php
+/**
+ * @var \Ke\Web\Context $this
+ * @var \Ke\Web\Web     $web
+ * @var string          $content
+ */
+
+/** @var \Ke\Web\Html $html */
+$html = $this->html;
+/** @var \Ke\Web\Http $http */
+$http = $web->http;
+
+?>
+<div class="ui inverted menu">
+	<div class="ui container">
+		<a class="head item" href="<?php print $web->controllerLink(); ?>"><span class="logo">Kephp</span></a>
+		<a class="item" href="<?php print $web->controllerLink('generate') ?>" data-ajax="1">Generate</a>
+	</div>
+</div>
+

@@ -29,6 +29,8 @@ class Web
 	/** @var Web */
 	private static $web = null;
 
+	private static $routes = [];
+
 	///////// passed /////////
 
 	/** @var OutputBuffer */
@@ -121,6 +123,24 @@ class Web
 			self::$web = new static();
 		}
 		return self::$web;
+	}
+
+	public static function registerRoutes(array $routes)
+	{
+		if (!empty($routes)) {
+			self::$routes += $routes;
+			return true;
+		}
+		return false;
+	}
+
+	public static function removeRoutes(string $path)
+	{
+		if (isset(self::$routes[$path])) {
+			unset(self::$routes[$path]);
+			return true;
+		}
+		return false;
 	}
 
 	final public function __construct(Http $http = null)
@@ -217,7 +237,6 @@ class Web
 
 	public function renderError($error)
 	{
-		$this->getContext()->title = 'An error occurred';
 		/** @var Error $renderer */
 		$renderer = $this->getErrorRenderer()->setError($error);
 		// onError允许接管错误的处理
@@ -334,6 +353,8 @@ class Web
 		if (!isset($this->router)) {
 			$this->router = new Router();
 			$this->router->loadFile($this->app->config('routes', 'php'));
+			if (!empty(self::$routes))
+				$this->router->routes += self::$routes;
 		}
 		return $this->router;
 	}
@@ -408,7 +429,7 @@ class Web
 		if (!empty($result->class)) {
 			$params['class'] = $result->class;
 			// 暂定
-			$params['controller'] = $result->node;
+			$params['controller'] = $result->node === Router::ROOT ? '' : $result->node;
 		}
 		else {
 			$controller = $this->filterController($result->controller, true);
@@ -464,11 +485,11 @@ class Web
 		return $this->params['controller'];
 	}
 
-	public function controllerOf(string $path = null, $query = null)
+	public function controllerLink(string $path = null, $query = null)
 	{
 		$uri = $this->params['controller'];
 		if ($path !== '' && !empty($path = trim($path, KE_PATH_NOISE)))
-			$uri .= '/' . $path;
+			$uri .= (empty($uri) ? '' : '/') . $path;
 		return $this->uri($uri, $query);
 	}
 

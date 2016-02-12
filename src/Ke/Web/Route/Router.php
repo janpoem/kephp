@@ -253,12 +253,17 @@ class Router
 			$this->loopMappings($node['mappings'], $rs);
 		// 已经设定了action，就不去匹配后面的了
 		if (!$rs->matched) {
-			if ($rs->mode === self::MODE_CLASS && !empty($rs->action))
+			if ($rs->mode === self::MODE_CLASS && !empty($rs->action)) {
 				$rs->matched = true;
-			elseif ($rs->mode === self::MODE_TRADITION)
-				$this->loopMappings($this->controllerMappings, $rs);
-			else
-				$this->loopMappings($this->actionMappings, $rs);
+			}
+			else {
+				if ($rs->mode === self::MODE_TRADITION) {
+					$this->loopMappings($this->controllerMappings, $rs);
+				}
+				else {
+					$this->loopMappings($this->actionMappings, $rs);
+				}
+			}
 		}
 		return $this;
 	}

@@ -73,6 +73,7 @@ class FuncParser
 			'isAbstract'    => false,
 			'isConstructor' => false,
 			'isDestructor'  => false,
+			'isInternal'    => $ref->isInternal(),
 			'access'        => \ReflectionProperty::IS_PUBLIC,
 			'file'          => $scanner->filterPath($ref->getFileName()),
 			'args'          => $args,

@@ -9,37 +9,25 @@ $i = count($trace);
 
 if (empty($trace))
 	return '';
+
+$options = [
+	'columns' => [
+		'file'     => 'File',
+		'line'     => 'Line',
+		'function' => 'Function',
+	],
+	'onRow'   => function (\Ke\Web\Html $html, $data, $clone) {
+		if (!empty($data['class']) && !empty($data['type']) && !empty($data['function'])) {
+			$clone['function'] = sprintf('%s%s%s()', $data['class'], $data['type'], $data['function']);
+			$clone['function'] = $html->tag('code', $clone['function']);
+		}
+	},
+	'attr' => [
+		'class' => 'red',
+	],
+];
+
+$table = $this->html->tableList($trace, $options);
 ?>
 <address><?php print $file . '#' . $line; ?></address>
-<table border="1" cellpadding="2" style="border-collapse: collapse;">
-	<thead>
-	<tr>
-		<th>File</th>
-		<th>Line</th>
-		<th>Function</th>
-	</tr>
-	</thead>
-	<tbody>
-	<?php
-	foreach ($trace as $index => $data) {
-		?>
-		<tr>
-			<td>
-				<address><?php print $data['file'] ?? '' ?></address>
-			</td>
-			<td><?php print $data['line'] ?? '' ?></td>
-			<td>
-				<code>
-					<?php
-					if (!empty($data['class']) && !empty($data['type']) && !empty($data['function'])) {
-						printf('%s%s%s()', $data['class'], $data['type'], $data['function']);
-					}
-					?>
-				</code>
-			</td>
-		</tr>
-		<?php
-	}
-	?>
-	</tbody>
-</table>
+<?php print $table; ?>

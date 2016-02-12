@@ -54,7 +54,7 @@ class Error extends Renderer
 	protected function rendering()
 	{
 		$this->web->ob->clean('startup');
-		print $this->getContent();
+		exit($this->getContent());
 	}
 
 	protected function filterProcess()
@@ -66,15 +66,21 @@ class Error extends Renderer
 			$this->onDispatchProcess();
 		}
 		else {
+			$controller = $this->web->getControllerObject();
+			if (!empty($controller)) {
+				$this->layout = $controller->layout;
+				$this->context->assign($controller);
+			}
 			$renderer = $this->web->getRenderer();
+
 			if ($renderer === $this) {
 				// 2. 如果当前渲染器是Error渲染器，表示未进行渲染，在执行action时发生错误
-				$this->onActionProcess($this->web->getControllerObject());
+				$this->onActionProcess($controller);
 			}
 			else {
 				// 3. 如果当前渲染器不是Error渲染器，表示已经进入渲染阶段发生错误
 				// view渲染器，如果取出有效布局为false，表示布局加载出错了，还是要使用error布局
-				$this->onRenderProcess($renderer);
+				$this->onRenderProcess($controller, $renderer);
 			}
 		}
 	}
@@ -83,22 +89,22 @@ class Error extends Renderer
 	{
 		$this->layout = 'error';
 		$this->tip = 'An error occurred while dispatching website!';
+		$this->context->title = 'Error occurred';
 	}
 
 	protected function onActionProcess(Controller $controller = null)
 	{
-		// 这里还是可能会出现controller为空的情况
-		if (!empty($controller))
-			$this->layout = $controller->layout;
 		$this->tip = 'An error occurred while initializing the controller or perform actions!';
+		$this->context->title = 'Error occurred';
 	}
 
-	protected function onRenderProcess(Renderer $renderer)
+	protected function onRenderProcess(Controller $controller = null, Renderer $renderer)
 	{
-		if ($renderer instanceof View) {
-			$this->layout = $renderer->getValidLayout();
-		}
+//		if ($renderer instanceof View) {
+//			$this->layout = $renderer->getValidLayout();
+//		}
 		$this->tip = 'An error occurred during rendering!';
+		$this->context->title = 'Error occurred';
 	}
 
 	public function getContent()

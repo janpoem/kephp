@@ -178,10 +178,9 @@ class NewApp extends ReflectionCommand
 		$tpl = __DIR__ . '/Templates/' . $tpl;
 		if (is_file($tpl)) {
 			$tplContent = file_get_contents($tpl);
-			predir($file);
-			if ((!isset($options['replace']) || $options['replace'] !== false) &&
-			    file_put_contents($file, substitute($tplContent, $this->context))
-			) {
+			if (!isset($options['replace']) || $options['replace'] !== false)
+				$tplContent = substitute($tplContent, $this->context);
+			if (file_put_contents(predir($file), $tplContent)) {
 				$this->console->println("create file {$file} success!");
 			}
 			else {

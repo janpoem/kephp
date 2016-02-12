@@ -1,0 +1,36 @@
+<?php
+/**
+ * @var \Ke\Web\Context $this
+ * @var \Ke\Web\Web     $web
+ * @var string          $content
+ */
+
+use Ke\Utils\DocMen\DocMen;
+
+/** @var \Ke\Utils\DocMen\DocHtml $html */
+$html = $this->html;
+/** @var \Ke\Web\Http $http */
+$http = $web->http;
+/** @var \Ke\Utils\DocMen\DocMen $doc */
+//var_dump($this);
+$doc = $this->doc;
+?>
+<div class="ui left close rail">
+	<div>
+		<div class="ui top attached block header">Namespaces
+			<small class="count"><?php print $doc->getAllNamespacesCount(); ?></small>
+		</div>
+		<div class="ui bottom attached segment">
+			<div class="ui list">
+				<?php foreach ($doc->getAllNamespaces() as $ns => $hash) { ?>
+					<div class="item">
+						<i class="folder icon"></i>
+						<div class="content">
+							<div class="head scope-name"><?php print $html->scopeLink(DocMen::NS, $ns); ?></div>
+						</div>
+					</div>
+				<?php } ?>
+			</div>
+		</div>
+	</div>
+</div>

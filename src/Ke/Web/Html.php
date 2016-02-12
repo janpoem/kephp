@@ -125,6 +125,8 @@ class Html
 	public $tagPageEllipsis   = 'span';
 	public $tagPageCurrent    = 'span';
 
+	public $tagMessage = 'div';
+
 	public $classPageWrap  = 'pagination';
 	public $classTableList = 'table-list';
 
@@ -534,10 +536,9 @@ class Html
 
 	public function tag2field(string $tag, array $attr)
 	{
-		$tag = $field = str_replace(['_', '-', ':'], ' ', $tag);
+		$tag = $field = str_replace(' ', '', ucwords(str_replace(['_', '-', ':'], ' ', $tag)));
 		if (!empty($attr['type']))
-			$field .= ' ' . $attr['type'];
-		$field = str_replace(' ', '', ucwords($field));
+			$field .= ucfirst($attr['type']);
 		return [$tag, $field];
 	}
 
@@ -570,23 +571,31 @@ class Html
 		// 过滤和转换标签
 		if (!empty($tag)) {
 			$field = $this->tag2field($tag, $attr);
-			// php7以后，list方法，性能损耗太多，不使用list了。
-			// tagButtonButton, tagButtons, tagButtonSubmit
-			// classInputText
-			$tagField = 'tag' . $field[1];
-			$classField = 'class' . $field[1];
+			// 两者相同，表示没有指定type
+			if ($field[0] === $field[1]) {
+				$tagField = 'tag' . $field[0];
+				$classField = 'class' . $field[0];
+				if (!empty($this->{$tagField}))
+					$tag = $this->{$tagField};
+				if (!empty($this->{$classField}))
+					$this->addClass($attr, $this->{$classField});
+			}
+			else {
+				// 以下为试行
+				$tagField = 'tag' . $field[0];
+				$classField = 'class' . $field[0];
+				$detailClassField = 'class' . $field[1];
+				if (!empty($this->{$tagField}))
+					$tag = $this->{$tagField};
+				if (!empty($this->{$detailClassField}))
+					$this->addClass($attr, $this->{$detailClassField});
+				elseif (!empty($this->{$classField}))
+					$this->addClass($attr, $this->{$classField});
+			}
+			// 前置过滤器的方法，暂时保留
 //			$method = 'pre' . $field[0];
-			// 调用标签前置过滤器
-			// 如果不是为了后面继承的考虑，其实连这个前置过滤器都不想要
-			// todo: 这里暂时不要，请以实际情况说明需求度
 //			if (is_callable([$this, $method]))
 //				$this->{$method}($tag, $content, $attr);
-			// 重置标签
-			if (!empty($this->{$tagField}))
-				$tag = $this->{$tagField};
-			// 追加特定的标签属性
-			if (!empty($this->{$classField}))
-				$this->addClass($attr, $this->{$classField});
 		}
 		if (!empty($content) && !is_string($content))
 			$content = $this->filterContent($content);
@@ -998,8 +1007,11 @@ class Html
 	public function message($message, string $type = self::MSG_DEFAULT, $attr = null)
 	{
 		$tag = 'message';
-		if ($type !== self::MSG_DEFAULT)
-			$tag .= '-' . $type; // message-warning => tagMessageWarning, classMessageWarning
+		if (!is_array($attr))
+			$attr = $this->attr2array($attr);
+		$attr['type'] = $type;
+//		if ($type !== self::MSG_DEFAULT)
+//			$tag .= '-' . $type; // message-warning => tagMessageWarning, classMessageWarning
 		return $this->tag($tag, $message, $attr);
 	}
 
@@ -1072,10 +1084,10 @@ class Html
 				$value = '';
 		}
 
-
 		if (isset($column['options'])) {
 			$value = $column['options'][$value] ?? $value;
 		}
+
 		if (isset($column['before']) || isset($column['after'])) {
 			$value = $this->wrap($value, $column['before'], $column['after'], $column['wrap'] ?? [], 'div');
 		}

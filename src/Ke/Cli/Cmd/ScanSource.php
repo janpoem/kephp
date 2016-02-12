@@ -66,10 +66,5 @@ class ScanSource extends ReflectionCommand
 		$startWrite = microtime();
 		$this->scanner->export();
 		$this->console->println("Write all data", 'used', round(diff_milli($startWrite), 4), 'ms');
-//		$this->parse('D:\htdocs\kephp\src\Ke\Cli\Console.php');
-//		$this->parse('D:\htdocs\kephp\src\Ke\Utils\Status.php');
-//		$this->parse('D:\htdocs\kephp\src\Ke\Base.php');
-//		$this->entry(new DirectoryIterator($this->dir));
-//		$this->export();
 	}
 }

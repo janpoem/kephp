@@ -18,7 +18,13 @@ class SourceScanner
 
 	protected $source;
 
+	private $reversionSource = '';
+
 	protected $export;
+
+	protected $externalFiles = [];
+
+	private $externalId = 0;
 
 	protected $files = [];
 
@@ -33,11 +39,12 @@ class SourceScanner
 	public function __construct(string $dir, string $export)
 	{
 		$this->source = realpath($dir);
+		$this->reversionSource = str_replace('\\', '/', $this->source);
 		if (empty($this->source) || !is_dir($this->source))
 			throw new \Error("Please input a valid directory!");
 		if (empty($export))
 			throw new \Error('Please input the export dir!');
-		$this->export = KE_SCRIPT_DIR . DS . $export;
+		$this->export = $export;
 		if (!is_dir($this->export))
 			mkdir($this->export, 0755, true);
 		$this->export = realpath($this->export);
@@ -120,21 +127,19 @@ class SourceScanner
 
 	public function parseFile(string $path)
 	{
-		if (!$this->isParseFile($path))
-			return $this;
-
 		$this->addFile($path);
 
-		$fp = new FileParser($path);
-		$fp->parse($this);
+		if ($this->isParseFile($path)) {
+			$fp = new FileParser($path);
+			$fp->parse($this);
 
-		$fns = $fp->getFunctions();
-		if (!empty($fns)) {
-			foreach ($fns as $name => $fn) {
-				$this->addFunction($fn['namespace'], $name, $fn);
+			$fns = $fp->getFunctions();
+			if (!empty($fns)) {
+				foreach ($fns as $name => $fn) {
+					$this->addFunction($fn['namespace'], $name, $fn);
+				}
 			}
 		}
-
 		return $this;
 	}
 
@@ -142,16 +147,28 @@ class SourceScanner
 	public function addFile(string $fullPath, array $data = null)
 	{
 		$savePath = $this->filterPath($fullPath);
+		$isExternal = false;
+		$dir = $this->reversionSource;
+		$path = $savePath;
+		if (isset($this->externalFiles[$savePath])) {
+			$isExternal = true;
+			$dir = $this->externalFiles[$savePath]['dir'];
+			$path = $this->externalFiles[$savePath]['path'];
+//			$savePath = ;
+		}
 		if (!isset($this->files[$savePath])) {
 			$this->files[$savePath] = [
-				'name'     => $savePath,
-//				'atime'    => fileatime($fullPath),
-//				'ctime'    => filectime($fullPath),
-//				'mtime'    => filemtime($fullPath),
-				'clsCount' => 0,
-				'fnCount'  => 0,
-				'fn'       => [],
-				'cls'      => [],
+				'name'       => $savePath,
+				//				'atime'    => fileatime($fullPath),
+				//				'ctime'    => filectime($fullPath),
+				//				'mtime'    => filemtime($fullPath),
+				'clsCount'   => 0,
+				'fnCount'    => 0,
+				'fn'         => [],
+				'cls'        => [],
+				'dir'        => $dir,
+				'path'       => $path,
+				'isExternal' => $isExternal,
 			];
 			if (!empty($data))
 				$this->files[$savePath] = array_merge($this->files[$savePath], $data);
@@ -159,11 +176,40 @@ class SourceScanner
 		return $this;
 	}
 
+	public function addExternalFile(string $path)
+	{
+		if (!isset($this->externalFiles[$path])) {
+			$same = compare_path($this->reversionSource, $path);
+			if (!empty($same)) {
+				$check = $same . '/';
+				$cutPath = substr($path, strlen($check));
+				$rename = 'External/' . $cutPath;
+				$this->externalFiles[$path] = $this->externalFiles[$rename] = [
+					'dir'  => $same,
+					'path' => $cutPath,
+				    'name' => $rename,
+				];
+			}
+
+		}
+		return $this;
+	}
+
 	public function filterPath(string $path)
 	{
-		$check = $this->source . DS;
+		if (strpos($path, '\\') !== false)
+			$path = str_replace('\\', '/', $path);
+		if (isset($this->files[$path]))
+			return $path;
+		elseif (isset($this->externalFiles[$path]))
+			return $this->externalFiles[$path]['name'];
+		$check = $this->reversionSource . '/';
 		if (strpos($path, $check) === 0) {
-			return substr($path, strlen($check));
+			$path = substr($path, strlen($check));
+		}
+		elseif (is_file($path)) {
+			$this->addExternalFile($path);
+			$path = $this->externalFiles[$path]['name'];
 		}
 		return $path;
 	}

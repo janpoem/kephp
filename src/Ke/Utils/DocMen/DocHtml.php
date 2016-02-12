@@ -21,6 +21,42 @@ class DocHtml extends Html
 
 	protected $web = null;
 
+	public $classTableList = 'ui compact table celled';
+
+	public $tagScopeName   = 'span';
+	public $classScopeName = 'scope-name';
+
+	public $tagClassMiscMethods     = 'span';
+	public $tagClassMiscProps       = 'span';
+	public $tagClassMiscTraits      = 'span';
+	public $tagClassMiscImpls       = 'span';
+	public $tagClassMiscConstants   = 'span';
+	public $classClassMiscMethods   = 'ui label teal';
+	public $classClassMiscProps     = 'ui label green';
+	public $classClassMiscTraits    = 'ui label brown';
+	public $classClassMiscImpls     = 'ui label pink';
+	public $classClassMiscConstants = 'ui label orange';
+
+	public $tagVar       = 'var';
+	public $tagVarName   = 'span';
+	public $tagVarType   = 'span';
+	public $classVar     = 'var';
+	public $classVarName = 'var-name';
+	public $classVarType = 'var-type';
+
+	public $tagScopeLabelNamespace   = 'a';
+	public $tagScopeLabelInterface   = 'a';
+	public $tagScopeLabelTrait       = 'a';
+	public $classScopeLabelNamespace = 'ui tag label scope-name blue';
+	public $classScopeLabelInterface = 'ui tag label scope-name brown';
+	public $classScopeLabelTrait     = 'ui tag label scope-name pink';
+
+	public $classMessage        = 'ui message';
+	public $classMessageWarning = 'ui message warning';
+
+	public $equalSpan = '<span class="func-args-equal">=</span>';
+
+
 	public function setDoc(DocMen $docMen)
 	{
 		$this->doc = $docMen;
@@ -39,347 +75,230 @@ class DocHtml extends Html
 		return $this->web;
 	}
 
-//	protected $aliasTags = [
-//		'buttons'      => 'div',
-//		'inline'       => 'span',
-//		'inline-group' => 'div',
-//		'message'      => 'div',
-//		'pagination'   => 'div',
-//		'input-wrap'   => 'div',
-//		'var'          => 'span',
-//		'var-type'     => 'span',
-//		'code-name'    => 'div',
-//		'class-misc'   => 'div',
-//		'var-name'     => 'span',
-//	];
-//
-//	protected $baseClasses = [
-//		'var-name'                 => 'var-name',
-//		'var'                      => 'var',
-//		'var:NULL'                 => 'var null',
-//		'var:boolean'              => 'var bool',
-//		'var:integer'              => 'var int',
-//		'var:string'               => 'var str',
-//		'var:double'               => 'var float',
-//		'var:array'                => 'var array',
-//		'var:object'               => 'var object',
-//		'var:resource'             => 'var res',
-//		'var-type'                 => 'var-type',
-//		'var-type:NULL'            => 'var-type null',
-//		'var-type:boolean'         => 'var-type bool',
-//		'var-type:integer'         => 'var-type int',
-//		'var-type:int'             => 'var-type int',
-//		'var-type:string'          => 'var-type str',
-//		'var-type:double'          => 'var-type float',
-//		'var-type:array'           => 'var-type array',
-//		'var-type:object'          => 'var-type object',
-//		'var-type:resource'        => 'var-type res',
-//		'code-name'                => 'code-name',
-//		'code-name:namespace'      => 'code-name ns',
-//		'code-name:class'          => 'code-name cls',
-//		'code-name:final class'    => 'code-name cls',
-//		'code-name:abstract class' => 'code-name cls',
-//		'code-name:interface'      => 'code-name impl',
-//		'code-name:trait'          => 'code-name trait',
-//		'code-name:fn'             => 'code-name fn',
-//		'code-name:file'           => 'code-name file',
-//		'class-misc:props'         => 'ui green label',
-//		'class-misc:methods'       => 'ui teal label',
-//		'class-misc:impls'         => 'ui brown label',
-//		'class-misc:traits'        => 'ui pink label',
-//		'class-misc:nothing'       => 'ui label',
-//		//		'code-label:props'         => 'ui teal label',
-//		//		'class-misc:methods'       => 'ui blue label',
-//		'code-label:interface'     => 'ui tag brown label',
-//		'code-label:trait'         => 'ui tag pink label',
-//		'code-label:namespace'     => 'ui tag blue label',
-//		'code-label:nothing'       => 'ui label',
-//	];
-//
-//	public function setDocLoader(DocLoader $docLoader)
-//	{
-//		$this->docLoader = $docLoader;
-//		return $this;
-//	}
-//
-//	public function getDocLoader(): DocLoader
-//	{
-//		return $this->docLoader;
-//	}
-//
-//	public function filterCodeNameType(string $type = null): string
-//	{
-//		switch (strtolower($type)) {
-//			case 'cls' :
-//			case 'class' :
-//				return 'class';
-//			case 'ns' :
-//			case 'namespace' :
-//				return 'namespace';
-//			case 'fn' :
-//			case 'func' :
-//			case 'function' :
-//				return 'function';
-//			case 'impl' :
-//			case 'if' :
-//			case 'interface' :
-//				return 'interface';
-//			case 'abstract class' :
-//			case 'final class' :
-//			case 'file' :
-//				return $type;
-//			case 'trait' :
-//				return 'trait';
-//			default :
-//				return 'class';
-//		}
-//	}
-//
-//	public function mkFunctionArgs(array $args)
-//	{
-//		$html = [];
-//		foreach ($args as $arg) {
-//			$name = $this->mkTag('var-name', '$' . $arg['name']);
-//			$defaultValue = $arg['defaultValue'];
-//			if ($arg['isReference'])
-//				$name = '<i>&</i>' . $name;
-//
-//			$valueType = gettype($defaultValue);
-//			if ($defaultValue === true) {
-//				$defaultValue = 'true';
-//			}
-//			elseif ($defaultValue === false) {
-//				$defaultValue = 'false';
-//			}
-//			elseif ($valueType === KE_STR) {
-//				$defaultValue = "'" . htmlentities($defaultValue) . "'";
-//			}
-//			if ($arg['hasType'])
-//				$name = $this->mkTag('var-type', $arg['type'], ['type' => $arg['type']]) . ' ' . $name;
-//
-//			if ($defaultValue === null && $arg['allowsNull'])
-//				$name .= '<span class="func-args-equal">=</span>' . $this->mkTag('var', 'null', ['type' => $valueType]);
-//			elseif ($defaultValue !== null) {
-//				if (is_array($defaultValue))
-//					$defaultValue = '[]';
-//				$name .= '<span class="func-args-equal">=</span>' .
-//				         $this->mkTag('var', (string)$defaultValue, ['type' => $valueType]);
-//			}
-//
-//			$html[] = $name;
-//		}
-//
-//		return $this->mkTag('span', '(' . implode('<span class="func-args-comma">,</span>', $html) . ')', 'func-args');
-//	}
-//
-//	public function mkCodeName(string $name, string $type = 'class', $attr = null): string
-//	{
-//		if (!is_array($attr))
-//			$attr = $this->attr2array($attr);
-//		$type = $this->filterCodeNameType($type);
-//		$attr['type'] = $type;
-//		if (!empty($attr['parent'])) {
-//			if (is_string($attr['parent'])) {
-//				$name .= ' <small>extends ' .
-//				         $this->mkLink($attr['parent'], $this->mkCodeNameUri($attr['parent'], 'class')) .
-//				         '</small>';
-//			}
-//			elseif (is_array($attr['parent'])) {
-//				$parent = array_shift($attr['parent']);
-//				if (!empty($parent)) {
-//					$name .= ' <small>extends ' .
-//					         $this->mkLink($parent, $this->mkCodeNameUri($parent, 'class', $attr['parent'])) .
-//					         '</small>';
-//				}
-//			}
-//
-//		}
-////		if (!empty($attr['parent'])) {
-////			$name .= ' <small>extends ' . $attr['parent'] . '</small>';
-////		}
-//		if ($type === 'function')
-//			$name .= $this->mkFunctionArgs($attr['args'] ?? []);
-//		unset($attr['parent'], $attr['args']);
-//		return $this->mkTag('code-name', $this->mkTag('small', $type) . ' ' . $name, $attr);
-//	}
-//
-//	public function codeName(string $name = null, string $type = 'class', $attr = null)
-//	{
-//		print $this->mkCodeName($name, $type, $attr);
-//		return $this;
-//	}
-//
-//	public function mkCodeNameUri(string $name, string $type = 'class', $query = null)
-//	{
-//		$web = Web::getWeb();
-//		$doc = $this->getDocLoader();
-//		$uri = '';
-//		if ($type === 'file') {
-//			$uri = 'file/';
-//			$uri .= $doc->convertFileNameToUri($name);
-//		}
-//		else {
-//			if ($type === 'function')
-//				$uri = 'fn/';
-//			elseif ($type === 'namespace')
-//				$uri = 'ns/';
-//			else
-//				$uri = 'cls/';
-//			$uri .= $doc->convertClassToUri($name);
-//		}
-//		return $web->controllerOf($uri, $query);
-//	}
-//
-//	public function mkCodeNameLink(string $name, string $type = 'class', $attr = null): string
-//	{
-//		if (!is_array($attr))
-//			$attr = $this->attr2array($attr);
-//		$type = $this->filterCodeNameType($type);
-//		$attr['type'] = $type;
-//		$uri = $this->mkCodeNameUri($name, $type, $attr['query'] ?? null);
-//		return $this->mkCodeName($this->mkLink($name, $uri), $type, $attr);
-//	}
-//
-//	public function codeNameLink(string $name, string $type = 'class', $attr = null)
-//	{
-//		print $this->mkCodeNameLink($name, $type, $attr);
-//		return $this;
-//	}
-//
-//	public function getTypeShortName($type)
-//	{
-//		switch (strtolower($type)) {
-//			case 'cls' :
-//			case 'class' :
-//				return 'cls';
-//			case 'ns' :
-//			case 'namespace' :
-//				return 'ns';
-//			case 'fn' :
-//			case 'func' :
-//			case 'function' :
-//				return 'fn';
-//			case 'impl' :
-//			case 'if' :
-//			case 'interface' :
-//				return 'impl';
-//			case 'abstract class' :
-//				return 'abs cls';
-//			case 'final class' :
-//				return 'final cls';
-//			case 'file' :
-//				return 'file';
-//			case 'trait' :
-//				return 'trait';
-//			default :
-//				return 'cls';
-//		}
-//	}
-//
-//	public function mkCodeLabel(string $name = null, string $type = 'class', $attr = null)
-//	{
-//		if (!is_array($attr))
-//			$attr = $this->attr2array($attr);
-//		$type = $this->filterCodeNameType($type);
-//
-//		$detail = '<div class="detail">' . $type . '</div>';
-//		$uri = $this->mkCodeNameUri($name ?? '', $type, $attr['query'] ?? null);
-//		if (empty($name)) {
-//			if ($type === 'namespace') {
-//				$name = $this->getDocLoader()->filterNamespace($name);
-//			}
-//		}
-//		return $this->mkLink($name . $detail, $uri, $this->getBaseClass('code-label', $type));
-//	}
-//
-//	public function codeLabel(string $name = null, string $type = 'class', $attr = null)
-//	{
-//		print  $this->mkCodeLabel($name, $type, $attr);
-//		return $this;
-//	}
-//
-//	public function getClassMiscFields() :array
-//	{
-//		return [
-//			'methods' => 'Methods', 'props' => 'Properties', 'traits' => 'Traits', 'impls' => 'Interfaces',
-//		];
-//	}
-//
-//	public function mkClassMisc(array $clsData, $attr = null): string
-//	{
-//		if (!is_array($attr))
-//			$attr = $this->attr2array($attr);
-//		$misc = '';
-//		if (!empty($clsData['file'])) {
-//			$misc .= $this->mkTag('address', $clsData['file'], 'source-file');
-//		}
-//		elseif ($clsData['isInternal']) {
-//			$misc .= $this->mkTag('address', 'PHP Internal', 'source-file');
-//		}
-//		foreach ($this->getClassMiscFields() as $field => $name) {
-//			if (empty($clsData[$field]) || !is_array($clsData[$field])) {
-//				$count = 0;
-//				$attr['type'] = 'nothing';
-//				continue;
-//			}
-//			else {
-//				$count = count($clsData[$field]);
-//				$attr['type'] = $field;
-//			}
-//			$inner = $name . ' <div class="detail">' . $count . '</div>';
-//			$misc .= $this->mkTag('class-misc', $inner, $attr);
-//		}
-//		return $this->mkTag('div', $misc, 'class-misc');
-//	}
-//
-//	public function classMisc(array $clsData, $attr = null)
-//	{
-//		print $this->mkClassMisc($clsData, $attr);
-//		return $this;
-//	}
-//
-//	public function getReturnQuery(string $name = null, string $type = null, bool $withQuery = true)
-//	{
-//		if ($withQuery)
-//			return ['query' => ['return' => $this->filterCodeNameType($type) . ':' . $name]];
-//		else
-//			return ['return' => $this->filterCodeNameType($type) . ':' . $name];
-//	}
-//
-//	public function parseReturnStr(string $str)
-//	{
-//		$split = explode(':', $str);
-//		$type = $this->filterCodeNameType($split[0]);
-//		$name = $split[1] ?? null;
-//		return [$type, $name];
-//	}
-//
-//	public function mkReturnLink($attr = null)
-//	{
-//		$str = $_GET['return'] ?? '';
-//		if (empty($str))
-//			return '';
-//		list($type, $name) = $this->parseReturnStr($str);
-//		if (empty($name))
-//			return '';
-//		if (!is_array($attr))
-//			$attr = $this->attr2array($attr);
-//		$type = $this->filterCodeNameType($type);
-//
-//		$detail = '<span class="detail">' . $type . '</span>';
-//		$uri = $this->mkCodeNameUri($name ?? '', $type, $attr['query'] ?? null);
-//		if (empty($name)) {
-//			if ($type === 'namespace') {
-//				$name = $this->getDocLoader()->filterNamespace($name);
-//			}
-//		}
-//		$this->addClass($attr, 'ui red top right attached label');
-//		return $this->mkLink('<i class="arrow right icon"></i>' . $name . $detail, $uri, $attr);
-//	}
-//
-//	public function returnLink($attr = null)
-//	{
-//		print $this->mkReturnLink($attr);
-//		return $this;
-//	}
+	public function scopeUri($scope, string $name, $query = null)
+	{
+		return $this->getWeb()->controllerLink($this->getDoc()->mkScopePath($scope, $name), $query);
+	}
+
+	public function scopeLink($scope, string $name, $query = null, $attr = null)
+	{
+		return $this->link($this->getDoc()->getShowName($scope, $name), $this->scopeUri($scope, $name, $query), $attr);
+	}
+
+	public function parent($parent)
+	{
+
+	}
+
+	public function scopeName($scope, string $name, $attr = null, $tag = 'scope-name')
+	{
+		$doc = $this->getDoc();
+		$scope = $doc->filterScope($scope);
+		$name = $doc->getShowName($scope, $name);
+		if (!is_array($attr))
+			$attr = $this->attr2array($attr);
+
+		$content = "<small>{$scope} </small>{$name}";
+
+		if ($scope === DocMen::CLS) {
+			if (!empty($attr['parent'])) {
+				if (!empty($attr['parentLink'])) {
+					$link = $this->scopeLink('class', $attr['parent'], $attr['parentLink']);
+					$content .= "<small> extends {$link}</small>";
+				}
+				else {
+					$content .= "<small> extends {$attr['parent']}</small>";
+				}
+				unset($attr['parent'], $attr['parentLink']);
+			}
+		}
+		elseif ($scope === DocMen::METHOD) {
+			$prefix = ($attr['data-access'] ?? 'public') . ' ';
+			if ($attr['data-static'] === '1')
+				$prefix = $prefix . 'static ';
+			$content = "<small>{$prefix}</small>{$name}";
+		}
+		elseif ($scope === DocMen::PROP) {
+			$prefix = ($attr['data-access'] ?? 'public') . ' ';
+			if ($attr['data-static'] === '1')
+				$prefix = $prefix . 'static ';
+			$name = '$' . $name;
+			$content = "<small>{$prefix}</small>{$name}";
+		}
+
+		return $this->tag($tag, $content, $attr);
+	}
+
+	public function scopeNameLink($scope, string $name, $attr = null)
+	{
+		return $this->scopeName($scope, $this->scopeLink($scope, $name), $attr);
+	}
+
+	public function scopeLabel($scope, string $name, $attr = null)
+	{
+		$doc = $this->getDoc();
+		$scope = $doc->filterScope($scope);
+		$name = $doc->getShowName($scope, $name);
+		if (!is_array($attr))
+			$attr = $this->attr2array($attr);
+
+		$content = $name;
+		return $this->tag('scope-label-' . $scope, $content, $attr);
+	}
+
+	public function scopeLabelLink($scope, string $name, $query = null, $attr = null)
+	{
+		if (!is_array($attr))
+			$attr = $this->attr2array($attr);
+		$attr['href'] = $this->scopeUri($scope, $name, $query);
+		return $this->scopeLabel($scope, $name, $attr);
+//		return $this->link(, $this->scopeUri($scope, $name, $query));
+	}
+
+	public function getClassMiscFields() :array
+	{
+		return [
+			'methods'   => 'Methods',
+			'props'     => 'Properties',
+			'impls'     => 'Interfaces',
+			'constants' => 'Constants',
+			'traits'    => 'Traits',
+		];
+	}
+
+	public function fileUri(string $file, int $startLine = null, int $endLine = null, $query = null)
+	{
+		$path = $this->getDoc()->mkScopePath('file', $file);
+		if (isset($startLine)) {
+			$line = $startLine;
+			if (isset($endLine))
+				$line .= '-' . $endLine;
+			$path .= '?line=' . $startLine . '#source.' . $line;
+		}
+		return $this->getWeb()->controllerLink($path, $query);
+	}
+
+	public function classMisc(array $data, $attr = null): string
+	{
+		if (!is_array($attr))
+			$attr = $this->attr2array($attr);
+		$misc = '';
+		if (!empty($data['file'])) {
+			$file = $this->getDoc()->getShowName('file', $data['file']);
+			$fileLink = $this->fileUri($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null);
+			if (isset($data['startLine']) && isset($data['endLine'])) {
+				$file .= " <small>[{$data['startLine']}:{$data['endLine']}]</small>";
+			}
+			$misc .= $this->tag('address', $this->link($file, $fileLink), 'source-file');
+		}
+		elseif ($data['isInternal']) {
+			$misc .= $this->tag('address', $this->scopeLink('file', ''), 'source-file');
+		}
+		foreach ($this->getClassMiscFields() as $field => $name) {
+			if (empty($data[$field]) || !is_array($data[$field])) {
+				continue;
+			}
+			else {
+				$count = count($data[$field]);
+			}
+			$inner = $name . ' <div class="detail">' . $count . '</div>';
+			$misc .= $this->tag('class-misc-' . $field, $inner, $attr);
+		}
+		$attr['class'] = 'misc';
+		return $this->tag('div', $misc, $attr);
+	}
+
+	public function functionMisc(array $data, $attr = null): string
+	{
+		if (!is_array($attr))
+			$attr = $this->attr2array($attr);
+		$misc = '';
+		if (!empty($data['file'])) {
+			$file = $this->getDoc()->getShowName('file', $data['file']);
+			$fileLink = $this->fileUri($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null);
+			if (isset($data['startLine']) && isset($data['endLine'])) {
+				$file .= " <small>[{$data['startLine']}:{$data['endLine']}]</small>";
+			}
+			$misc .= $this->tag('address', $this->link($file, $fileLink), 'source-file');
+		}
+		elseif (isset($data['isInternal']) && $data['isInternal']) {
+			$misc .= $this->tag('address', $this->scopeLink('file', ''), 'source-file');
+		}
+		$attr['class'] = 'misc';
+		return $this->tag('div', $misc, $attr);
+	}
+
+	public function functionArgs(array $data)
+	{
+		$html = [];
+		$args = $data['args'] ?? [];
+		foreach ($args as $arg) {
+			$name = $this->tag('var-name', '$' . $arg['name']);
+			$defaultValue = $arg['defaultValue'];
+			if ($arg['isReference'])
+				$name = '<i>&</i>' . $name;
+
+			$valueType = gettype($defaultValue);
+			if ($defaultValue === true) {
+				$defaultValue = 'true';
+			}
+			elseif ($defaultValue === false) {
+				$defaultValue = 'false';
+			}
+			elseif ($valueType === KE_STR) {
+				$defaultValue = "'" . htmlentities($defaultValue) . "'";
+			}
+			if ($arg['hasType'])
+				$name = $this->tag('var-type', $arg['type']) . ' ' . $name;
+
+			if ($defaultValue === null && $arg['allowsNull'])
+				$name .= $this->equalSpan . $this->tag('var', 'null', $valueType);
+			elseif ($defaultValue !== null) {
+				if (is_array($defaultValue))
+					$defaultValue = '[]';
+				$name .= $this->equalSpan .
+				         $this->tag('var', (string)$defaultValue, $valueType);
+			}
+
+			$html[] = $name;
+		}
+
+		$return = '';
+		if ($data['returnType'] !== null) {
+			$return = ' : ' . $this->tag('var-type', $data['returnType']);
+		}
+		$content = '(' . implode('<span class="func-args-comma">,</span>', $html) . ')' . $return;
+
+		return $this->tag('span', $content, 'func-args');
+	}
+
+	public function showClassItem($class, string $type, $name, array $item, $attr = null, $tag = 'h3')
+	{
+		if ($type === DocMen::METHOD) {
+			$head = $this->scopeName('method', $name, [
+				'data-static' => $item['isStatic'] ? '1' : '0',
+				'data-access' => $this->getDoc()->filterAccess($item['access']),
+			]);
+			$head .= $this->functionArgs($item);
+			return $this->tag($tag, $head, $attr) . $this->functionMisc($item);
+		}
+		elseif ($type === DocMen::PROP) {
+			$head = $this->scopeName(DocMen::PROP, $name, [
+				'data-static' => $item['isStatic'] ? '1' : '0',
+				'data-access' => $this->getDoc()->filterAccess($item['access']),
+			]);
+			return $this->tag($tag, $head, $attr) . $this->functionMisc($item);
+		}
+		elseif ($type === DocMen::CONST) {
+			$head = $this->scopeName(DocMen::CONST, $name);
+			$value = $this->equalSpan;
+			if ($item['type'] === KE_STR)
+				$item['value'] = "'" . htmlentities($item['value']) . "'";
+			$value .= $this->tag('var', $item['value'], $item['type']);
+			$head .= $this->tag('span', $value, 'func-args');
+			return $this->tag($tag, $head, $attr) . $this->functionMisc($item);
+		}
+		return '';
+	}
+
 }

@@ -67,8 +67,8 @@ class Context
 
 	public function layout($content, $layout = null, array $vars = null, bool $isStrict = false): string
 	{
-		if ($content instanceof Widget)
-			$content = $content->getRenderContent();
+//		if ($content instanceof Widget)
+//			$content = $content->getRenderContent();
 		if (!empty($layout)) {
 			try {
 				$layoutPath = $this->web->getComponentPath($layout, Component::LAYOUT);
