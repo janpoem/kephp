@@ -347,7 +347,6 @@ class Http extends Uri
 			if (!$this->isSecurityPrepared())
 				$this->prepareSecurity();
 			$isPost = $prefix === $this->getSecurityPrefix();
-			var_dump($prefix, $this->getSecurityPrefix());
 			if ($isPost) {
 				$expire = !is_numeric($expire) || $expire < 0 ? 0 : round(floatval($expire), 4);
 				if ($expire > 0) {

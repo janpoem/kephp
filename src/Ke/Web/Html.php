@@ -1053,7 +1053,7 @@ class Html
 		}
 		// 附加设定
 		if (!empty($mergeColumn))
-			$column = array_merge($column, $mergeColumn);
+			$column = array_merge($mergeColumn, $column);
 		if (!isset($column['label']))
 			$column['label'] = $column['title'] ?? $field;
 		if (isset($column['tableClass']))
@@ -1063,7 +1063,7 @@ class Html
 		return $column;
 	}
 
-	public function filterColumnValue(string $field, $value, array $column = null): string
+	public function filterColumnValue(string $field, $value, array $column = null)
 	{
 		if (is_string($value)) {
 			$length = strlen($value);

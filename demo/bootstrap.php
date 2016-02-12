@@ -3,7 +3,7 @@
  * kephp bootstrap file.
  */
 
-$kephpApp = 'D:\htdocs\kephp\src\Ke\App.php';
+$kephpApp = 'D:\xampp\htdocs\kephp\src\Ke\App.php';
 
 require $kephpApp;
 require 'src/Demo/App.php';
