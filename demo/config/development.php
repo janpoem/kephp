@@ -4,6 +4,13 @@
  */
 
 use \Ke\Adm;
+use \Ke\Utils\DocMen\DocMen;
+
+global $app;
+
+DocMen::register(
+	new DocMen($app->path('doc/kephp'), $app->kephp(), 'docmen'),
+	new DocMen($app->path('doc/demo'), $app->src(), 'demo_doc'));
 
 // Database config
 //Adm\Db::define([

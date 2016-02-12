@@ -5,3 +5,5 @@ public/
 .logs/
 /nbproject/private/
 apigen.phar
+demo/doc/
+demo/tmp/

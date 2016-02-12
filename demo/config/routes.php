@@ -8,9 +8,6 @@ $router->routes = [
 	'*'              => [
 //		'controller' => 'index',
 	],
-	'docmen' => [
-		'class' => Ke\Utils\DocMen\DocController::class,
-	],
 //	'path_class'     => [
 //		'class'  => 'classFullName',
 //		'action' => 'ok',
