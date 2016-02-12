@@ -31,11 +31,12 @@ class DocController extends Controller
 
 	protected function onConstruct()
 	{
-		if (!isset($this->doc))
+		if (!isset($this->doc) && !($this->doc instanceof DocMen))
 			$this->doc = DocMen::getInstance($this->web->getController());
 		$this->doc->prepare();
 		list($this->scope, $this->name) = $this->doc->filterParams($this->web->params());
-		$this->html = new DocHtml();
+		if (!isset($this->html) && !($this->html instanceof DocHtml))
+			$this->html = new DocHtml();
 		$this->html->setDoc($this->doc);
 		$this->web->setHtml($this->html);
 	}
