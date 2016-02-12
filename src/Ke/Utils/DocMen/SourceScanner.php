@@ -342,7 +342,6 @@ class SourceScanner
 			$this->functions[$func] = $hash;
 		}
 		return $this;
-
 	}
 
 	public function filterComment($comment)

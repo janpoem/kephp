@@ -10,27 +10,70 @@
 
 namespace Ke\Utils\DocMen;
 
-use ReflectionMethod;
 use ReflectionFunctionAbstract;
+use ReflectionMethod;
+use ReflectionFunction;
 use ReflectionProperty;
 
 class FuncParser
 {
 
-	private $func;
+	/** @var ReflectionFunctionAbstract|ReflectionMethod|ReflectionFunction */
+	private $reflection;
 
-	public function __construct(ReflectionFunctionAbstract $func)
+	public $name = '';
+
+	public $class = false;
+
+	public $namespace = '';
+
+	public $access = 0;
+
+	public $isStatic = false;
+
+	public $isFinal = false;
+
+	public $isAbstract = false;
+
+	public $isInternal = false;
+
+	public $isConstructor = false;
+
+	public $isDestructor = false;
+
+	public $doc = null;
+
+	public $startLine = -1;
+
+	public $endLine = -1;
+
+	public $file = null;
+
+	public $returnType = null;
+
+	public $params = [];
+
+
+	public static function autoParse(ReflectionFunctionAbstract $ref, SourceScanner $scanner)
 	{
-		$this->func = $func;
+		$parser = new static($ref);
+		$parser->parse($scanner);
+	}
+
+	public function __construct(ReflectionFunctionAbstract $ref)
+	{
+		$this->reflection = $ref;
 	}
 
 	public function parse(SourceScanner $scanner)
 	{
-		$ref = $this->func;
-		$args = [];
+		$ref = $this->reflection;
+
+
+		$args   = [];
 		$params = $ref->getParameters();
 		foreach ($params as $param) {
-			$name = $param->getName();
+			$name  = $param->getName();
 			$index = $param->getPosition();
 			$class = $param->getClass();
 			if ($class)
@@ -40,7 +83,7 @@ class FuncParser
 				$type = $type->__toString();
 
 			$isDefaultValue = $param->isDefaultValueAvailable();
-			$defaultValue = $isDefaultValue ? $param->getDefaultValue() : null;
+			$defaultValue   = $isDefaultValue ? $param->getDefaultValue() : null;
 //			$isDefaultConst = $param->isDefaultValueConstant();
 //			$defaultConst = $isDefaultConst ? $param->getDefaultValueConstantName() : null;
 
@@ -85,17 +128,17 @@ class FuncParser
 
 		if ($ref instanceof ReflectionMethod) {
 			$data['sourceClass'] = $ref->getDeclaringClass()->getName();
-			$access = ReflectionProperty::IS_PUBLIC;
+			$access              = ReflectionProperty::IS_PUBLIC;
 			if ($ref->isPrivate())
 				$access = ReflectionProperty::IS_PRIVATE;
 			elseif ($ref->isProtected())
 				$access = ReflectionProperty::IS_PROTECTED;
-			$data['access'] = $access;
-			$data['isStatic'] = $ref->isStatic();
-			$data['isFinal'] = $ref->isFinal();
-			$data['isAbstract'] = $ref->isAbstract();
+			$data['access']        = $access;
+			$data['isStatic']      = $ref->isStatic();
+			$data['isFinal']       = $ref->isFinal();
+			$data['isAbstract']    = $ref->isAbstract();
 			$data['isConstructor'] = $ref->isConstructor();
-			$data['isDestructor'] = $ref->isDestructor();
+			$data['isDestructor']  = $ref->isDestructor();
 		}
 
 		return $data;

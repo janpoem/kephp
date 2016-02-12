@@ -151,9 +151,9 @@ elseif ($this->scope === DocMen::CLS) { ?>
 			foreach ($packages as $class => $groups) {
 				?>
 				<?php $active = $index === 0 ? ' active' : ''; ?>
-				<span class="item<?php print $active ?> scope-name" data-tab="<?php print $doc->convertTagAttr($class) ?>">
+				<a class="item scope-name" href="#<?php print $doc->convertTagAttr($class) ?>" data-tab="<?php print $doc->convertTagAttr($class) ?>">
 					<?php print $class; ?>
-				</span>
+				</a>
 				<?php
 				++$index;
 			}
@@ -165,7 +165,7 @@ elseif ($this->scope === DocMen::CLS) { ?>
 	foreach ($packages as $class => $package) {
 		?>
 		<?php $active = $index === 0 ? ' active' : ''; ?>
-		<div class="ui <?php print $active ?> tab" data-tab="<?php print $doc->convertTagAttr($class) ?>">
+		<div class="ui tab" name="<?php print $doc->convertTagAttr($class) ?>" data-tab="<?php print $doc->convertTagAttr($class) ?>">
 			<?php
 			$type = $package['type'];
 			foreach ($package['items'] as $name => $item) {
@@ -179,7 +179,21 @@ elseif ($this->scope === DocMen::CLS) { ?>
 	}
 	?>
 	<script>
-		$('#class_tab .item').tab();
+		(function($) {
+			var tab = $('#class_tab .item');
+			var hash = location.hash.replace(/^(\#+)/, '');
+			tab.tab({
+				history: true,
+				historyType: 'hash'
+			});
+//			if (hash > 0) {
+//				tab.tab('change tab', hash);
+//			}
+//			else {
+//				tab.tab();
+//			}
+		}) (jQuery);
+
 	</script>
 <?php }
 elseif ($this->scope === DocMen::FILE) { ?>

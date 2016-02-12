@@ -66,6 +66,12 @@ class DocMen
 
 	protected $comments = [];
 
+	/**
+	 * 向全局的Web分发路由器注册一个（多个）DocMen实例
+	 *
+	 * @param DocMen[] ...$docs 需要注册的DocMen实例
+	 * @return bool 返回是否添加成功
+	 */
 	public static function register(DocMen ...$docs)
 	{
 		$routes = [];
@@ -106,7 +112,180 @@ class DocMen
 	{
 		if (isset(self::$registerInstances[$path]))
 			return self::$registerInstances[$path];
-		throw new \Error('Does not found DocMen instance register by ' . $path . '!');
+		throw new \Error('Does not found DocMen instance register by "' . $path . '"!');
+	}
+
+
+	public static function filterScope($scope)
+	{
+		switch ($scope) {
+			case 'ns' :
+			case 'namespace' :
+				return self::NS;
+			case 'fn' :
+			case 'func' :
+			case 'function' :
+				return self::FUNC;
+			case 'method' :
+				return self::METHOD;
+			case 'prop' :
+			case 'property' :
+				return self::PROP;
+			case 'const' :
+			case 'constant' :
+				return self::CONST;
+			case 'impl' :
+			case 'if' :
+			case 'interface' :
+				return self::IMPL;
+			case 'file' :
+				return self::FILE;
+			case 'trait' :
+				return self::TRAIT;
+			case 'cls' :
+			case 'class' :
+			case 'abstract class' :
+			case 'final class' :
+				return self::CLS;
+			default :
+				if (empty($scope))
+					return self::INDEX;
+				else
+					return self::CLS;
+		}
+	}
+
+	public static function filterName($scope, string $name)
+	{
+		switch (static::filterScope($scope)) {
+			case self::FILE :
+				if (empty($name))
+					return '';
+				return $name;
+			case self::NS :
+			case self::FUNC :
+			default :
+				if (empty($name))
+					return '';
+				return str_replace('/', '\\', $name);
+		}
+	}
+
+	public static function getShowName($scope, string $name)
+	{
+		switch (static::filterScope($scope)) {
+			case self::NS :
+				if (empty($name))
+					return 'Global';
+			case self::FILE :
+				if (empty($name))
+					return 'PHP Internal';
+			case self::FUNC :
+			default :
+		}
+		return $name;
+	}
+
+	public static function mkScopePath($scope, string $name)
+	{
+		switch (static::filterScope($scope)) {
+			case self::NS :
+				return 'namespace/' . static::convertClassToUri($name);
+			case self::FILE :
+				return 'file/' . $name;
+			case self::FUNC :
+				return 'function/' . static::convertClassToUri($name);
+			default :
+				return self::CLS . '/' . static::convertClassToUri($name);
+		}
+	}
+
+	public static function convertClassToUri(string $name)
+	{
+		return str_replace('\\', '/', $name);
+	}
+
+	public static function revertClass(string $name)
+	{
+		return str_replace('/', '\\', $name);
+	}
+
+	public static function packetClassData(array $data): array
+	{
+		$className = $data['className'];
+		$packages = [];
+		$sort = [];
+		$position = 1;
+		foreach ($data['methods'] as $method) {
+			$sourceClass = $method['sourceClass'];
+			if ($sourceClass === $className)
+				$key = 'Methods';
+			else
+				$key = $sourceClass . '::Methods';
+			if (!isset($packages[$key])) {
+				$packages[$key] = [
+					'class' => $sourceClass,
+					'type'  => self::METHOD,
+					'items' => [],
+					'count' => 0,
+				];
+				$sort[$key] = $position;
+				$position *= 10;
+			}
+			$packages[$key]['items'][$method['name']] = $method;
+			$packages[$key]['count'] += 1;
+		}
+		$position = 2;
+		foreach ($data['props'] as $name => $prop) {
+			$sourceClass = $prop['sourceClass'];
+			if ($sourceClass === $className)
+				$key = 'Properties';
+			else
+				$key = $sourceClass . '::Properties';
+			if (!isset($packages[$key])) {
+				$packages[$key] = [
+					'class' => $sourceClass,
+					'type'  => self::PROP,
+					'items' => [],
+					'count' => 0,
+				];
+				$sort[$key] = $position;
+				$position *= 10;
+			}
+			$packages[$key]['items'][$name] = $prop;
+			$packages[$key]['count'] += 1;
+		}
+		if (!empty($data['constants'])) {
+			$key = 'Constants';
+			$position = 1000;
+			$packages[$key] = [
+				'class' => $data['className'],
+				'type'  => self::CONST,
+				'items' => $data['constants'],
+				'count' => count($data['constants']),
+			];
+			$sort[$key] = $position;
+		}
+		array_multisort($sort, SORT_ASC, $packages);
+		return $packages;
+	}
+
+	public static function filterAccess($value): string
+	{
+		switch ($value) {
+			case \ReflectionMethod::IS_PRIVATE :
+				return 'private';
+			case \ReflectionMethod::IS_PROTECTED :
+				return 'protected';
+			case \ReflectionMethod::IS_PUBLIC :
+			default :
+				return 'public';
+		}
+	}
+
+	public static function convertTagAttr(string $name): string
+	{
+		return str_replace(['/', '\\', '::'], '_', $name);
 	}
 
 	public function __construct(string $dir, string $sourceDir, string $routePath = null)
@@ -284,102 +463,6 @@ class DocMen
 		return count($this->files);
 	}
 
-	public function filterScope($scope)
-	{
-		switch ($scope) {
-			case 'ns' :
-			case 'namespace' :
-				return self::NS;
-			case 'fn' :
-			case 'func' :
-			case 'function' :
-				return self::FUNC;
-			case 'method' :
-				return self::METHOD;
-			case 'prop' :
-			case 'property' :
-				return self::PROP;
-			case 'const' :
-			case 'constant' :
-				return self::CONST;
-			case 'impl' :
-			case 'if' :
-			case 'interface' :
-				return self::IMPL;
-			case 'file' :
-				return self::FILE;
-			case 'trait' :
-				return self::TRAIT;
-			case 'cls' :
-			case 'class' :
-			case 'abstract class' :
-			case 'final class' :
-				return self::CLS;
-			default :
-				if (empty($scope))
-					return self::INDEX;
-				else
-					return self::CLS;
-		}
-	}
-
-	public function filterName($scope, string $name)
-	{
-		switch ($this->filterScope($scope)) {
-			case self::FILE :
-				if (empty($name))
-					return '';
-				return $name;
-			case self::NS :
-			case self::FUNC :
-			default :
-				if (empty($name))
-					return '';
-				return str_replace('/', '\\', $name);
-		}
-	}
-
-	public function getShowName($scope, string $name)
-	{
-		switch ($this->filterScope($scope)) {
-			case self::NS :
-				if (empty($name))
-					return '&lt;Global&gt;';
-			case self::FILE :
-				if (empty($name))
-					return '&lt;PHP Internal&gt;';
-			case self::FUNC :
-
-			default :
-
-		}
-		return $name;
-	}
-
-	public function mkScopePath($scope, string $name)
-	{
-		switch ($this->filterScope($scope)) {
-			case self::NS :
-				return 'namespace/' . $this->convertClassToUri($name);
-			case self::FILE :
-				return 'file/' . $name;
-			case self::FUNC :
-				return 'function/' . $this->convertClassToUri($name);
-			default :
-				return self::CLS . '/' . $this->convertClassToUri($name);
-		}
-	}
-
-	public function convertClassToUri(string $name)
-	{
-		return str_replace('\\', '/', $name);
-	}
-
-	public function revertClass(string $name)
-	{
-		return str_replace('/', '\\', $name);
-	}
-
 	public function getNamespace($name)
 	{
 		if (!isset($this->namespaces[$name]))
@@ -411,81 +494,6 @@ class DocMen
 		return $data;
 	}
 
-	public function packetClassData(array $data)
-	{
-		$className = $data['className'];
-		$packages = [];
-		$sort = [];
-		$position = 1;
-		foreach ($data['methods'] as $method) {
-			$sourceClass = $method['sourceClass'];
-			if ($sourceClass === $className)
-				$key = 'Methods';
-			else
-				$key = $sourceClass . '::Methods';
-			if (!isset($packages[$key])) {
-				$packages[$key] = [
-					'class' => $sourceClass,
-					'type'  => self::METHOD,
-					'items' => [],
-					'count' => 0,
-				];
-				$sort[$key] = $position;
-				$position *= 10;
-			}
-			$packages[$key]['items'][$method['name']] = $method;
-			$packages[$key]['count'] += 1;
-		}
-		$position = 2;
-		foreach ($data['props'] as $name => $prop) {
-			$sourceClass = $prop['sourceClass'];
-			if ($sourceClass === $className)
-				$key = 'Properties';
-			else
-				$key = $sourceClass . '::Properties';
-			if (!isset($packages[$key])) {
-				$packages[$key] = [
-					'class' => $sourceClass,
-					'type'  => self::PROP,
-					'items' => [],
-					'count' => 0,
-				];
-				$sort[$key] = $position;
-				$position *= 10;
-			}
-			$packages[$key]['items'][$name] = $prop;
-			$packages[$key]['count'] += 1;
-		}
-		if (!empty($data['constants'])) {
-			$key = 'Constants';
-			$position = 1000;
-			$packages[$key] = [
-				'class' => $data['className'],
-				'type'  => self::CONST,
-				'items' => $data['constants'],
-				'count' => count($data['constants']),
-			];
-			$sort[$key] = $position;
-		}
-		array_multisort($sort, SORT_ASC, $packages);
-		return $packages;
-	}
-
-	public function getPacketName($name)
-	{
-		switch ($name) {
-			case 'methods_static' :
-				return 'Static Methods';
-			case 'methods' :
-				return 'Methods';
-			case 'props_static' :
-				return 'Static Properties';
-			case 'props' :
-				return 'Properties';
-		}
-		return $name;
-	}
-
 	public function getMethodTableListOptions(): array
 	{
 		return [
@@ -501,24 +509,6 @@ class DocMen
 			],
 			'attr'    => ['class' => 'sortable striped'],
 		];
-	}
-
-	public function filterAccess($value)
-	{
-		switch ($value) {
-			case \ReflectionMethod::IS_PRIVATE :
-				return 'private';
-			case \ReflectionMethod::IS_PROTECTED :
-				return 'protected';
-			case \ReflectionMethod::IS_PUBLIC :
-			default :
-				return 'public';
-		}
-	}
-
-	public function convertTagAttr(string $name)
-	{
-		return str_replace(['/', '\\', '::'], '_', $name);
 	}
 
 	public function getComment($docHash)
