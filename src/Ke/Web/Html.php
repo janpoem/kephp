@@ -296,12 +296,12 @@ class Html
 		return implode(($name === 'class' ? '-' : '_'), $segments);
 	}
 
-	public function id(...$segments)
+	public function id(array $segments)
 	{
 		return $this->specialAttr('id', ...$segments);
 	}
 
-	public function name(...$segments)
+	public function name(array $segments)
 	{
 		return $this->specialAttr('name', ...$segments);
 	}

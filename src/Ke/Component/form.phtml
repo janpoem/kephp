@@ -22,13 +22,13 @@ elseif ($data instanceof ArrayAccess)
 	$dataType = Html::DATA_ARRAY_ACCESS;
 
 $prefix = $prefix ?? '';
-if (!empty($prefix)) {
-	if (is_string($prefix)) {
-		$prefix = trim($prefix);
-		if (!empty($prefix))
-			$prefix = [$prefix];
-	}
-}
+//if (!empty($prefix)) {
+//	if (is_string($prefix)) {
+//		$prefix = trim($prefix);
+//		if (!empty($prefix))
+//			$prefix = [$prefix];
+//	}
+//}
 
 $columns = $columns ?? [];
 $errors = $errors ?? [];
@@ -51,7 +51,7 @@ if (!class_exists($model) || !is_subclass_of($model, Model::class))
 else {
 	if (empty($prefix) && $prefix !== false) {
 		list($ns, $cls) = parse_class($model);
-		$prefix = [class2id($cls)];
+		$prefix = class2id($cls);
 	}
 	$modelColumns = $model::getStaticColumns($isUpdate ? Model::ON_UPDATE : Model::ON_CREATE);
 	if (empty($columns) || !is_array($columns))
@@ -81,11 +81,11 @@ $action = $action ?? null;
 
 $submit = $submit ?? '';
 if (empty($submit) || !is_string($submit))
-	$submit = $html->getMessage(Html::FORM_SUBMIT);
+	$submit = $html->getText(Html::SUBMIT);
 
 $reset = $reset ?? '';
 if (empty($reset) || !is_string($reset))
-	$reset = $html->getMessage(Html::FORM_RESET);
+	$reset = $html->getText(Html::RESET);
 
 $return = $return ?? false;
 if (empty($return))
@@ -97,7 +97,7 @@ $buttons = [
 ];
 
 if (!empty($return)) {
-	$buttons[] = [$html->getMessage(Html::FORM_RETURN), $return];
+	$buttons[] = [$html->getText(Html::RETURN), $return];
 }
 
 $formAttr = [
@@ -124,7 +124,7 @@ $fields = [];
 foreach ($columns as $field => $column) {
 	if (empty($column['edit']))
 		continue;
-	$column['prefix'] = $prefix;
+	$column['prefix'] = [$prefix];
 	if (isset($errors[$field]))
 		$column['error'] = $errors[$field];
 	$value = $postData[$field] ?? $data[$field] ?? null;
@@ -133,12 +133,12 @@ foreach ($columns as $field => $column) {
 
 if ($isForm) {
 	if ($isPost) {
-		$form .= $html->mkInput('hidden', $web->http->mkSecurityCode($prefix), [
+		$form .= $html->input('hidden', $web->http->mkSecurityCode($prefix), [
 			'name' => KE_HTTP_SECURITY_FIELD,
 		]);
 	}
-	$form .= $html->mkButtons($buttons);
-	$form = $html->mkTag('form', $form, $formAttr);
+	$form .= $html->buttons($buttons);
+	$form = $html->tag('form', $form, $formAttr);
 }
 
-$html->tag('div', $form, $attr);
+print $html->tag('div', $form, $attr);
