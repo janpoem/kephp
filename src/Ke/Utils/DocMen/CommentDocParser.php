@@ -12,7 +12,11 @@ namespace Ke\Utils\DocMen;
 class CommentDocParser
 {
 
-	public $comment = '';
+	protected $comment = '';
+
+	public $title = '';
+
+	public $content = '';
 
 	public $fields = [];
 
@@ -52,6 +56,7 @@ class CommentDocParser
 //		echo htmlentities($this->comment);
 //		echo '</pre>';
 //		var_dump($this->fields);
+		list($this->title, $this->content) = $this->splitComment();
 		return $this;
 	}
 
@@ -91,6 +96,16 @@ class CommentDocParser
 			$this->fields[$type] = $data;
 		}
 		return $this;
+	}
+
+	public function splitComment()
+	{
+		$title = '';
+		$content = preg_replace_callback('#^([^\r\n]+)#i', function(array $matches) use (&$title) {
+			$title = $matches[1];
+//			return '';
+		}, $this->comment);
+		return [$title, trim($content)];
 	}
 
 }

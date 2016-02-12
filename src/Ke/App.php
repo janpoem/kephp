@@ -98,7 +98,7 @@ class App
 	/** @var MimeType */
 	protected $mime = null;
 
-	final public static function getApp(): App
+	public static function getApp(): App
 	{
 		if (!isset(self::$app))
 			throw new PhpException('App instance is not created!');

@@ -24,6 +24,8 @@ class FileParser
 
 	protected $regexFunction = '#^[\s\t]*function[\s\t]+([a-zA-Z0-9\_]+)\(#m';
 
+	protected $regexUseClass = '';
+
 	private $isParsed = false;
 
 	private $namespace = null;

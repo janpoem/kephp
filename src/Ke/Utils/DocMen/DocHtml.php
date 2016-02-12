@@ -244,12 +244,12 @@ class DocHtml extends Html
 
 	public function commentDoc($comment)
 	{
-		if (empty($comment))
-			return '';
-		$data = [
-			(htmlentities($comment['comment']) ?? ''),
-		];
-		return $this->tag('comment-doc', implode('\r\n', $data));
+//		if (empty($comment))
+//			return '';
+//		$data = [
+//			(htmlentities($comment['comment']) ?? ''),
+//		];
+//		return $this->tag('comment-doc', implode('\r\n', $data));
 	}
 
 	public function functionArgs(array $data)

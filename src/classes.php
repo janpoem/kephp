@@ -71,6 +71,7 @@ return [
 	'Ke\\Utils\\DocMen\\ClassParser'      => __DIR__ . '/Ke/Utils/DocMen/ClassParser.php',
 	'Ke\\Utils\\DocMen\\FuncParser'       => __DIR__ . '/Ke/Utils/DocMen/FuncParser.php',
 	'Ke\\Utils\\DocMen\\CommentDocParser' => __DIR__ . '/Ke/Utils/DocMen/CommentDocParser.php',
+	'Ke\\Utils\\DocMen\\DocCommentParser' => __DIR__ . '/Ke/Utils/DocMen/DocCommentParser.php',
 	'Ke\\Utils\\DocMen\\DocMen'           => __DIR__ . '/Ke/Utils/DocMen/DocMen.php',
 	'Ke\\Utils\\DocMen\\DocHtml'          => __DIR__ . '/Ke/Utils/DocMen/DocHtml.php',
 	'Ke\\Utils\\DocMen\\DocController'    => __DIR__ . '/Ke/Utils/DocMen/DocController.php',

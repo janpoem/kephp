@@ -14,6 +14,7 @@ Asset::getInstance()->setLibraries([
 	'docmen'          => [
 		['vendor/semantic/semantic', 'css'],
 		['vendor/jquery-1.11.1', 'js'],
+		['vendor/jquery.address', 'js'],
 		['vendor/semantic/semantic', 'js'],
 		['vendor/marked', 'js'],
 	    'prism',

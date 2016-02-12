@@ -63,6 +63,11 @@ class App extends \Ke\App
 	/** @var array 绝对路径的文件目录存放 */
 	protected $dirs = [];
 
+//	public static function getApp(): App
+//	{
+//		return parent::getApp();
+//	}
+
 //	protected function onConstruct(Loader $loader)
 //	{
 //	}

@@ -57,15 +57,16 @@ class DocController extends Controller
 			$scanner = new SourceScanner($this->doc->getSourceDir(), $this->doc->getExportDir());
 			$startParse = microtime();
 			$scanner->start();
-			$startWrite = microtime();
-			$scanner->export();
-			$this->status(true, implode(' ', [
-				"Parse", count($scanner->getFiles()), 'files used', round(diff_milli($startParse), 4), 'ms,',
-				'total parsed', count($scanner->getClasses()), 'classes,',
-				count($scanner->getNamespaces()), 'namespaces,',
-				count($scanner->getFunctions()), 'functions,',
-				"write all data", 'used', round(diff_milli($startWrite), 4), 'ms'
-			]));
+			return false;
+//			$startWrite = microtime();
+//			$scanner->export();
+//			$this->status(true, implode(' ', [
+//				"Parse", count($scanner->getFiles()), 'files used', round(diff_milli($startParse), 4), 'ms,',
+//				'total parsed', count($scanner->getClasses()), 'classes,',
+//				count($scanner->getNamespaces()), 'namespaces,',
+//				count($scanner->getFunctions()), 'functions,',
+//				"write all data", 'used', round(diff_milli($startWrite), 4), 'ms'
+//			]));
 		}
 		catch (\Throwable $thrown) {
 			$this->status(false, $thrown->getMessage());
