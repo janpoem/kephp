@@ -79,7 +79,7 @@ class FuncParser
 			'args'          => $args,
 			'startLine'     => $ref->getStartLine(),
 			'endLine'       => $ref->getEndLine(),
-			'doc'           => htmlentities($ref->getDocComment()),
+			'doc'           => $scanner->filterComment($ref->getDocComment()),
 			'returnType'    => $returnType,
 		];
 

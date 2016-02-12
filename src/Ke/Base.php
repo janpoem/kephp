@@ -231,7 +231,8 @@ if (!function_exists('error_name')) {
 if (!function_exists('depth_query')) {
 	/**
 	 * 深入查询$data
-	 * <code>
+	 *
+	 * ```php
 	 * $data = array(
 	 *     'level1' => array(
 	 *         'level2' => array(
@@ -242,7 +243,8 @@ if (!function_exists('depth_query')) {
 	 * depth_query($data, 'level1->level2'); // return array(0,1,2,3,4,5)
 	 * depth_query($data, 'level1->level2->0'); // return 0
 	 * depth_query($data, 'not_exist', 'test'); // return 'test'
-	 * </code>
+	 * ```
+	 *
 	 * $keys可以为数组格式，如：array('level1', 'level2');
 	 *
 	 * @param array|object $data    数据源
@@ -459,12 +461,13 @@ if (!function_exists('parse_path')) {
 	 *
 	 * 如果路径不包含相应部分的数据，那个值会为null，后缀名会强制转为小写
 	 *
-	 * <code>
+	 * ```php
 	 * parse_path('index.html'); // [null, 'index', 'html']
 	 * parse_path('/hello/world/jan.txt'); // ['/hello/world', 'jan', 'txt']
+	 *
 	 * // 如果以路径名为末尾，则默认认为这个表示的是一个目录
 	 * parse_path('good/'); // ['good', null, null]
-	 * </code>
+	 * ```
 	 *
 	 * @param string $path
 	 * @return array 返回数据格式：[目录, 文件名, 后缀名]
@@ -495,15 +498,16 @@ if (!function_exists('parse_path')) {
 if (!function_exists('compare_path')) {
 	/**
 	 * 比较两个路径，返回相同的部分
+	 *
 	 * 必须确保两个传入的路径都是被净化处理过的路径名，不包含类如/../，并且请确保传入的路径都有一致的目录分隔符。
 	 * 本函数不会自动调用purge的函数，请调用前自己执行
-	 * <code>
+	 *
+	 * ```php
 	 * compare_path('/aa/bb/cc', '/aa/bb/dd'); // => aa/bb
-	 * </code>
-	 * 这个函数还可以用于挑出两个字符串相同的部分
-	 * <code>
+	 *
+	 * // 这个函数还可以用于挑出两个字符串相同的部分
 	 * compare_path('ab-cd-ef-gh-ij', 'ab-cd-ef-gh-abc', '-'); // => ab-cd-ef-gh
-	 * </code>
+	 * ```
 	 *
 	 * @param string      $source
 	 * @param string      $target
@@ -657,10 +661,9 @@ if (!function_exists('predir')) {
 	 *
 	 * 常用于保存文件前检查文件的路径的目录是否存在。
 	 *
-	 * <code>
-	 * $savePath = '/var/www/myapp/log/abc.log';
-	 * file_put_contents(predir($savePath), 'anything...');
-	 * </code>
+	 * ```php
+	 * file_put_contents(predir('/var/www/myapp/log/abc.log'), 'anything...');
+	 * ```
 	 *
 	 * @param string $path
 	 * @param int    $mode

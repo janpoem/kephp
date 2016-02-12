@@ -90,11 +90,25 @@ $http = $web->http;
 			font-family: 'Bitter';
 			font-size: 16px;
 		}
-
 		.foot {
 			font-family: 'Bitter';
 			padding: 1.5em 0;
 			color: #909090;
+		}
+		.comment-doc {
+			font-size: 120%;
+		}
+		.comment-doc p {
+			margin: 1em 0;
+		}
+		.static-sticky {
+			background-color: #fff;
+		}
+		.static-sticky .divider {
+			padding: 0.5em;
+		}
+		.menu .item {
+			cursor: pointer;
 		}
 	</style>
 </head>
@@ -134,6 +148,23 @@ $http = $web->http;
 				}).modal('show');
 			});
 			return false;
+		});
+
+		marked.setOptions({
+			highlight: function (code, lang, callback) {
+				return Prism.highlight(code, Prism.languages[lang]);
+			}
+		});
+
+		$('.comment-doc').each(function (i, item) {
+			$(item).html(marked($(item).text()));
+		});
+
+		$('.ui.sticky[data-sticky]').each(function(i, item) {
+			$(item).sticky({context: $(item).attr('data-sticky')});
+		});
+		$('.ui.sticky.static-sticky').each(function(i, item) {
+			$(item).sticky();
 		});
 	})
 </script>

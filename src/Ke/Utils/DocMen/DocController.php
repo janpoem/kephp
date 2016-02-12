@@ -31,7 +31,8 @@ class DocController extends Controller
 
 	protected function onConstruct()
 	{
-		$this->doc = DocMen::getInstance($this->web->getController());
+		if (!isset($this->doc))
+			$this->doc = DocMen::getInstance($this->web->getController());
 		$this->doc->prepare();
 		list($this->scope, $this->name) = $this->doc->filterParams($this->web->params());
 		$this->html = new DocHtml();
@@ -41,12 +42,12 @@ class DocController extends Controller
 
 	public function index()
 	{
-		return 'widget/docmen/show';
+		$this->view('widget/docmen/show');
 	}
 
 	public function show()
 	{
-		return 'widget/docmen/show';
+		$this->view('widget/docmen/show');
 	}
 
 	public function generate()

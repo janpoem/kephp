@@ -15,6 +15,8 @@ Asset::getInstance()->setLibraries([
 		['vendor/semantic/semantic', 'css'],
 		['vendor/jquery-1.11.1', 'js'],
 		['vendor/semantic/semantic', 'js'],
+		['vendor/marked', 'js'],
+	    'prism',
 	],
 	'prism'       => [
 		['vendor/prism/prism', 'css', ['id' => 'prism_theme_css']],

@@ -80,9 +80,9 @@ class ClassParser
 		$this->parent = $ref->getParentClass();
 		if (!empty($this->parent))
 			$this->parent = $this->parent->getName();
-		$this->doc = $ref->getDocComment();
-		if (!empty($this->doc))
-			$this->doc = htmlentities($this->doc);
+
+		$this->doc = $scanner->filterComment($ref->getDocComment());
+
 		$this->file = $scanner->filterPath($ref->getFileName());
 		$this->startLine = $ref->getStartLine();
 		$this->endLine = $ref->getEndLine();
@@ -114,9 +114,8 @@ class ClassParser
 
 		$props = $ref->getProperties();
 		foreach ($props as $prop) {
-			$this->parseProp($prop, $defaultProps);
+			$this->parseProp($scanner, $prop, $defaultProps);
 		}
-
 
 		$methods = $ref->getMethods();
 		foreach ($methods as $method) {
@@ -129,7 +128,7 @@ class ClassParser
 		return $this;
 	}
 
-	public function parseProp(ReflectionProperty $prop, array $defaultProps = null)
+	public function parseProp(SourceScanner $scanner, ReflectionProperty $prop, array $defaultProps = null)
 	{
 		$name = $prop->getName();
 		$access = ReflectionProperty::IS_PUBLIC;
@@ -145,7 +144,7 @@ class ClassParser
 			'isStatic'    => $prop->isStatic(),
 			'access'      => $access,
 			'isDefault'   => $prop->isDefault(),
-			'doc'         => $doc,
+			'doc'         => $scanner->filterComment($doc),
 			'default'     => array_key_exists($name, $defaultProps) ? $defaultProps[$name] : null,
 		];
 	}

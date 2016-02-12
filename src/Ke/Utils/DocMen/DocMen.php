@@ -41,6 +41,8 @@ class DocMen
 
 	private $loadMainFile = false;
 
+	private $loadComment = false;
+
 	protected $routeScopes = [
 		self::CLS  => self::CLS,
 		self::NS   => self::NS,
@@ -61,6 +63,8 @@ class DocMen
 	protected $functions = [];
 
 	protected $data = [];
+
+	protected $comments = [];
 
 	public static function register(DocMen ...$docs)
 	{
@@ -181,6 +185,11 @@ class DocMen
 		return $this->docDir . DS . $hash . '.php';
 	}
 
+	public function getCommentFile()
+	{
+		return $this->docDir . DS . 'comment.php';
+	}
+
 	public function getExportDir()
 	{
 		return $this->docDir;
@@ -206,6 +215,15 @@ class DocMen
 				foreach ($data as $key => $value)
 					$this->{$key} = $value;
 			}
+		}
+		return $this;
+	}
+
+	public function loadComment()
+	{
+		if ($this->loadComment === false) {
+			$this->loadComment = true;
+			$this->comments = import($this->getCommentFile(), null, KE_IMPORT_ARRAY);
 		}
 		return $this;
 	}
@@ -501,5 +519,14 @@ class DocMen
 	public function convertTagAttr(string $name)
 	{
 		return str_replace(['/', '\\', '::'], '_', $name);
+	}
+
+	public function getComment($docHash)
+	{
+		if (empty($docHash))
+			return null;
+		if ($this->loadComment === false)
+			$this->loadComment();
+		return $this->comments[$docHash] ?? null;
 	}
 }

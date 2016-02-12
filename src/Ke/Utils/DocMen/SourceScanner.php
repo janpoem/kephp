@@ -24,8 +24,6 @@ class SourceScanner
 
 	protected $externalFiles = [];
 
-	private $externalId = 0;
-
 	protected $files = [];
 
 	protected $namespaces = [];
@@ -33,6 +31,8 @@ class SourceScanner
 	protected $classes = [];
 
 	protected $functions = [];
+
+	protected $comments = [];
 
 	protected $data = [];
 
@@ -60,6 +60,8 @@ class SourceScanner
 	{
 		file_put_contents(predir($this->getMainDataFile()),
 			"<?php\r\nreturn " . var_export($this->getMainData(), true) . ";\r\n");
+		file_put_contents(predir($this->getCommentFile()),
+			"<?php\r\nreturn " . var_export($this->comments, true) . ";\r\n");
 		$this->writeData();
 		return $this;
 	}
@@ -83,6 +85,11 @@ class SourceScanner
 			'classes'    => $this->classes,
 			'functions'  => $this->functions,
 		];
+	}
+
+	public function getCommentFile()
+	{
+		return $this->export . DS . 'comment.php';
 	}
 
 	public function getHashDataFile(string $hash)
@@ -187,7 +194,7 @@ class SourceScanner
 				$this->externalFiles[$path] = $this->externalFiles[$rename] = [
 					'dir'  => $same,
 					'path' => $cutPath,
-				    'name' => $rename,
+					'name' => $rename,
 				];
 			}
 
@@ -336,6 +343,21 @@ class SourceScanner
 		}
 		return $this;
 
+	}
+
+	public function filterComment($comment)
+	{
+		if (empty($comment) || !is_string($comment))
+			return null;
+		$comment = trim($comment);
+		if (empty($comment))
+			return null;
+		$hash = md5($comment);
+		if (!isset($this->comments[$hash])) {
+			$parser = new CommentDocParser($comment);
+			$this->comments[$hash] = get_object_vars($parser);
+		}
+		return $hash;
 	}
 
 

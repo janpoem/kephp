@@ -70,28 +70,40 @@ elseif ($this->scope === DocMen::NS) { ?>
 	}
 	?>
 	<h1 class="header"><?php print $html->scopeName(DocMen::NS, $this->name); ?></h1>
-	<div class="ui horizontal divider header">Classes
-		<small>[<?php print count($data['cls']) ?>]</small>
+	<div class="ui sticky static-sticky">
+		<div class="ui horizontal divider header">Classes
+			<small>[<?php print count($data['cls']) ?>]</small>
+		</div>
 	</div>
-	<?php foreach ($data['cls'] as $cls) { ?>
-		<h2 class="header"><?php
-			print $html->scopeNameLink($cls['type'], $cls['className'], [
-					'parent'     => $cls['parent'],
-					'parentLink' => true,
-			]);
-			?></h2>
-		<?php print $html->classMisc($cls); ?>
-	<?php } ?>
-	<div class="ui horizontal divider header">Functions
-		<small>[<?php print count($data['fn']) ?>]</small>
+	<div>
+		<?php foreach ($data['cls'] as $cls) { ?>
+			<div class="ui vertical segment">
+				<h2 class="header"><?php
+					print $html->scopeNameLink($cls['type'], $cls['className'], [
+							'parent'     => $cls['parent'],
+							'parentLink' => true,
+					]);
+					?></h2>
+				<?php print $html->classMisc($cls); ?>
+			</div>
+		<?php } ?>
 	</div>
-	<?php foreach ($data['fn'] as $func) { ?>
-		<h3 class="header"><?php
-			print $html->scopeName(DocMen::FUNC, $func['name']);
-			print $html->functionArgs($func);
-			?></h3>
-		<?php print $html->functionMisc($func); ?>
-	<?php } ?>
+	<div class="ui sticky static-sticky">
+		<div class="ui horizontal divider header">Functions
+			<small>[<?php print count($data['fn']) ?>]</small>
+		</div>
+	</div>
+	<div>
+		<?php foreach ($data['fn'] as $func) { ?>
+			<div class="ui vertical segment">
+				<h3 class="header"><?php
+					print $html->scopeName(DocMen::FUNC, $func['name']);
+					print $html->functionArgs($func);
+					?></h3>
+				<?php print $html->functionMisc($func); ?>
+			</div>
+		<?php } ?>
+	</div>
 <?php }
 elseif ($this->scope === DocMen::CLS) { ?>
 	<?php
@@ -132,19 +144,21 @@ elseif ($this->scope === DocMen::CLS) { ?>
 	<?php
 	$packages = $doc->packetClassData($data);
 	?>
-	<div id="class_tab" class="ui secondary pointing menu">
-		<?php
-		$index = 0;
-		foreach ($packages as $class => $groups) {
-			?>
-			<?php $active = $index === 0 ? ' active' : ''; ?>
-			<a class="item<?php print $active ?> scope-name" data-tab="<?php print $doc->convertTagAttr($class) ?>">
-				<?php print $class; ?>
-			</a>
+	<div class="ui sticky static-sticky">
+		<div id="class_tab" class="ui secondary pointing menu">
 			<?php
-			++$index;
-		}
-		?>
+			$index = 0;
+			foreach ($packages as $class => $groups) {
+				?>
+				<?php $active = $index === 0 ? ' active' : ''; ?>
+				<span class="item<?php print $active ?> scope-name" data-tab="<?php print $doc->convertTagAttr($class) ?>">
+					<?php print $class; ?>
+				</span>
+				<?php
+				++$index;
+			}
+			?>
+		</div>
 	</div>
 	<?php
 	$index = 0;
@@ -155,7 +169,8 @@ elseif ($this->scope === DocMen::CLS) { ?>
 			<?php
 			$type = $package['type'];
 			foreach ($package['items'] as $name => $item) {
-				print $html->showClassItem($this->name, $type, $name, $item, 'header');
+				$itemHtml = $html->showClassItem($this->name, $type, $name, $item, 'header');
+				print $html->tag('div', $itemHtml, 'ui vertical segment');
 			}
 			?>
 		</div>
@@ -175,8 +190,8 @@ elseif ($this->scope === DocMen::FILE) { ?>
 		return true;
 	}
 	$attr = [
-		'id'    => 'source',
-		'class' => 'line-numbers',
+			'id'    => 'source',
+			'class' => 'line-numbers',
 	];
 	$startLine = $http->query('line', null);
 	if (!empty($startLine))

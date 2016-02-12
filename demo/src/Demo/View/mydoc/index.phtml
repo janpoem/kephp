@@ -1,0 +1,16 @@
+<?php
+/**
+ * view: mydoc/index
+ * @var Demo\Controller\Mydoc
+ * @var \Ke\Web\Context $this
+ * @var \Ke\Web\Web     $web
+ * @var string          $content
+ */
+
+/** @var \Ke\Web\Html $html */
+$html = $this->html;
+/** @var \Ke\Web\Http $http */
+$http = $web->http;
+
+// 重用组件
+$this->component('docmen/show');

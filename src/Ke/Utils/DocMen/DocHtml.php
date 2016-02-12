@@ -56,6 +56,9 @@ class DocHtml extends Html
 
 	public $equalSpan = '<span class="func-args-equal">=</span>';
 
+	public $tagCommentDoc   = 'div';
+	public $classCommentDoc = 'comment-doc';
+
 
 	public function setDoc(DocMen $docMen)
 	{
@@ -205,7 +208,13 @@ class DocHtml extends Html
 			$misc .= $this->tag('class-misc-' . $field, $inner, $attr);
 		}
 		$attr['class'] = 'misc';
-		return $this->tag('div', $misc, $attr);
+
+		$comment = '';
+		if (!empty($data['doc']))
+			$comment = $this->commentDoc($this->getDoc()->getComment($data['doc']));
+
+
+		return $this->tag('div', $misc, $attr) . $comment;
 	}
 
 	public function functionMisc(array $data, $attr = null): string
@@ -225,7 +234,22 @@ class DocHtml extends Html
 			$misc .= $this->tag('address', $this->scopeLink('file', ''), 'source-file');
 		}
 		$attr['class'] = 'misc';
-		return $this->tag('div', $misc, $attr);
+
+		$comment = '';
+		if (!empty($data['doc']))
+			$comment = $this->commentDoc($this->getDoc()->getComment($data['doc']));
+
+		return $this->tag('div', $misc, $attr) . $comment;
+	}
+
+	public function commentDoc($comment)
+	{
+		if (empty($comment))
+			return '';
+		$data = [
+			(htmlentities($comment['comment']) ?? ''),
+		];
+		return $this->tag('comment-doc', implode('\r\n', $data));
 	}
 
 	public function functionArgs(array $data)
@@ -246,7 +270,12 @@ class DocHtml extends Html
 				$defaultValue = 'false';
 			}
 			elseif ($valueType === KE_STR) {
-				$defaultValue = "'" . htmlentities($defaultValue) . "'";
+				if ($arg['name'] === 'salt') {
+					$defaultValue = "''";
+				}
+				else {
+					$defaultValue = "'" . htmlentities($defaultValue) . "'";
+				}
 			}
 			if ($arg['hasType'])
 				$name = $this->tag('var-type', $arg['type']) . ' ' . $name;

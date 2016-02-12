@@ -16,7 +16,8 @@ use Ke\Uri;
  * Http类，类似URL，作为静态类时，是一些Http常用的辅助方法，作为一个Http实例对象时，是一次Http请求所携带的数据。
  *
  * 一次Http请求的头部，会类似如下的数据
- * <pre>
+ *
+ * ```http
  * GET /hello/world.html?id=123 HTTP/1.1
  * Host: 192.168.1.100:8080
  * User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0
@@ -25,7 +26,7 @@ use Ke\Uri;
  * Accept-Encoding: gzip, deflate
  * Connection: keep-alive
  * Cache-Control: max-age=0
- * </pre>
+ * ```
  *
  * @package Ke\Web
  * @property string  $method

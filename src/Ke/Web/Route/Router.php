@@ -118,6 +118,7 @@ class Router
 	 * @var array 路由模式配置表
 	 */
 	public $routes = [
+		'*' => [],
 //		'*' => [
 //			'controller' => 'index',
 //			'mappings'   => [],
@@ -169,7 +170,7 @@ class Router
 		if (!isset($this->routes[$node]))
 			$this->routes[$node] = $settings;
 		else
-			$this->routes[$node] = array_merge_recursive($this->routes[$node], $settings);
+			$this->routes[$node] = array_merge($this->routes[$node], $settings);
 		return $this;
 	}
 
@@ -253,6 +254,7 @@ class Router
 			$this->loopMappings($node['mappings'], $rs);
 		// 已经设定了action，就不去匹配后面的了
 		if (!$rs->matched) {
+
 			if ($rs->mode === self::MODE_CLASS && !empty($rs->action)) {
 				$rs->matched = true;
 			}

@@ -70,6 +70,7 @@ class Web
 	protected $headers = [];
 
 	protected $params = [
+		'head'       => '',
 		'class'      => '',
 		'controller' => '',
 		'action'     => '',
@@ -352,9 +353,9 @@ class Web
 	{
 		if (!isset($this->router)) {
 			$this->router = new Router();
-			$this->router->loadFile($this->app->config('routes', 'php'));
 			if (!empty(self::$routes))
 				$this->router->routes += self::$routes;
+			$this->router->loadFile($this->app->config('routes', 'php'));
 		}
 		return $this->router;
 	}
@@ -429,9 +430,10 @@ class Web
 		if (!empty($result->class)) {
 			$params['class'] = $result->class;
 			// 暂定
-			$params['controller'] = $result->node === Router::ROOT ? '' : $result->node;
+			$params['controller'] = $params['head'] = $result->head;
 		}
 		else {
+			$params['head'] = $result->head;
 			$controller = $this->filterController($result->controller, true);
 			$namespace = $this->filterController($result->namespace, false);
 			if (!empty($namespace))
@@ -487,7 +489,7 @@ class Web
 
 	public function controllerLink(string $path = null, $query = null)
 	{
-		$uri = $this->params['controller'];
+		$uri = $this->params['head'];
 		if ($path !== '' && !empty($path = trim($path, KE_PATH_NOISE)))
 			$uri .= (empty($uri) ? '' : '/') . $path;
 		return $this->uri($uri, $query);
