@@ -33,6 +33,10 @@ $prefix = $prefix ?? '';
 $columns = $columns ?? [];
 $errors = $errors ?? [];
 
+if ($errors instanceof \Ke\Utils\Status) {
+	$errors = $errors->data['errors'] ?? [];
+}
+
 /** @var \Ke\Adm\Model $model */
 $model = $model ?? false;
 $isUpdate = false;
@@ -77,7 +81,7 @@ $html->addClass($attr, $html->getBaseClass('form', 'wrap'));
 $isForm = $isForm ?? true;
 
 $method = $method ?? 'post';
-$action = $action ?? null;
+$action = $http->newUri($action ?? null);
 
 $submit = $submit ?? '';
 if (empty($submit) || !is_string($submit))

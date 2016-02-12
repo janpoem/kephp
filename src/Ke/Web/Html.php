@@ -126,6 +126,8 @@ class Html
 	public $tagPageCurrent    = 'span';
 
 	public $tagMessage = 'div';
+//	public $tagFieldset = 'p';
+//	public $classFieldset = 'class12';
 
 	public $classPageWrap  = 'pagination';
 	public $classTableList = 'table-list';
@@ -1000,6 +1002,7 @@ class Html
 		$fieldSetAttr = [
 			'require'     => !empty($column['require']),
 			'multiFields' => $isMultiFields,
+		    'error' => $column['require'] ?? null,
 		];
 		return $this->fieldSet($label, $input, $fieldSetAttr);
 	}
