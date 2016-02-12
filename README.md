@@ -9,7 +9,7 @@
 * src - kephp源代码目录
 * test - 单元测试目录，以后重要的函数都会添加相关的单元测试。
 
-新增一个重要的辅助类：DocMen，自己写完了代码，自动生成出文档。详细介绍看这里[DocMen介绍](http://git.oschina.net/kephp/kephp#DocMen)。
+新增一个重要的辅助类：DocMen，自己写完了代码，自动生成出文档。详细介绍看这里[DocMen介绍](http://git.oschina.net/kephp/kephp#docmen)。
 
 历经2年，从早期MST Library到Agimvc时期，彻底地将各种冗余的代码整理、重构完成，严格意义上说，其实不止2年了，从Agimvc 3.2的版本时期，就已经在做各种尝试，那时候是2011年的光景。
 
