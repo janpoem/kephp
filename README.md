@@ -853,18 +853,22 @@ class Mydoc extends DocController
 
 基本如此，明天会补充完kephp的代码注释规范。
 
-差点忘了，上几张图。
+无图无真相系列
 
-__索引页__
+**索引页**
+
 ![DocMen Index Page](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen01.gif)
 
-__Namespace页__
+**Namespace页**
+
 ![DocMen Namespace](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen02.gif)
 
-__Class页__
+**Class页**
+
 ![DocMen Class](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen03.gif)
 
-__文件源代码__
+**文件源代码**
+
 ![DocMen File](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen04.gif)
 
 ### 其他
