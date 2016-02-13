@@ -90,7 +90,7 @@ class FuncParser
 		if (!empty($returnType))
 			$returnType = $returnType->__toString();
 
-		$file = $scanner->filterFile($ref->getFileName());
+		$file     = $scanner->filterFile($ref->getFileName());
 		$filePath = $file !== false ? $file['path'] : '';
 
 		$this->name       = $ref->getName();
@@ -131,9 +131,6 @@ class FuncParser
 		if ($ref instanceof ReflectionMethod) {
 			$scanner->addIndex(DocMen::METHOD, $this->fullName);
 		}
-		else {
-			$scanner->addFunction($this);
-		}
 		return $this;
 	}
 
@@ -145,15 +142,21 @@ class FuncParser
 		foreach ($params as $param) {
 			$name  = $param->getName();
 			$index = $param->getPosition();
-			$class = $param->getClass();
-			if ($class)
-				$class = $class->getName();
+			try {
+				$class = $param->getClass();
+				if ($class)
+					$class = $class->getName();
+			} catch (\Throwable $thrown) {
+				$class = null;
+			}
+
 			$type = $param->getType();
 			if ($type)
 				$type = $type->__toString();
 
 			$isDefaultValue = $param->isDefaultValueAvailable();
-			$defaultValue   = $isDefaultValue ? $param->getDefaultValue() : null;
+			$defaultValue = $isDefaultValue ? $param->getDefaultValue() : null;
+
 			if (isset($this->protectedParamNames[$name])) {
 				$newValue = null;
 				settype($newValue, gettype($defaultValue));

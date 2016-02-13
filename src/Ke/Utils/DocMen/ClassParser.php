@@ -29,9 +29,15 @@ class ClassParser
 		DocMen::CONST  => 1000,
 	];
 
+	protected $ignoreClasses = [
+		'MongoCursor' => true,
+	];
+
 	private $isExists = false;
 
 	private $isLoad = false;
+
+	private $inputPath = '';
 
 	public $type = 'class';
 
@@ -81,11 +87,12 @@ class ClassParser
 //
 //	protected $constants = [];
 
-	public function __construct(string $class, string $type = null)
+	public function __construct(string $class, string $type = null, string $path = null)
 	{
 		$this->class = $class;
 		if (!empty($type))
 			$this->type = $type;
+		$this->inputPath = $path;
 	}
 
 	public function load()
@@ -119,16 +126,20 @@ class ClassParser
 
 	public function parse(SourceScanner $scanner)
 	{
-//		if (!$this->isExists())
+//		if (!$this->isExists()) {
+//			$scanner->addNotExistsClass($this->class);
 //			return $this;
+//		}
 		try {
 			// 这里还是有可能会出错的，所以还是要try ... catch
 			$ref = $this->getReflection();
 		} catch (Throwable $thrown) {
+			$scanner->addMissItem(DocMen::CLS, $this->class, $this->inputPath, $thrown->getMessage());
 			return $this;
 		}
 		$file     = $scanner->filterFile($ref->getFileName());
 		$filePath = $file !== false ? $file['path'] : '';
+
 		// 基础信息解析
 		$this->name       = $ref->getName();
 		$this->shortName  = $ref->getShortName();
@@ -142,6 +153,14 @@ class ClassParser
 		$this->isAbstract = $ref->isAbstract();
 		$this->isFinal    = $ref->isFinal();
 		$this->isInternal = $ref->isInternal();
+
+		$nsStyle = $scanner->getOption(SourceScanner::OPS_NS_STYLE);
+		if ($nsStyle === DocMen::NS_STYLE_OLD_PEAR || ($nsStyle === DocMen::NS_STYLE_MIXED && empty($this->namespace))) {
+			$split = explode('_', $this->name);
+			array_pop($split);
+			if (!empty($split))
+				$this->namespace = implode('\\', $split);
+		}
 
 		// 使用的Traits
 		$traits = $ref->getTraits();

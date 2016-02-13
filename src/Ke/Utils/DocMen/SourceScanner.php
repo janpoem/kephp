@@ -16,15 +16,26 @@ use DirectoryIterator;
 class SourceScanner
 {
 
+	const OPS_AUTO_IMPORT = 'parseFileAutoImport';
+	const OPS_NS_STYLE = 'namespaceStyle';
+	const OPS_IGNORE_FILES = 'ignoreFiles';
+	const OPS_IGNORE_CLASS = 'ignoreClasses';
+	const OPS_NOT_PARSE_FILES = 'notParseFiles';
 
 	protected $source;
 	protected $export;
+	protected $options = [
+		self::OPS_AUTO_IMPORT     => true,
+		self::OPS_NS_STYLE        => '',
+		self::OPS_IGNORE_FILES    => [],
+		self::OPS_NOT_PARSE_FILES => [],
+	];
 
 	protected $dirs = [];
 
-	protected $files = [];
-	protected $_files = [];
-	protected $_filesSort = [
+	protected $files             = [];
+	protected $_files            = [];
+	protected $_filesSort        = [
 		'priority' => [],
 		'external' => [],
 		'depth'    => [],
@@ -47,6 +58,10 @@ class SourceScanner
 
 	protected $classes = [];
 
+	protected $missed = [];
+
+	protected $notExistsClasses = [];
+
 	protected $classAliases = [];
 
 	public function __construct(string $dir, string $export)
@@ -61,6 +76,18 @@ class SourceScanner
 			mkdir($this->export, 0755, true);
 		$this->source = $this->addDir($this->source);
 		$this->export = DocMen::convertUnixPath($this->export);
+	}
+
+	public function setOptions(array $options)
+	{
+		if (!empty($options))
+			$this->options = array_merge($this->options, $options);
+		return $this;
+	}
+
+	public function getOption(string $name)
+	{
+		return $this->options[$name] ?? false;
 	}
 
 	public function start()
@@ -99,24 +126,28 @@ class SourceScanner
 
 	public function isParseFile(string $path)
 	{
-		return (preg_match('/\.php$/', $path) &&
+		$isParse = (preg_match('/\.php$/', $path) &&
 			!preg_match('/[\\\\\/]classes\.php$/', $path) &&
 			!preg_match('/[\\\\\/]refs\.php$/', $path));
+		if ($isParse) {
+			if (!empty($this->options[self::OPS_NOT_PARSE_FILES])) {
+				foreach ($this->options[self::OPS_NOT_PARSE_FILES] as $regex) {
+					if (preg_match($regex, $path)) {
+						return false;
+						break;
+					}
+				}
+			}
+		}
+		return $isParse;
 	}
 
 	public function parseFile(string $path)
 	{
 		$fileData = $this->filterFile($path);
 		if ($fileData !== false && $this->isParseFile($path)) {
-			$fileParser = new FileParser($path);
+			$fileParser = new FileParser($path, $this->options[self::OPS_AUTO_IMPORT] ?? true);
 			$fileParser->parse($this);
-
-//			$fns = $fp->getFunctions();
-//			if (!empty($fns)) {
-//				foreach ($fns as $name => $fn) {
-//					$this->addFunction($fn['namespace'], $name, $fn);
-//				}
-//			}
 		}
 		return $this;
 	}
@@ -208,8 +239,10 @@ class SourceScanner
 		return $namespace;
 	}
 
-	public function namespaceHash(string $namespace): string
+	public function namespaceHash(string $namespace = null): string
 	{
+		if (empty($namespace))
+			$namespace = '';
 		return hash('crc32b', $namespace);
 	}
 
@@ -280,6 +313,21 @@ class SourceScanner
 			}
 		}
 		return $this;
+	}
+
+	public function addMissItem(string $scope, string $name, $file, $message = null)
+	{
+		if (!isset($this->missed[$name])) {
+			$data = $this->filterFile($file);
+			//
+			$this->missed[$name] = [
+				'name'    => $name,
+				'scope'   => $scope,
+				'dir'     => $data['dir'],
+				'path'    => $data['path'],
+				'message' => $message,
+			];
+		}
 	}
 
 	public function aliasClass(string $fullName, string $shortName)
@@ -353,6 +401,7 @@ class SourceScanner
 			'namespaces' => $this->namespaces,
 			'classes'    => $this->classes,
 			'aliases'    => $this->classAliases,
+			'missed'     => $this->missed,
 			'functions'  => $this->functions,
 		];
 	}

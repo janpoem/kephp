@@ -20,6 +20,10 @@ use Ke\Web\Web;
 class DocMen
 {
 
+	const NS_STYLE_OLD_PEAR = 0;
+	const NS_STYLE_NEW = 1;
+	const NS_STYLE_MIXED = 2;
+
 	const PHP_INTERNAL = '&lt;PHP Internal&gt';
 
 	const DEFAULT_PRIORITY = 100;
@@ -37,6 +41,10 @@ class DocMen
 
 	private static $registerInstances = [];
 
+	private $scanner = null;
+
+	private $scannerOptions = [];
+
 	private $isPrepare = false;
 
 	private $routePath = 'docmen';
@@ -46,6 +54,8 @@ class DocMen
 	private $loadMainFile = false;
 
 	private $loadComment = false;
+
+	private $showFile = true;
 
 	protected $routeScopes = [
 		self::CLS  => self::CLS,
@@ -71,6 +81,8 @@ class DocMen
 	protected $data = [];
 
 	protected $comments = [];
+
+	protected $missed = [];
 
 	/**
 	 * 向全局的Web分发路由器注册一个（多个）DocMen实例
@@ -107,6 +119,13 @@ class DocMen
 			return true;
 		}
 		return false;
+	}
+
+	public static function getAllInstances()
+	{
+		foreach (self::$registerInstances as $name => $docMen) {
+			yield $name => $docMen;
+		}
 	}
 
 	/**
@@ -303,7 +322,7 @@ class DocMen
 		return $path;
 	}
 
-	public function __construct(string $dir, string $sourceDir, string $routePath = null)
+	public function __construct(string $dir, string $sourceDir, string $routePath = null, \Closure $fn = null)
 	{
 		$this->docDir = $dir;
 		$this->source = real_dir($sourceDir);
@@ -311,6 +330,19 @@ class DocMen
 			throw new \Error("Source directory does not exist, or it is not a directory!");
 		if (!empty($routePath))
 			$this->setRoutePath($routePath);
+		if (isset($fn))
+			$fn->call($this);
+	}
+
+	public function isShowFile()
+	{
+		return $this->showFile;
+	}
+
+	public function setShowFile(bool $isShow)
+	{
+		$this->showFile = $isShow;
+		return $this;
 	}
 
 	public function setRoutePath(string $path)
@@ -340,7 +372,27 @@ class DocMen
 
 	public function getRouteScopes()
 	{
-		return implode('|', array_keys($this->routeScopes));
+		$scopes = $this->routeScopes;
+		if (!$this->isShowFile()) {
+			unset($scopes[DocMen::FILE]);
+		}
+		return implode('|', array_keys($scopes));
+	}
+
+	public function setScannerOptions(array $options)
+	{
+		$this->scannerOptions = array_merge($this->scannerOptions, $options);
+		return $this;
+	}
+
+	public function getScanner(): SourceScanner
+	{
+		if (!isset($this->scanner)) {
+			$this->scanner = new SourceScanner($this->source, $this->docDir);
+			if (!empty($this->scannerOptions))
+				$this->scanner->setOptions($this->scannerOptions);
+		}
+		return $this->scanner;
 	}
 
 	public function filterParams(array $params)
@@ -457,6 +509,13 @@ class DocMen
 		}
 	}
 
+	public function getAllMissedItems()
+	{
+		foreach ($this->missed as $name => $data) {
+			yield $name => $data;
+		}
+	}
+
 	public function getAllNamespacesCount()
 	{
 		return count($this->namespaces);
@@ -475,6 +534,11 @@ class DocMen
 	public function getAllFilesCount()
 	{
 		return count($this->files);
+	}
+
+	public function getAllMissedItemsCount()
+	{
+		return count($this->missed);
 	}
 
 	public function getNamespace($name)
@@ -499,7 +563,7 @@ class DocMen
 		if (!isset($this->files[$name]))
 			return false;
 		$data = $this->files[$name];
-		$dir = $this->dirs[$data['dir']] ?? '';
+		$dir  = $this->dirs[$data['dir']] ?? '';
 		$path = $dir . '/' . $data['path'];
 		$path = realpath($path);
 		//

@@ -141,7 +141,7 @@ class DocCommentParser
 		foreach ($matches as $index => $match) {
 			$matches[$index] = trim($matches[$index]);
 		}
-		$data = [$matches[1], $matches[2]];
+		$data = [$matches[1], $matches[2] ?? null];
 		if (!empty($matches[3])) {
 			$regex = '#^([^\s]+)[\t\s]+(.*(?:[\r\n].*)*)#mi';
 			if (preg_match($regex, $matches[3], $match)) {

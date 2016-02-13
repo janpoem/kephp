@@ -14,13 +14,15 @@ namespace Ke\Utils\DocMen;
 class FileParser
 {
 
+	protected $autoImport = true;
+
 	protected $path = '';
 
 	protected $content = false;
 
 	protected $regexNamespace = '#^namespace[\s\t]+([a-zA-Z0-9\_\\\\]+)\;#im';
 
-	protected $regexClass = '#^((?:(?:abstract|final)[\s\t]+)?class|interface|trait)[\s\t]+([a-zA-Z0-9\_]+)(?:[\s\t]+extends[\s\t]+([a-zA-Z0-9\_\\\\]+))?(?:[\s\t]+implements[\s\t]+([a-zA-Z0-9\_\\\\\,\s]+))?[\r\n]+\{#m';
+	protected $regexClass = '#^[\s\t]*((?:(?:abstract|final)[\s\t]+)?class|interface|trait)[\s\t]+([a-zA-Z0-9\_]+)(?:[\s\t]+extends[\s\t]+([a-zA-Z0-9\_\\\\]+))?(?:[\s\t]+implements[\s\t]+([a-zA-Z0-9\_\\\\\,\s]+))?[\r\n\s]*\{#m';
 
 	protected $regexFunction = '#^[\s\t]*function[\s\t]+([a-zA-Z0-9\_]+)\(#m';
 
@@ -36,11 +38,16 @@ class FileParser
 
 	private $constants = [];
 
-	public function __construct(string $file)
+	private $classParser = null;
+
+	public function __construct(string $file, bool $autoImport = true)
 	{
 		$this->path = $file;
 		if (!is_file($this->path))
 			throw new \Error('Please input a valid file!');
+		$this->autoImport = $autoImport;
+		if ($autoImport && array_search($this->path, get_included_files()) === false)
+			require $this->path;
 	}
 
 	public function getContent()
@@ -54,8 +61,9 @@ class FileParser
 	{
 		$this->getContent();
 		$this->parseNamespace($scanner);
-		$this->parseFunctions($scanner);
 		$this->parseClasses($scanner);
+		if (!isset($this->classParser))
+			$this->parseFunctions($scanner);
 	}
 
 	protected function parseNamespace(SourceScanner $scanner)
@@ -71,11 +79,21 @@ class FileParser
 		if (preg_match_all($this->regexFunction, $this->content, $matches, PREG_SET_ORDER)) {
 			foreach ($matches as $match) {
 				$fn = trim($match[1]);
-				if (!function_exists($fn)) {
+				if (!$this->autoImport && !function_exists($fn)) {
 					require $this->path;
 				}
-				if (!isset($this->functions[$fn])) {
-					FuncParser::autoParse(new \ReflectionFunction($fn), $scanner);
+				if (function_exists($fn) && !isset($this->functions[$fn])) {
+					$ref = new \ReflectionFunction($fn);
+					if ($ref->getFileName() === $this->path) {
+						$parser = FuncParser::autoParse($ref, $scanner);
+						$scanner->addFunction($parser);
+					}
+					else {
+						$scanner->addMissItem(DocMen::FUNC, $fn, $this->path);
+					}
+				}
+				else {
+					$scanner->addMissItem(DocMen::FUNC, $fn, $this->path);
 				}
 			}
 		}
@@ -88,8 +106,8 @@ class FileParser
 			foreach ($matches as $match) {
 				$type = $match[1];
 				$class = $match[2];
-				$clsParser = new ClassParser(add_namespace($class, $this->namespace), $type);
-				$clsParser->parse($scanner);
+				$this->classParser = new ClassParser(add_namespace($class, $this->namespace), $type, $this->path);
+				$this->classParser->parse($scanner);
 			}
 		}
 		return $this;

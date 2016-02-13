@@ -54,7 +54,7 @@ class DocController extends Controller
 	public function generate()
 	{
 		try {
-			$scanner = new SourceScanner($this->doc->getSourceDir(), $this->doc->getExportDir());
+			$scanner = $this->doc->getScanner();
 			$startParse = microtime();
 			$scanner->start();
 			$startWrite = microtime();
@@ -70,5 +70,6 @@ class DocController extends Controller
 		catch (\Throwable $thrown) {
 			$this->status(false, $thrown->getMessage());
 		}
+		return false;
 	}
 }

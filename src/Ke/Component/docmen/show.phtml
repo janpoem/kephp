@@ -21,6 +21,25 @@ if (!$doc->isLoadMainDataFile()) {
 ?>
 <?php if (empty($this->scope) || $this->scope === DocMen::INDEX) { ?>
 	<h1 class="header">Index Page</h1>
+	<?php if ($doc->getAllMissedItemsCount() > 0) { ?>
+		<?php
+		print $html->warning('There are ' . $doc->getAllMissedItemsCount() . ' items missed in generation!');
+		print $html->tableList($doc->getAllMissedItems(), [
+			'columns' => [
+				'name'    => 'Name',
+				'scope'   => 'Scope',
+				'path'    => [
+					'label'  => 'Path',
+					'onShow' => function (\Ke\Utils\DocMen\DocHtml $html, $value) {
+					    return $html->fileLink($value);
+					}
+				],
+				'dir'     => false,
+				'message' => 'Message',
+			],
+		]);
+		?>
+	<?php } ?>
 	<div class="ui two column stackable grid">
 		<div class="column">
 			<h2 class="ui header">Classes
@@ -54,7 +73,7 @@ if (!$doc->isLoadMainDataFile()) {
 			<div class="ui list bulleted">
 				<?php foreach ($doc->getAllFiles() as $file => $data) { ?>
 					<div class="item scope-name">
-						<?php print $html->scopeLink(DocMen::FILE, $file); ?>
+						<?php print $html->fileLink($file); ?>
 					</div>
 				<?php } ?>
 			</div>

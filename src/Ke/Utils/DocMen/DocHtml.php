@@ -172,21 +172,33 @@ class DocHtml extends Html
 		return $this->getWeb()->controllerLink($path, $query);
 	}
 
+	public function fileLink(string $file, int $startLine = null, int $endLine = null, $query = null)
+	{
+		$fileName = $this->getDoc()->getShowName(DocMen::FILE, $file);
+		if (!empty($file)) {
+			if (isset($startLine) && isset($endLine))
+				$fileName .= " <small>[{$startLine} - {$endLine}]</small>";
+			elseif (isset($startLine))
+				$fileName .= " <small>[{$startLine}]</small>";
+		}
+		if ($this->getDoc()->isShowFile()) {
+			return $this->link($fileName, $this->fileUri($file, $startLine, $endLine, $query));
+		}
+		else {
+			return $fileName;
+		}
+	}
+
 	public function classMisc(array $data, $attr = null): string
 	{
 		if (!is_array($attr))
 			$attr = $this->attr2array($attr);
-		$misc = '';
+		$misc    = '';
 		$address = '';
 		if (!empty($data['file'])) {
-			$file     = $this->getDoc()->getShowName('file', $data['file']);
-			$fileLink = $this->fileUri($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null);
-			if (isset($data['startLine']) && isset($data['endLine'])) {
-				$file .= " <small>[{$data['startLine']}:{$data['endLine']}]</small>";
-			}
-			$address = $this->tag('address', $this->link($file, $fileLink), 'source-file');
+			$address = $this->tag('address', $this->fileLink($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null), 'source-file');
 		} elseif ($data['isInternal']) {
-			$address = $this->tag('address', $this->scopeLink('file', ''), 'source-file');
+			$address = $this->tag('address', $this->fileLink(''), 'source-file');
 		}
 
 		$items = '';
@@ -213,14 +225,9 @@ class DocHtml extends Html
 			$attr = $this->attr2array($attr);
 		$misc = '';
 		if (!empty($data['file'])) {
-			$file     = $this->getDoc()->getShowName('file', $data['file']);
-			$fileLink = $this->fileUri($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null);
-			if (isset($data['startLine']) && isset($data['endLine'])) {
-				$file .= " <small>[{$data['startLine']}:{$data['endLine']}]</small>";
-			}
-			$misc .= $this->tag('address', $this->link($file, $fileLink), 'source-file');
+			$misc .= $this->tag('address', $this->fileLink($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null), 'source-file');
 		} elseif (isset($data['isInternal']) && $data['isInternal']) {
-			$misc .= $this->tag('address', $this->scopeLink('file', ''), 'source-file');
+			$misc .= $this->tag('address', $this->fileLink(''), 'source-file');
 		}
 		$attr['class'] = 'misc';
 
@@ -247,8 +254,7 @@ class DocHtml extends Html
 					$doc[] = '* `' . $item[0] . ' ' . $item[1] . ' ` ' . $item[2];
 				}
 			}
-		}
-		elseif ($scope === DocMen::FUNC || $scope === DocMen::METHOD) {
+		} elseif ($scope === DocMen::FUNC || $scope === DocMen::METHOD) {
 			if (!empty($comment['param'])) {
 				$doc[] = '__Parameters__';
 				foreach ($comment['param'] as $item) {
@@ -273,14 +279,9 @@ class DocHtml extends Html
 	{
 		$address = '';
 		if (!empty($data['file'])) {
-			$file     = $this->getDoc()->getShowName('file', $data['file']);
-			$fileLink = $this->fileUri($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null);
-			if (isset($data['startLine']) && isset($data['endLine'])) {
-				$file .= " <small>[{$data['startLine']}:{$data['endLine']}]</small>";
-			}
-			$address = $this->tag('address', $this->link($file, $fileLink), 'source-file');
-		} elseif (isset($data['isInternal']) && $data['isInternal']) {
-			$address = $this->tag('address', $this->scopeLink('file', ''), 'source-file');
+			$address = $this->tag('address', $this->fileLink($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null), 'source-file');
+		} elseif ($data['isInternal']) {
+			$address = $this->tag('address', $this->fileLink(''), 'source-file');
 		}
 		$args = $data['params'] ?? [];
 		$temp = [];
@@ -330,11 +331,11 @@ class DocHtml extends Html
 		if (strlen($functionName) > 100) {
 			$functionName = $prefix . ' ' . $data['name'] . "(\n\t" . implode(",\n\t", $temp) . ')' . $return;
 		}
-		$block = [
+		$block   = [
 			'```php',
 			$functionName,
-//			'{',
-//			'}',
+			//			'{',
+			//			'}',
 			'```',
 		];
 		$comment = '';

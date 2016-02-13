@@ -10,11 +10,25 @@ $html = $this->html;
 /** @var \Ke\Web\Http $http */
 $http = $web->http;
 
+$currentName = $web->getController();
 ?>
 <div class="ui inverted menu">
 	<div class="ui container">
-		<a class="head item" href="<?php print $web->controllerLink(); ?>"><span class="logo">Kephp</span></a>
+		<a class="head item" href="<?php print $web->controllerLink(); ?>"><span class="logo">Ke\DocMen - <?php print $currentName; ?></span></a>
 		<a class="item" href="<?php print $web->controllerLink('generate') ?>" data-ajax="1">Generate</a>
+		<div class="ui simple dropdown item">
+			More <i class="dropdown icon"></i>
+			<div class="menu">
+				<?php
+				foreach (\Ke\Utils\DocMen\DocMen::getAllInstances() as $name => $docMen) {
+					if ($name !== $currentName)
+						print $html->link($name, $web->uri($name), 'item');
+					else
+						print $html->tag('span', "<strong>{$name}</strong>", 'item');
+				}
+				?>
+			</div>
+		</div>
 	</div>
 </div>
 
