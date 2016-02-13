@@ -35,7 +35,7 @@
 在新项目中，类可以直接继承自xErp的类
 
 ```php
-
+<?php
 namespace MyErp\Model;
 
 
@@ -49,6 +49,7 @@ class User extends xErp\Model\User
 如果希望能重用xErp的视图组件（View、Component、Layout），则只要手动注册目录即可。
 
 ```php
+<?php
 $web->component->setDirs([
 	'xErpView'      => [$app->src('xErp/View'), 200, Component::VIEW],
 	'xErpComponent' => [$app->src('xErp/Component'), 200],
@@ -60,6 +61,7 @@ $web->component->setDirs([
 为新项目，注册旧项目的目录所在。
 
 ```php
+<?php
 $app->getLoader()->setDirs([
 	'xErpSrc'    => ['any_path', 200],
 	'xErpHelper' => ['any_path/Helper', 200, Loader::HELPER],
@@ -89,7 +91,7 @@ $app->getLoader()->setDirs([
 现在完全改用类属性的方式，比如App的全局应用程序配置，直接改用类属性进行配置。
 
 ```php
-
+<?php
 namespace MyApp;
 
 class App extends Ke\App 
@@ -114,7 +116,7 @@ class App extends Ke\App
 比如，默认的Controller，当碰到action不存在的时候，会抛出异常，但用户可以重载onMissing的方法，来自行控制：
 
 ```php
-
+<?php
 class Index extends Controller {
 
 	protected function onMissing(string $action)
@@ -144,6 +146,7 @@ Model层的命名保留以前Ror的风格：before*、after*。
 反射的命令的用法如下：
 
 ```php
+<?php
 class MyCmd extends ReflectionCommand
 {
 
@@ -214,7 +217,7 @@ kephp本身提供许多命令，比如GitExport，这个命令主要用于导出
 如果用户希望在这里基础上，增加一些新的功能，可以在项目添加：src/Cmd/GitExport
 
 ```php
-
+<?php
 namespace Cmd\GitExport;
 
 class GitExport extends \Ke\Cli\Cmd\GitExport 
@@ -231,7 +234,7 @@ class GitExport extends \Ke\Cli\Cmd\GitExport
 除了使用命令的方式调用，还可以通过实例化一个Command来调用（可以参考\Ke\Cli\Cmd\Add）指令。
 
 ```php
-
+<?php
 $cmd = new UpdateModel([null, 'User']);
 $cmd->execute();
 ```
@@ -416,6 +419,7 @@ Web -> Router -> Controller -> Context -> Renderer
 Context是渲染视图时的上下文变量环境，通过Controller的$this绑定的变量，被视作超级全局变量，直接绑定到Context上，比如：
 
 ```php
+<?php
 
 class User extends Controller {
 
@@ -524,6 +528,7 @@ $web->setContext(new MyApp\Helper\UserContext);
 三、Columns声明增加update和create的区别：
 
 ```php
+<?php
 
 namespace MyApp\Model;
 
@@ -564,6 +569,7 @@ class User extends \Ke\Model {
 新版本的查询构造器，都改用`Query`实现，可以通过数组的方式构建。
 
 ```php
+<?php
 
 $query = (new Query())->select('id', 'name', 'email', ['login_id', '...'])->from('user');
 $query->where('status', '=', 1)->addWhere([
@@ -590,6 +596,7 @@ $query->columnOne('id');
 如果希望绑定到Model实例上：
 
 ```php
+<?php
 
 User::query()->where(...); // 通过Model调用的，可以不需要 写from
 
@@ -598,6 +605,7 @@ User::query()->where(...); // 通过Model调用的，可以不需要 写from
 ### Model和Query的特定查询构造
 
 ```php
+<?php
 
 class User extends Model {
 
@@ -619,6 +627,7 @@ class User extends Model {
 假定我需要复用这个查询：
 
 ```php
+<?php
 
 User::query('logs')->where('tb1.id', '>', 100)->limit(20); // 这里会clone一个新的查询，而不会污染原来的查询构造。
 
@@ -656,6 +665,8 @@ User::query('logs')->where('tb1.id', '>', 100)->limit(20); // 这里会clone一�
 特别说明一下，DocMen和相关的component都被封装成核心的组件和类库了，需要在一个项目中激活DocMen，只要在项目的配置文件中添加如下的代码：
 
 ```php
+<?php
+
 use \Ke\Utils\DocMen\DocMen;
 
 global $app;
@@ -663,7 +674,12 @@ global $app;
 DocMen::register(new DocMen($app->doc('kephp'), $app->kephp(), 'docmen'));
 ```
 
-这里，执行了以`$app->doc('kephp')`为生成文档的输出目录，也就是`App/doc/kephp`这个目录，以`$app->kephp()`为要解析的源代码目录，`docmen`，为要注册的http uri path前缀。
+创建DocMen实例时候：
+
+参数1，生成文档数据所在的目录；
+参数2，要解析的源代码所在的目录；
+参数3，要注册的http uri的访问名；
+参数4，必须为一个闭包函数，为创建一个DocMen实例成功时，会回调的函数，用于深度定制当前的DocMen实例，可参考：[demo例子](http://git.oschina.net/kephp/kephp/blob/master/demo/config/development.php)。
 
 当你执行了这个函数以后，当你以`docmen`这个路径访问时，就会被自动转发给`Ke\Utils\DocMen\DocController`这个控制器来处理（这是这个版本所实现的Class route）。
 
@@ -674,6 +690,34 @@ DocMen::register(new DocMen($app->doc('kephp'), $app->kephp(), 'docmen'));
 2. 一般来说，最好在`.gitignore`文件中将生成文档的目录添加为忽略，还是挺大的。
 3. 出于应用程序的安全性，（除非是必要）你应该确保只在`config/development.php`中注册，而不是`config/common.php`，这样，docmen只会在你本地的开发环境内生效。
 
+对于DocMen的高级定制：
+
+```php
+<?php
+
+$docMen = new DocMen($app->doc('mydoc'), 'mydoc_src', 'mydoc', function() {
+	// 加载这个源代码库的自动加载器，$this->source对应的就是'mydoc_src'
+	import($this->source . '/autoload.php');
+	// 以下用于将参数传递给Scanner的参数，目前只有以下三个参数有效
+	$this->setScannerOptions([
+		// 是否自动加载文件，默认为true，有些类库有自己的autoLoader，所以可以将这里设为false
+		\Ke\Utils\DocMen\SourceScanner::OPS_AUTO_IMPORT     => false,
+		// 命名空间的风格
+		// DocMen::NS_STYLE_NEW，默认值，为PHP 5.3以后，使用\作为namespace的分隔符
+		// DocMen::NS_STYLE_OLD_PEAR，为PHP 5.3以前，旧版本的PEAR规范，以_作为分隔符
+		// DocMen::NS_STYLE_MIXED，混合，则当一个Class的namespaceName为空的时候，则自动转用DocMen::NS_STYLE_OLD_PEAR模式
+		\Ke\Utils\DocMen\SourceScanner::OPS_NS_STYLE        => DocMen::NS_STYLE_MIXED,
+		// 忽略解析的文件，以数组方式存放正则表达式，这里表示的是忽略解析，但他还是会将这个文件注册到mainData
+		\Ke\Utils\DocMen\SourceScanner::OPS_NOT_PARSE_FILES => [
+			'#bootstrap(_.*)?.php$#',
+		],
+	]);
+	// 该DocMen是否显示源文件，以下false表示不显示，则所有相关源文件的link都会变成普通文本，file这个http路径也会失效。
+	$this->setShowFile(false);
+});
+
+```
+
 重用：
 
 假定，我们想基于已经已经注册的`docmen`进行拦截，转入到我们制定的控制器进行处理，但同时，又希望这个控制器能继承自`Ke\Utils\DocMen\DocController`，避免重写代码，还包括view层的代码。
@@ -683,6 +727,7 @@ DocMen::register(new DocMen($app->doc('kephp'), $app->kephp(), 'docmen'));
 一、拦截route
 
 ```php
+<?php
 // config/routes.php
 // 这里，不能再直接通过写入整个routes的方式来声明了。
 //$router->routes = [
@@ -703,6 +748,7 @@ $router->setNode('docmen', [
 二、添加Mydoc控制器
 
 ```php
+<?php
 namespace Demo\Controller;
 
 use Ke\Utils\DocMen\DocController;
@@ -735,6 +781,7 @@ class Mydoc extends DocController
 三、添加一个View文件mydoc/index.phtml
 
 ```php
+<?php
 /** @var \Ke\Web\Html $html */
 $html = $this->html;
 /** @var \Ke\Web\Http $http */
@@ -769,6 +816,7 @@ php ke.php scan_source ../src -e=doc/kephp
 首先，我们需要声明一个新的Html构建类，继承自`Ke\Utils\DocMen\Html`：
 
 ```php
+<?php
 namespace Demo\Helper;
 
 class MyDocHtml extends Ke\Utils\DocMen\Html 
@@ -784,6 +832,7 @@ class MyDocHtml extends Ke\Utils\DocMen\Html
 然后，我们在`Demo\Controller\Mydoc`中，增加三行代码：
 
 ```php
+<?php
 namespace Demo\Controller;
 
 use Ke\Utils\DocMen\DocController;
@@ -806,13 +855,13 @@ class Mydoc extends DocController
 
 差点忘了，上几张图。
 
-![DocMen Namespace展示](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen01.jpg)
+![DocMen Index Page](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen01.gif)
 
-![DocMen Class展示](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen02.jpg)
+![DocMen Namespace](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen02.gif)
 
-![DocMen命令行参数](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen04.png)
+![DocMen Class](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen03.gif)
 
-![DocMen命令行参数](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen03.jpg)
+![DocMen File](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen04.gif)
 
 ### 其他
 
@@ -825,7 +874,7 @@ class Mydoc extends DocController
 假定你的网站根目录为：`/my_app`，那么注意传参数时候的区别：
 
 ```php
-
+<?php
 $baseUri->newUri('hello/world'); // => /my_app/hello/world/，注意，如果不是xxx.yyy的结尾，会强制补/
 $baseUri->newUri('/good'); // => /good/
 
@@ -836,7 +885,7 @@ $baseUri->newUri('.././good'); // => /my_app/../good/，注意这里不会做../
 同样的，查询字符串也会自动合并：
 
 ```php
-
+<?php
 $baseUri->newUri('what?id=1', ['id' => 2]); // 最终生成是：/my_app/what/?id=2
 
 ```
@@ -853,7 +902,7 @@ $baseUri->newUri('what?id=1', ['id' => 2]); // 最终生成是：/my_app/what/?i
 #### \Ke\OutputBuffer
 
 ```php
-
+<?php
 $content = $ob->getFunctionBuffer(null, function() {
 	echo 'hello world';
 	var_dump('good!');
@@ -870,6 +919,7 @@ $content = $ob->getImportBuffer(null, 'test.php', ['var1' => 123]);
 html标签构造辅助器，在view层，可直接访问Context的html变量即可获取：
 
 ```php
+<?php
 $this->html->tag('div', 'hello world', ['id' => 'id']);
 $this->html->textInput('value');
 ```
@@ -885,6 +935,7 @@ Web\UI接口，用于整体重载Web渲染。
 目前版本UI只包含两个接口：
 
 ```php
+<?php
 interface UI
 {
 
@@ -896,6 +947,7 @@ interface UI
 ```
 
 ```php
+<?php
 $web->setUI(new MyUI());
 ```
 

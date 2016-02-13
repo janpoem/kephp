@@ -27,7 +27,6 @@ if (is_dir($phpExcelSrc)) {
 $agimvcSrc = 'D:\xampp\htdocs\sk-917917\917917.cc\library\agimvc';
 if (is_dir($agimvcSrc)) {
 	$docs[] = new DocMen($app->path('doc/agimvc'), $agimvcSrc, 'agimvc', function () {
-		// Agi\Util\String
 		$this->setScannerOptions([
 			\Ke\Utils\DocMen\SourceScanner::OPS_AUTO_IMPORT     => false,
 			\Ke\Utils\DocMen\SourceScanner::OPS_NS_STYLE        => DocMen::NS_STYLE_MIXED,

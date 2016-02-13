@@ -26,7 +26,7 @@ class SourceScanner
 	protected $export;
 	protected $options = [
 		self::OPS_AUTO_IMPORT     => true,
-		self::OPS_NS_STYLE        => '',
+		self::OPS_NS_STYLE        => DocMen::NS_STYLE_NEW,
 		self::OPS_IGNORE_FILES    => [],
 		self::OPS_NOT_PARSE_FILES => [],
 	];
