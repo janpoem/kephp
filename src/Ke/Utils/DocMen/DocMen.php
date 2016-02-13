@@ -20,16 +20,20 @@ use Ke\Web\Web;
 class DocMen
 {
 
-	const CLS    = 'class';
-	const IMPL   = 'interface';
-	const TRAIT  = 'trait';
-	const NS     = 'namespace';
-	const FUNC   = 'function';
+	const PHP_INTERNAL = '&lt;PHP Internal&gt';
+
+	const DEFAULT_PRIORITY = 100;
+
+	const CLS = 'class';
+	const IMPL = 'interface';
+	const TRAIT = 'trait';
+	const NS = 'namespace';
+	const FUNC = 'function';
 	const METHOD = 'method';
-	const PROP   = 'property';
-	const CONST  = 'constant';
-	const FILE   = 'file';
-	const INDEX  = 'index';
+	const PROP = 'property';
+	const CONST = 'constant';
+	const FILE = 'file';
+	const INDEX = 'index';
 
 	private static $registerInstances = [];
 
@@ -288,6 +292,15 @@ class DocMen
 		return str_replace(['/', '\\', '::'], '_', $name);
 	}
 
+	public static function convertUnixPath(string $path = null): string
+	{
+		if (empty($path))
+			return '';
+		if (strpos($path, KE_DS_WIN) > 0)
+			return str_replace('\\', '/', $path);
+		return $path;
+	}
+
 	public function __construct(string $dir, string $sourceDir, string $routePath = null)
 	{
 		$this->docDir = $dir;
@@ -337,8 +350,7 @@ class DocMen
 			if ($scope === self::FILE)
 				$name = ext($name, $params['format'] ?? null);
 			$name = $this->filterName($scope, $name);
-		}
-		else {
+		} else {
 			$name = null;
 		}
 		return [$scope, $name];

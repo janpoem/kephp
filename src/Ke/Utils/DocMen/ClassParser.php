@@ -109,13 +109,12 @@ class ClassParser
 
 	public function parse(SourceScanner $scanner)
 	{
-		if (!$this->isExists())
-			return $this;
+//		if (!$this->isExists())
+//			return $this;
 		try {
 			// 这里还是有可能会出错的，所以还是要try ... catch
 			$ref = $this->getReflection();
-		}
-		catch (Throwable $thrown) {
+		} catch (Throwable $thrown) {
 			return $this;
 		}
 		// 基础信息解析
@@ -125,7 +124,7 @@ class ClassParser
 		$this->parent     = $this->getParentClass($ref);
 		$this->doc        = DocCommentParser::autoParse($ref->getDocComment(), $scanner, $this->scope, $this->name,
 			null);
-		$this->file       = $scanner->filterPath($ref->getFileName());
+		$this->file       = $scanner->filterFile($ref->getFileName());
 		$this->startLine  = $ref->getStartLine();
 		$this->endLine    = $ref->getEndLine();
 		$this->isAbstract = $ref->isAbstract();
@@ -146,9 +145,17 @@ class ClassParser
 			$this->impls[$name] = $name;
 		}
 
-//		$this->pushConstants($scanner, $ref);
+		$this->pushConstants($scanner, $ref);
 		$this->pushMethods($scanner, $ref);
+		$this->pushProperties($scanner, $ref);
 
+		if (!empty($this->sort)) {
+			array_multisort($this->sort, SORT_ASC, $this->packages);
+		}
+
+		$scanner->addClass($this);
+
+//		var_dump($this->packages);
 //
 //		$props = $ref->getProperties();
 //		foreach ($props as $prop) {
@@ -192,14 +199,18 @@ class ClassParser
 				'scope' => $scope,
 				'class' => $this->name,
 				'items' => [],
+				'count' => 0,
 			];
 		}
 		foreach ($constants as $name => $value) {
-			$this->packages[$key]['items'][$name] = [
-				'name'  => $name,
-				'value' => $value,
-				'type'  => gettype($value),
+			$data = [
+				'name'     => $name,
+				'fullName' => $this->name . '::' . $name,
+				'value'    => $value,
+				'type'     => gettype($value),
 			];
+			//
+			$this->packages[$key]['items'][] = $data;
 		}
 		ksort($this->packages[$key]['items']);
 		$this->sort[$key] = $position;
@@ -213,8 +224,66 @@ class ClassParser
 			return $this;
 		$scope    = DocMen::METHOD;
 		$position = $this->getScopeBasePosition($scope);
+		$keys     = [];
 		foreach ($methods as $name => $method) {
-			FuncParser::autoParse($method, $scanner);
+			$parser = FuncParser::autoParse($method, $scanner);
+			$name   = $parser->name;
+			$class  = $parser->class;
+			if ($class === $this->name)
+				$key = 'Methods';
+			else
+				$key = $class . '::Methods';
+			if (!isset($keys[$key]))
+				$keys[$key] = $key;
+			if (!isset($this->packages[$key])) {
+				$this->packages[$key] = [
+					'class' => $class,
+					'scope' => DocMen::METHOD,
+					'items' => [],
+					'count' => 0,
+				];
+				$this->sort[$key]     = $position;
+				$position *= 10;
+			}
+//			$this->packages[$key]['items'][$name] = $parser->export();
+			$this->packages[$key]['items'][] = get_object_vars($parser);
+			$this->packages[$key]['count'] += 1;
+		}
+		return $this;
+	}
+
+	public function pushProperties(SourceScanner $scanner, ReflectionClass $ref)
+	{
+		$props = $ref->getProperties();
+		if (empty($props))
+			return $this;
+		$scope    = DocMen::PROP;
+		$position = $this->getScopeBasePosition($scope);
+		$keys     = [];
+		foreach ($props as $prop) {
+			$data  = $this->parseProp($scanner, $prop);
+			$name  = $data['name'];
+			$class = $data['class'];
+			if ($class === $this->name)
+				$key = 'Properties';
+			else
+				$key = $class . '::Properties';
+			if (!isset($keys[$key]))
+				$keys[$key] = $key;
+			if (!isset($this->packages[$key])) {
+				$this->packages[$key] = [
+					'class' => $class,
+					'scope' => DocMen::PROP,
+					'items' => [],
+					'count' => 0,
+				];
+				$this->sort[$key]     = $position;
+				$position *= 10;
+			}
+			$this->packages[$key]['items'][] = $data;
+			$this->packages[$key]['count'] += 1;
+
+//			$scanner->addIndex(DocMen::PROP, $data['fullName']);
 		}
 		return $this;
 	}
@@ -222,21 +291,22 @@ class ClassParser
 	public function parseProp(SourceScanner $scanner, ReflectionProperty $prop, array $defaultProps = null)
 	{
 		$name   = $prop->getName();
+		$class  = $prop->getDeclaringClass()->getName();
 		$access = ReflectionProperty::IS_PUBLIC;
 		if ($prop->isPrivate())
 			$access = ReflectionProperty::IS_PRIVATE;
 		elseif ($prop->isProtected())
 			$access = ReflectionProperty::IS_PROTECTED;
-		$doc = $prop->getDocComment();
-		if (!empty($doc))
-			$doc = htmlentities($doc);
-		$this->props[$name] = [
-			'sourceClass' => $prop->getDeclaringClass()->getName(),
-			'isStatic'    => $prop->isStatic(),
-			'access'      => $access,
-			'isDefault'   => $prop->isDefault(),
-			'doc'         => $scanner->filterComment($doc),
-			'default'     => array_key_exists($name, $defaultProps) ? $defaultProps[$name] : null,
+		$doc = DocCommentParser::autoParse($prop->getDocComment(), $scanner, DocMen::PROP, $class, $name);
+		return [
+			'name'      => $name,
+			'fullName'  => $class . '::$' . $name,
+			'class'     => $class,
+			'isStatic'  => $prop->isStatic(),
+			'access'    => $access,
+			'isDefault' => $prop->isDefault(),
+			'doc'       => $doc,
+			//			'default'   => array_key_exists($name, $defaultProps) ? $defaultProps[$name] : null,
 		];
 	}
 

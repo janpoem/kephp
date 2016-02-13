@@ -10,6 +10,7 @@
 
 namespace Ke\Utils\DocMen;
 
+use Ke\Cli\Cmd\ScanSource;
 use ReflectionFunctionAbstract;
 use ReflectionMethod;
 use ReflectionFunction;
@@ -21,7 +22,13 @@ class FuncParser
 	/** @var ReflectionFunctionAbstract|ReflectionMethod|ReflectionFunction */
 	private $reflection;
 
+	protected $protectedParamNames = [
+		'salt' => true,
+	];
+
 	public $name = '';
+
+	public $fullName = '';
 
 	public $class = false;
 
@@ -53,11 +60,10 @@ class FuncParser
 
 	public $params = [];
 
-
-	public static function autoParse(ReflectionFunctionAbstract $ref, SourceScanner $scanner)
+	public static function autoParse(ReflectionFunctionAbstract $ref, SourceScanner $scanner): FuncParser
 	{
 		$parser = new static($ref);
-		$parser->parse($scanner);
+		return $parser->parse($scanner);
 	}
 
 	public function __construct(ReflectionFunctionAbstract $ref)
@@ -65,13 +71,74 @@ class FuncParser
 		$this->reflection = $ref;
 	}
 
+	public function export(): array
+	{
+		$data = [];
+		foreach ($this as $field => $value) {
+			if ($field === 'protectedParamNames' || $field === 'reflection')
+				continue;
+			$data[$field] = $value;
+		}
+		return $data;
+	}
+
 	public function parse(SourceScanner $scanner)
 	{
 		$ref = $this->reflection;
 
+		$returnType = $ref->getReturnType();
+		if (!empty($returnType))
+			$returnType = $returnType->__toString();
 
-		$args   = [];
+		$this->name       = $ref->getName();
+		$this->namespace  = $ref->getNamespaceName();
+		$this->file       = $scanner->filterFile($ref->getFileName());
+		$this->startLine  = $ref->getStartLine();
+		$this->endLine    = $ref->getEndLine();
+		$this->returnType = $returnType;
+		if ($ref instanceof ReflectionMethod) {
+			$access = ReflectionProperty::IS_PUBLIC;
+			if ($ref->isPrivate())
+				$access = ReflectionProperty::IS_PRIVATE;
+			elseif ($ref->isProtected())
+				$access = ReflectionProperty::IS_PROTECTED;
+			$this->access        = $access;
+			$this->class         = $ref->getDeclaringClass()->getName();
+			$this->fullName      = $this->class . '::' . $this->name;
+			$this->isStatic      = $ref->isStatic();
+			$this->isFinal       = $ref->isFinal();
+			$this->isAbstract    = $ref->isAbstract();
+			$this->isInternal    = $ref->isInternal();
+			$this->isConstructor = $ref->isConstructor();
+			$this->isDestructor  = $ref->isDestructor();
+			$this->doc           = DocCommentParser::autoParse($ref->getDocComment(), $scanner, DocMen::METHOD, $this->class, $this->name);
+		} else {
+			$this->access        = ReflectionProperty::IS_PUBLIC;
+			$this->fullName      = (empty($this->namespace) ? '' : $this->namespace . '\\') . $this->name;
+			$this->isStatic      = true;
+			$this->isFinal       = true;
+			$this->isAbstract    = false;
+			$this->isInternal    = $ref->isInternal();
+			$this->isConstructor = false;
+			$this->isDestructor  = false;
+			$this->doc           = DocCommentParser::autoParse($ref->getDocComment(), $scanner, DocMen::FUNC, null, $this->name);
+		}
+		$this->pushParams($scanner, $ref);
+
+		if ($ref instanceof ReflectionMethod) {
+			$scanner->addIndex(DocMen::METHOD, $this->fullName);
+		}
+		else {
+			$scanner->addFunction($this);
+		}
+		return $this;
+	}
+
+	protected function pushParams(SourceScanner $scanner, ReflectionFunctionAbstract $ref)
+	{
 		$params = $ref->getParameters();
+		if (empty($params))
+			return $this;
 		foreach ($params as $param) {
 			$name  = $param->getName();
 			$index = $param->getPosition();
@@ -84,10 +151,12 @@ class FuncParser
 
 			$isDefaultValue = $param->isDefaultValueAvailable();
 			$defaultValue   = $isDefaultValue ? $param->getDefaultValue() : null;
-//			$isDefaultConst = $param->isDefaultValueConstant();
-//			$defaultConst = $isDefaultConst ? $param->getDefaultValueConstantName() : null;
-
-			$args[$index] = [
+			if (isset($this->protectedParamNames[$name])) {
+				$newValue = null;
+				settype($newValue, gettype($defaultValue));
+				$defaultValue = $newValue;
+			}
+			$this->params[$index] = [
 				'name'             => $name,
 				'class'            => $class,
 				'type'             => $type,
@@ -99,48 +168,9 @@ class FuncParser
 				'canBePassByValue' => $param->canBePassedByValue(),
 				'isReference'      => $param->isPassedByReference(),
 				'defaultValue'     => $defaultValue,
-				//				'defaultConst'     => $defaultConst,
 			];
 		}
 
-		$returnType = $ref->getReturnType();
-		if (!empty($returnType))
-			$returnType = $returnType->__toString();
-
-		$data = [
-			'name'          => $ref->getName(),
-			'namespace'     => $ref->getNamespaceName(),
-			'sourceClass'   => null,
-			'isStatic'      => true,
-			'isFinal'       => true,
-			'isAbstract'    => false,
-			'isConstructor' => false,
-			'isDestructor'  => false,
-			'isInternal'    => $ref->isInternal(),
-			'access'        => \ReflectionProperty::IS_PUBLIC,
-			'file'          => $scanner->filterPath($ref->getFileName()),
-			'args'          => $args,
-			'startLine'     => $ref->getStartLine(),
-			'endLine'       => $ref->getEndLine(),
-			'doc'           => $scanner->filterComment($ref->getDocComment()),
-			'returnType'    => $returnType,
-		];
-
-		if ($ref instanceof ReflectionMethod) {
-			$data['sourceClass'] = $ref->getDeclaringClass()->getName();
-			$access              = ReflectionProperty::IS_PUBLIC;
-			if ($ref->isPrivate())
-				$access = ReflectionProperty::IS_PRIVATE;
-			elseif ($ref->isProtected())
-				$access = ReflectionProperty::IS_PROTECTED;
-			$data['access']        = $access;
-			$data['isStatic']      = $ref->isStatic();
-			$data['isFinal']       = $ref->isFinal();
-			$data['isAbstract']    = $ref->isAbstract();
-			$data['isConstructor'] = $ref->isConstructor();
-			$data['isDestructor']  = $ref->isDestructor();
-		}
-
-		return $data;
+		return $this;
 	}
 }

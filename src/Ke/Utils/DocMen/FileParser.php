@@ -54,58 +54,16 @@ class FileParser
 	{
 		$this->getContent();
 		$this->parseNamespace($scanner);
-		$this->parseClasses($scanner);
 		$this->parseFunctions($scanner);
+		$this->parseClasses($scanner);
 	}
 
 	protected function parseNamespace(SourceScanner $scanner)
 	{
 		if (preg_match($this->regexNamespace, $this->content, $matches)) {
-			$this->namespace = trim($matches[1], KE_PATH_NOISE);
-			if (!empty($this->namespace))
-				$scanner->addNamespace($this->namespace);
-			else
-				$this->namespace = null;
+			$this->namespace = $scanner->addNamespace(trim($matches[1], KE_PATH_NOISE));
 		}
 		return $this;
-	}
-
-	protected function parseClasses(SourceScanner $scanner)
-	{
-		if (preg_match_all($this->regexClass, $this->content, $matches, PREG_SET_ORDER)) {
-			foreach ($matches as $match) {
-				$type = $match[1];
-				$class = $match[2];
-				if (!empty($this->namespace)) {
-					if (!empty($class)) {
-						$class = add_namespace($class, $this->namespace);
-					}
-				}
-				$clsParser = new ClassParser($class, $type);
-				$clsParser->parse($scanner);
-			}
-		}
-		return $this;
-	}
-
-	protected function parseImpls(string $impl = null)
-	{
-		if (empty($impl))
-			return null;
-		$result = [];
-		$split = explode(',', $impl);
-		foreach ($split as $item) {
-			$item = trim($item);
-			if (!empty($item)) {
-				if (!empty($this->namespace)) {
-					$item = add_namespace($item, $this->namespace);
-				}
-				$result[] = $item;
-			}
-		}
-		if (empty($result))
-			return null;
-		return $result;
 	}
 
 	protected function parseFunctions(SourceScanner $scanner)
@@ -117,60 +75,95 @@ class FileParser
 					require $this->path;
 				}
 				if (!isset($this->functions[$fn])) {
-					$parser = new FuncParser(new \ReflectionFunction($fn));
-					$this->functions[$fn] = $parser->parse($scanner);
+					FuncParser::autoParse(new \ReflectionFunction($fn), $scanner);
 				}
 			}
 		}
 		return $this;
 	}
 
-	protected function parseFunction(\ReflectionFunction $ref)
+	protected function parseClasses(SourceScanner $scanner)
 	{
-
-		$args = [];
-		$params = $ref->getParameters();
-		foreach ($params as $param) {
-			$name = $param->getName();
-			$index = $param->getPosition();
-			$class = $param->getClass();
-			if ($class)
-				$class = $class->getName();
-			$type = $param->getType();
-			if ($type)
-				$type = $type->__toString();
-
-			$isDefaultValue = $param->isDefaultValueAvailable();
-			$defaultValue = $isDefaultValue ? $param->getDefaultValue() : null;
-//			$isDefaultConst = $param->isDefaultValueConstant();
-//			$defaultConst = $isDefaultConst ? $param->getDefaultValueConstantName() : null;
-
-			$args[$index] = [
-				'name'             => $name,
-				'class'            => $class,
-				'type'             => $type,
-				'hasType'          => $param->hasType(),
-				'isArray'          => $param->isArray(),
-				'isCallable'       => $param->isCallable(),
-				'allowsNull'       => $param->allowsNull(),
-				'index'            => $index,
-				'canBePassByValue' => $param->canBePassedByValue(),
-				'isReference'      => $param->isPassedByReference(),
-				'defaultValue'     => $defaultValue,
-				//				'defaultConst'     => $defaultConst,
-			];
+		if (preg_match_all($this->regexClass, $this->content, $matches, PREG_SET_ORDER)) {
+			foreach ($matches as $match) {
+				$type = $match[1];
+				$class = $match[2];
+				$clsParser = new ClassParser(add_namespace($class, $this->namespace), $type);
+				$clsParser->parse($scanner);
+			}
 		}
-
-		return [
-			'name'      => $ref->getName(),
-			'namespace' => $ref->getNamespaceName(),
-			'file'      => $this->path,
-			'args'      => $args,
-			'startLine' => $ref->getStartLine(),
-			'endLine'   => $ref->getEndLine(),
-			'doc'       => htmlentities($ref->getDocComment()),
-		];
+		return $this;
 	}
+
+//
+//	protected function parseImpls(string $impl = null)
+//	{
+//		if (empty($impl))
+//			return null;
+//		$result = [];
+//		$split = explode(',', $impl);
+//		foreach ($split as $item) {
+//			$item = trim($item);
+//			if (!empty($item)) {
+//				if (!empty($this->namespace)) {
+//					$item = add_namespace($item, $this->namespace);
+//				}
+//				$result[] = $item;
+//			}
+//		}
+//		if (empty($result))
+//			return null;
+//		return $result;
+//	}
+//
+//
+//
+//	protected function parseFunction(\ReflectionFunction $ref)
+//	{
+//
+//		$args = [];
+//		$params = $ref->getParameters();
+//		foreach ($params as $param) {
+//			$name = $param->getName();
+//			$index = $param->getPosition();
+//			$class = $param->getClass();
+//			if ($class)
+//				$class = $class->getName();
+//			$type = $param->getType();
+//			if ($type)
+//				$type = $type->__toString();
+//
+//			$isDefaultValue = $param->isDefaultValueAvailable();
+//			$defaultValue = $isDefaultValue ? $param->getDefaultValue() : null;
+////			$isDefaultConst = $param->isDefaultValueConstant();
+////			$defaultConst = $isDefaultConst ? $param->getDefaultValueConstantName() : null;
+//
+//			$args[$index] = [
+//				'name'             => $name,
+//				'class'            => $class,
+//				'type'             => $type,
+//				'hasType'          => $param->hasType(),
+//				'isArray'          => $param->isArray(),
+//				'isCallable'       => $param->isCallable(),
+//				'allowsNull'       => $param->allowsNull(),
+//				'index'            => $index,
+//				'canBePassByValue' => $param->canBePassedByValue(),
+//				'isReference'      => $param->isPassedByReference(),
+//				'defaultValue'     => $defaultValue,
+//				//				'defaultConst'     => $defaultConst,
+//			];
+//		}
+//
+//		return [
+//			'name'      => $ref->getName(),
+//			'namespace' => $ref->getNamespaceName(),
+//			'file'      => $this->path,
+//			'args'      => $args,
+//			'startLine' => $ref->getStartLine(),
+//			'endLine'   => $ref->getEndLine(),
+//			'doc'       => htmlentities($ref->getDocComment()),
+//		];
+//	}
 
 	public function getNamespace()
 	{

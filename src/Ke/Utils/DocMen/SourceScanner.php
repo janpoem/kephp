@@ -16,99 +16,71 @@ use DirectoryIterator;
 class SourceScanner
 {
 
+
 	protected $source;
-
-	private $reversionSource = '';
-
 	protected $export;
 
-	protected $externalFiles = [];
+	protected $dirs = [];
 
 	protected $files = [];
+	protected $_files = [];
+	protected $_filesSort = [
+		'priority' => [],
+		'external' => [],
+		'depth'    => [],
+		'name'     => [],
+	];
+	protected $fileExtPriorities = [
+		'php'   => 1,
+		'js'    => 5,
+		'phtml' => 10,
+		'html'  => 20,
+	];
+
+	protected $indexes = [];
+
+	protected $data = [];
 
 	protected $namespaces = [];
 
-	protected $classes = [];
-
 	protected $functions = [];
 
-	protected $comments = [];
+	protected $classes = [];
 
-	protected $data = [];
+	protected $classAliases = [];
 
 	public function __construct(string $dir, string $export)
 	{
 		$this->source = realpath($dir);
-		$this->reversionSource = str_replace('\\', '/', $this->source);
 		if (empty($this->source) || !is_dir($this->source))
-			throw new \Error("Please input a valid directory!");
+			throw new \Error("Please input a valid source directory!");
 		if (empty($export))
-			throw new \Error('Please input the export dir!');
+			throw new \Error('Export directory can not be empty!');
 		$this->export = $export;
 		if (!is_dir($this->export))
 			mkdir($this->export, 0755, true);
-		$this->export = realpath($this->export);
+		$this->source = $this->addDir($this->source);
+		$this->export = DocMen::convertUnixPath($this->export);
 	}
 
 	public function start()
 	{
 		$this->entry(new DirectoryIterator($this->source));
-		return $this;
-	}
-
-	public function export()
-	{
-		file_put_contents(predir($this->getMainDataFile()),
-			"<?php\r\nreturn " . var_export($this->getMainData(), true) . ";\r\n");
-		file_put_contents(predir($this->getCommentFile()),
-			"<?php\r\nreturn " . var_export($this->comments, true) . ";\r\n");
-		$this->writeData();
+		$this->sort();
 		return $this;
 	}
 
 	private function sort()
 	{
-		ksort($this->files, SORT_STRING);
-		ksort($this->namespaces, SORT_STRING);
-		ksort($this->classes, SORT_STRING);
-		ksort($this->functions, SORT_STRING);
-	}
-
-	public function getMainData()
-	{
-		$this->sort();
-		return [
-			'source'     => $this->source,
-			'export'     => $this->export,
-			'files'      => $this->files,
-			'namespaces' => $this->namespaces,
-			'classes'    => $this->classes,
-			'functions'  => $this->functions,
-		];
-	}
-
-	public function getCommentFile()
-	{
-		return $this->export . DS . 'comment.php';
-	}
-
-	public function getHashDataFile(string $hash)
-	{
-		return $this->export . DS . $hash . '.php';
-	}
-
-	private function writeData()
-	{
-		foreach ($this->data as $hash => $data) {
-			$path = $this->getHashDataFile($hash);
-			file_put_contents(predir($path),
-				"<?php\r\nreturn " . var_export($data, true) . ";\r\n");
-		}
-	}
-
-	public function getMainDataFile()
-	{
-		return $this->export . DS . 'main.php';
+		// 文件排序
+		array_multisort(
+			$this->_filesSort['priority'], SORT_ASC | SORT_NUMERIC,
+			$this->_filesSort['external'], SORT_DESC | SORT_NUMERIC,
+			$this->_filesSort['depth'], SORT_ASC | SORT_NUMERIC,
+			$this->_filesSort['name'], SORT_ASC | SORT_STRING,
+			$this->files);
+		ksort($this->namespaces, SORT_ASC | SORT_STRING);
+		ksort($this->classes, SORT_ASC | SORT_STRING);
 	}
 
 	public function entry(DirectoryIterator $dir)
@@ -128,171 +100,164 @@ class SourceScanner
 	public function isParseFile(string $path)
 	{
 		return (preg_match('/\.php$/', $path) &&
-		        !preg_match('/[\\\\\/]classes\.php$/', $path) &&
-		        !preg_match('/[\\\\\/]refs\.php$/', $path));
+			!preg_match('/[\\\\\/]classes\.php$/', $path) &&
+			!preg_match('/[\\\\\/]refs\.php$/', $path));
 	}
 
 	public function parseFile(string $path)
 	{
-		$this->addFile($path);
+		$fileData = $this->filterFile($path);
+		if ($fileData !== false && $this->isParseFile($path)) {
+			$fileParser = new FileParser($path);
+			$fileParser->parse($this);
 
-		if ($this->isParseFile($path)) {
-			$fp = new FileParser($path);
-			$fp->parse($this);
+//			$fns = $fp->getFunctions();
+//			if (!empty($fns)) {
+//				foreach ($fns as $name => $fn) {
+//					$this->addFunction($fn['namespace'], $name, $fn);
+//				}
+//			}
+		}
+		return $this;
+	}
 
-			$fns = $fp->getFunctions();
-			if (!empty($fns)) {
-				foreach ($fns as $name => $fn) {
-					$this->addFunction($fn['namespace'], $name, $fn);
+	public function addDir(string $dir)
+	{
+		$dir = DocMen::convertUnixPath($dir);
+		if (in_array($dir, $this->dirs) === false) {
+			$this->dirs[] = $dir;
+		}
+		return $dir;
+	}
+
+	public function getDirIndex(string $dir)
+	{
+		return array_search($dir, $this->dirs);
+	}
+
+	public function getDir(int $index)
+	{
+		return $this->dirs[$index] ?? false;
+	}
+
+	public function getFilePriority(string $file): int
+	{
+		if (empty($file))
+			return -1;
+		$ext = trim(strtolower(strrchr($file, '.')), '. ');
+		return $this->fileExtPriorities[$ext] ?? DocMen::DEFAULT_PRIORITY;
+	}
+
+	public function filterFile(string $file = null)
+	{
+		$file = DocMen::convertUnixPath($file);
+		if (!isset($this->_files[$file])) {
+			$isFile = is_file($file) && is_readable($file);
+			$dir    = $this->source;
+			$base   = $dir . '/';
+			if (!$isFile) {
+				// 空文件，将视作为php internal
+				if (empty($file)) {
+					$dir      = $this->addDir('');
+					$path     = '';
+					$priority = 0;
+				} else {
+					return false;
+				}
+			} else {
+				if (strpos($file, $base) === 0) {
+					$path = substr($file, strlen($base));
+				} else {
+					$dir = compare_path($this->source, $file);
+					if (empty($dir)) {
+						$dir  = $this->addDir(dirname($file));
+						$path = basename($file);
+					} else {
+						$dir  = $this->addDir($dir);
+						$path = substr($file, strlen($dir . '/'));
+					}
 				}
 			}
-		}
-		return $this;
-	}
-
-
-	public function addFile(string $fullPath, array $data = null)
-	{
-		$savePath = $this->filterPath($fullPath);
-		$isExternal = false;
-		$dir = $this->reversionSource;
-		$path = $savePath;
-		if (isset($this->externalFiles[$savePath])) {
-			$isExternal = true;
-			$dir = $this->externalFiles[$savePath]['dir'];
-			$path = $this->externalFiles[$savePath]['path'];
-//			$savePath = ;
-		}
-		if (!isset($this->files[$savePath])) {
-			$this->files[$savePath] = [
-				'name'       => $savePath,
-				//				'atime'    => fileatime($fullPath),
-				//				'ctime'    => filectime($fullPath),
-				//				'mtime'    => filemtime($fullPath),
-				'clsCount'   => 0,
-				'fnCount'    => 0,
-				'fn'         => [],
-				'cls'        => [],
-				'dir'        => $dir,
-				'path'       => $path,
-				'isExternal' => $isExternal,
+			$key  = $path;
+			$id   = $this->getDirIndex($dir);
+			$data = [
+				'isFile' => is_file($file),
+				'dir'    => $id,
+				'path'   => $path,
 			];
-			if (!empty($data))
-				$this->files[$savePath] = array_merge($this->files[$savePath], $data);
+			// 写入基础数据
+			$this->_files[$file] = $this->_files[$path] = $key;
+			$this->files[$key]   = $data;
+			// 写入排序数据
+			$this->_filesSort['priority'][$path] = $this->getFilePriority($path);
+			$this->_filesSort['external'][$path] = $id;
+			$this->_filesSort['depth'][$path]    = count(explode('/', $path));
+			$this->_filesSort['name'][$path]     = $path;
+			return $data;
 		}
-		return $this;
+		$index = $this->_files[$file];
+		return $this->files[$index];
 	}
 
-	public function addExternalFile(string $path)
-	{
-		if (!isset($this->externalFiles[$path])) {
-			$same = compare_path($this->reversionSource, $path);
-			if (!empty($same)) {
-				$check = $same . '/';
-				$cutPath = substr($path, strlen($check));
-				$rename = 'External/' . $cutPath;
-				$this->externalFiles[$path] = $this->externalFiles[$rename] = [
-					'dir'  => $same,
-					'path' => $cutPath,
-					'name' => $rename,
-				];
-			}
-
-		}
-		return $this;
-	}
-
-	public function filterPath(string $path)
-	{
-		if (strpos($path, '\\') !== false)
-			$path = str_replace('\\', '/', $path);
-		if (isset($this->files[$path]))
-			return $path;
-		elseif (isset($this->externalFiles[$path]))
-			return $this->externalFiles[$path]['name'];
-		$check = $this->reversionSource . '/';
-		if (strpos($path, $check) === 0) {
-			$path = substr($path, strlen($check));
-		}
-		elseif (is_file($path)) {
-			$this->addExternalFile($path);
-			$path = $this->externalFiles[$path]['name'];
-		}
-		return $path;
-	}
-
-	public function getFileData(string $path)
-	{
-		$savePath = $this->filterPath($path);
-		return $this->files[$savePath] ?? false;
-	}
-
-	public function setFileData(string $path, array $data = null)
-	{
-		$savePath = $this->filterPath($path);
-		if (!isset($this->files[$savePath])) {
-			$this->addFile($path, $data);
-		}
-		elseif (!empty($data)) {
-			$this->files[$savePath] = array_merge($this->files[$savePath], $data);
-		}
-		return $this;
-	}
-
-	public function addNamespace(string $namespace, array $data = null)
+	public function addNamespace(string $namespace)
 	{
 		if (!isset($this->namespaces[$namespace])) {
-			$hash = md5($namespace);
-			$this->namespaces[$namespace] = [
-				'name'     => $namespace,
-				'hash'     => $hash,
-				'clsCount' => 0,
-				'fnCount'  => 0,
-			];
-			if (!empty($data))
-				$this->namespaces[$namespace] = array_merge($this->namespaces[$namespace], $data);
+			$this->namespaces[$namespace] = $this->namespaceHash($namespace);
+//			$this->addIndex(DocMen::NS, $namespace);
 		}
-		return $this;
+		return $namespace;
 	}
 
-	public function setNamespaceData(string $namespace, array $data = null)
+	public function namespaceHash(string $namespace): string
 	{
-		if (!isset($this->namespaces[$namespace]))
-			$this->addNamespace($namespace, $data);
-		elseif (!empty($data))
-			$this->namespaces[$namespace] = array_merge($this->namespaces[$namespace], $data);
-		return $this;
+		return hash('crc32b', $namespace);
 	}
 
-	public function addClass(string $class, ClassParser $parser)
+	public function addFunction(FuncParser $parser)
 	{
-		$namespace = $parser->namespace;
-		$hash = md5($namespace);
-		$className = $parser->className;
-		$export = get_object_vars($parser);
-		$export['hash'] = $hash;
+		$ns   = $parser->namespace;
+		$name = $parser->name;
+		$hash = $this->namespaceHash($ns);
 		if (!isset($this->data[$hash])) {
 			$this->data[$hash] = [
 				'cls' => [],
 				'fn'  => [],
 			];
 		}
-		if (!isset($this->data[$hash]['cls'][$className])) {
-			// 添加namespace
-			$this->addNamespace($namespace);
-			$this->namespaces[$parser->namespace]['clsCount'] += 1;
-			// 添加file
-			$this->addFile($parser->file);
-			$file = $this->filterPath($parser->file);
-			$this->files[$file]['clsCount'] += 1;
+		if (!isset($this->data[$hash]['fn'][$name])) {
+			$this->addNamespace($ns);
+//			$this->filterFile($parser->file);
+			$this->data[$hash]['fn'][$name] = get_object_vars($parser);
 
-			$this->data[$hash]['cls'][$className] = $export;
-			$this->files[$file]['cls'][$className] = $hash;
-
+			$this->addIndex(DocMen::FUNC, $parser->fullName);
 		}
+		if (!isset($this->functions[$name])) {
+			$this->functions[$name] = $hash;
+		}
+		return $this;
+	}
 
-		if (!isset($this->classes[$class])) {
-			$this->classes[$class] = $hash;
+	public function addClass(ClassParser $parser)
+	{
+		$ns   = $parser->namespace;
+		$name = $parser->name;
+		$hash = $this->namespaceHash($ns);
+		if (!isset($this->data[$hash])) {
+			$this->data[$hash] = [
+				'cls' => [],
+				'fn'  => [],
+			];
+		}
+		if (!isset($this->data[$hash]['cls'][$name])) {
+			$this->addNamespace($ns);
+//			$this->filterFile($parser->file);
+			$this->data[$hash]['cls'][$name] = get_object_vars($parser);
+
+			$this->aliasClass($parser->name, $parser->shortName);
+			$this->addIndex(DocMen::CLS, $parser->name);
+		}
+		if (!isset($this->classes[$name])) {
+			$this->classes[$name] = $hash;
 		}
 
 		// 解析parent class
@@ -317,48 +282,25 @@ class SourceScanner
 		return $this;
 	}
 
-	public function addFunction(string $namespace = null, string $func, array $data)
+	public function aliasClass(string $fullName, string $shortName)
 	{
-		$hash = md5($namespace);
-
-		if (!isset($this->data[$hash])) {
-			$this->data[$hash] = [
-				'cls' => [],
-				'fn'  => [],
-			];
-		}
-		if (!isset($this->data[$hash]['fn'][$func])) {
-			$this->addNamespace($namespace);
-			$file = $this->filterPath($data['file']);
-			// 添加file
-			$this->addFile($data['file']);
-			$this->files[$file]['fnCount'] += 1;
-			$this->files[$file]['fn'][$func] = $hash;
-
-			$this->data[$hash]['fn'][$func] = $data;
-			$this->namespaces[$namespace]['fnCount'] += 1;
-		}
-		if (!isset($this->functions[$func])) {
-			$this->functions[$func] = $hash;
-		}
+		if (!empty($fullName) && !isset($this->classAliases[$fullName]))
+			$this->classAliases[$fullName] = $fullName;
+		if (!empty($shortName) && $shortName !== $fullName && !isset($this->classAliases[$shortName]))
+			$this->classAliases[$shortName] = $fullName;
 		return $this;
 	}
 
-	public function filterComment($comment)
+	public function addIndex(string $scope, string $fullName)
 	{
-		if (empty($comment) || !is_string($comment))
-			return null;
-		$comment = trim($comment);
-		if (empty($comment))
-			return null;
-		$hash = md5($comment);
-		if (!isset($this->comments[$hash])) {
-			$parser = new CommentDocParser($comment);
-			$this->comments[$hash] = get_object_vars($parser);
+		if (!empty($fullName) && !isset($this->indexes[$fullName])) {
+			$this->indexes[$fullName] = [
+				DocMen::filterScope($scope),
+				$fullName,
+			];
 		}
-		return $hash;
+		return $this;
 	}
-
 
 	public function getFiles()
 	{
@@ -379,4 +321,40 @@ class SourceScanner
 	{
 		return $this->functions;
 	}
+
+	public function export()
+	{
+		$this->writeFile($this->getDataFile('main'), $this->getMainData());
+		$this->writeFile($this->getDataFile('index'), $this->indexes);
+		foreach ($this->data as $hash => $data) {
+			$this->writeFile($this->getDataFile($hash), $data);
+		}
+		return $this;
+	}
+
+	public function getDataFile(string $fileName)
+	{
+		return $this->export . '/' . $fileName . '.php';
+	}
+
+	public function writeFile($file, array $data)
+	{
+		file_put_contents(predir($file), "<?php\r\nreturn " . var_export($data, true) . ";\r\n");
+		return $this;
+	}
+
+	public function getMainData()
+	{
+		return [
+			'source'     => $this->source,
+			'export'     => $this->export,
+			'dirs'       => $this->dirs,
+			'files'      => $this->files,
+			'namespaces' => $this->namespaces,
+			'classes'    => $this->classes,
+			'aliases'    => $this->classAliases,
+			'functions'  => $this->functions,
+		];
+	}
+
 }
