@@ -165,9 +165,9 @@ class DocCommentParser
 	public function splitComment()
 	{
 		$header = '';
-		$detail = preg_replace_callback('#^([^\r\n]+)#i', function (array $matches) use (&$title) {
-			$title = $matches[1];
-//			return '';
+		$detail = preg_replace_callback('#^([^\r\n]+)#i', function (array $matches) use (&$header) {
+			$header = $matches[1];
+			return '';
 		}, $this->comment);
 		return [$header, trim($detail)];
 	}

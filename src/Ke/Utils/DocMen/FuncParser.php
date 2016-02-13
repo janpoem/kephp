@@ -90,9 +90,12 @@ class FuncParser
 		if (!empty($returnType))
 			$returnType = $returnType->__toString();
 
+		$file = $scanner->filterFile($ref->getFileName());
+		$filePath = $file !== false ? $file['path'] : '';
+
 		$this->name       = $ref->getName();
 		$this->namespace  = $ref->getNamespaceName();
-		$this->file       = $scanner->filterFile($ref->getFileName());
+		$this->file       = $filePath;
 		$this->startLine  = $ref->getStartLine();
 		$this->endLine    = $ref->getEndLine();
 		$this->returnType = $returnType;

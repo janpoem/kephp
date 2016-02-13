@@ -55,8 +55,8 @@ $http = $web->http;
 		}
 
 		.source-file {
-			margin-top: -15px;
-			margin-bottom: 10px;
+			margin-top: 15px;
+			margin-bottom: 5px;
 			color: #a0a0a0;
 		}
 
@@ -95,11 +95,11 @@ $http = $web->http;
 			padding: 1.5em 0;
 			color: #909090;
 		}
-		.comment-doc {
+		.doc-comment {
 			font-size: 120%;
 		}
-		.comment-doc p {
-			margin: 1em 0;
+		.doc-comment p {
+			margin: 1.3em 0;
 		}
 		.static-sticky {
 			background-color: #fff;
@@ -156,7 +156,7 @@ $http = $web->http;
 			}
 		});
 
-		$('.comment-doc').each(function (i, item) {
+		$('.doc-comment').each(function (i, item) {
 			$(item).html(marked($(item).text()));
 		});
 

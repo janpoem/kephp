@@ -20,8 +20,8 @@ namespace Ke;
  * 本类经过精心的调整，可支持任意的继承扩展，如/Ke/Web/Params则是继承自该类而实现
  *
  * @package Ke\Core
- * @link    https://github.com/php-fig/http-message/blob/master/src/UriInterface.php (PSR-7 UriInterface规范)
- * @link    http://tools.ietf.org/html/rfc3986 (URI规范)
+ * @link    https://github.com/php-fig/http-message/blob/master/src/UriInterface.php
+ * @link    http://tools.ietf.org/html/rfc3986
  * @property string $scheme
  * @property string $host
  * @property string $user
@@ -98,8 +98,8 @@ class Uri
 			return '';
 		if (!isset(self::$filterPaths[$path])) {
 			$isAbsolute = false;
-			$split = explode('/', $path);
-			$segments = [];
+			$split      = explode('/', $path);
+			$segments   = [];
 			foreach ($split as $index => $segment) {
 				if (empty($segment) || $segment === KE_DS_UNIX || $segment === KE_DS_WIN) {
 					if ($index === 0)
@@ -162,8 +162,8 @@ class Uri
 		if (self::$isPrepare === true)
 			return false;
 		self::$isPrepare = true;
-		$ptcVer = null;
-		$query = [];
+		$ptcVer          = null;
+		$query           = [];
 		if (PHP_SAPI === 'cli') {
 			$_SERVER['REQUEST_SCHEME'] = 'cli';
 			if (empty($_SERVER['SERVER_NAME']))
@@ -174,7 +174,7 @@ class Uri
 			$path = substr(KE_SCRIPT_PATH, strlen(KE_APP_ROOT));
 			if (KE_IS_WIN)
 				$path = str_replace('\\', '/', $path);
-			$path = '/' . KE_APP_DIR . $path;
+			$path                   = '/' . KE_APP_DIR . $path;
 			$_SERVER['REQUEST_URI'] = $path;
 		} else {
 			$ptcVer = substr($_SERVER['SERVER_PROTOCOL'], strpos($_SERVER['SERVER_PROTOCOL'], '/') + 1);
@@ -199,7 +199,7 @@ class Uri
 			if (!empty($parse['query']))
 				parse_str($parse['query'], $query);
 			$_SERVER['QUERY_STRING'] = empty($query) ? '' : http_build_query($query, null, '&', PHP_QUERY_RFC3986);
-			$_SERVER['REQUEST_URI'] = $path . (empty($_SERVER['QUERY_STRING']) ? '' : '?' . $_SERVER['QUERY_STRING']);
+			$_SERVER['REQUEST_URI']  = $path . (empty($_SERVER['QUERY_STRING']) ? '' : '?' . $_SERVER['QUERY_STRING']);
 			// 这个只在HTTP模式有用，这个SCRIPT_NAME可能会出现/aa///bb，但一定不会出现/../aabb/./
 			// 所以这里只亮小路径过滤，而不用大路径过滤方法
 			// 而且他也是HTTP的路径，也符合
@@ -270,8 +270,7 @@ class Uri
 		if (isset($data['query'])) {
 			$this->setQuery($data['query'], $mergeQuery);
 			unset($data['query']);
-		}
-		elseif (!empty($mergeQuery)) {
+		} elseif (!empty($mergeQuery)) {
 			$this->setQuery($mergeQuery);
 		}
 
@@ -333,7 +332,7 @@ class Uri
 
 	public function cloneTo(Uri $clone)
 	{
-		$clone->data = array_intersect_key($this->data, $clone->data);
+		$clone->data      = array_intersect_key($this->data, $clone->data);
 		$clone->queryData = $this->queryData;
 		return $clone;
 	}
@@ -381,7 +380,7 @@ class Uri
 	{
 		if ($host !== $this->data['host']) {
 			// 过滤 //www.163.com/
-			$host = strtolower(trim($host, '/'));
+			$host   = strtolower(trim($host, '/'));
 			$scheme = null;
 			if (($index = strpos($host, '//')) !== false) {
 				// http://localhost => http, localhost
@@ -459,14 +458,14 @@ class Uri
 		$query = $fragment = null;
 		if (($index = strpos($path, '#')) !== false) {
 			$fragment = substr($path, $index + 1);
-			$path = substr($path, 0, $index);
+			$path     = substr($path, 0, $index);
 		}
 		if (($index = strpos($path, '?')) !== false) {
 			$query = substr($path, $index + 1);
-			$path = substr($path, 0, $index);
+			$path  = substr($path, 0, $index);
 		}
 		// 判断路径是否为绝对路径
-		$path = static::filterPath($path);
+		$path       = static::filterPath($path);
 		$isAbsolute = isset($path[0]) && $path[0] === '/';
 		if (!$isAbsolute) {
 			if (!empty($path)) {
@@ -499,7 +498,7 @@ class Uri
 
 	public function setQuery($query, $mergeQuery = false)
 	{
-		$isMerge = false;
+		$isMerge   = false;
 		$mergeData = [];
 		if ($mergeQuery === true || $mergeQuery === false)
 			$isMerge = $mergeQuery;

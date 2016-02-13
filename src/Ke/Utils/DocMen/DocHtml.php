@@ -26,16 +26,15 @@ class DocHtml extends Html
 	public $tagScopeName   = 'span';
 	public $classScopeName = 'scope-name';
 
-	public $tagClassMiscMethods     = 'span';
-	public $tagClassMiscProps       = 'span';
-	public $tagClassMiscTraits      = 'span';
-	public $tagClassMiscImpls       = 'span';
-	public $tagClassMiscConstants   = 'span';
-	public $classClassMiscMethods   = 'ui label teal';
-	public $classClassMiscProps     = 'ui label green';
-	public $classClassMiscTraits    = 'ui label brown';
-	public $classClassMiscImpls     = 'ui label pink';
-	public $classClassMiscConstants = 'ui label orange';
+	public $tagClassMisc                  = 'div';
+	public $classClassMiscMethodsCount    = 'ui label basic teal';
+	public $classClassMiscPropertiesCount = 'ui label basic green';
+	public $classClassMiscTraitsCount     = 'ui label basic brown';
+	public $classClassMiscImplsCount      = 'ui label basic pink';
+	public $classClassMiscConstantsCount  = 'ui label basic orange';
+
+	public $tagClassMiscWrap   = 'div';
+	public $classClassMiscWrap = 'ui labels';
 
 	public $tagVar       = 'var';
 	public $tagVarName   = 'span';
@@ -56,8 +55,8 @@ class DocHtml extends Html
 
 	public $equalSpan = '<span class="func-args-equal">=</span>';
 
-	public $tagCommentDoc   = 'div';
-	public $classCommentDoc = 'comment-doc';
+	public $tagDocComment   = 'div';
+	public $classDocComment = 'doc-comment';
 
 
 	public function setDoc(DocMen $docMen)
@@ -88,16 +87,11 @@ class DocHtml extends Html
 		return $this->link($this->getDoc()->getShowName($scope, $name), $this->scopeUri($scope, $name, $query), $attr);
 	}
 
-	public function parent($parent)
-	{
-
-	}
-
 	public function scopeName($scope, string $name, $attr = null, $tag = 'scope-name')
 	{
-		$doc = $this->getDoc();
+		$doc   = $this->getDoc();
 		$scope = $doc->filterScope($scope);
-		$name = $doc->getShowName($scope, $name);
+		$name  = $doc->getShowName($scope, $name);
 		if (!is_array($attr))
 			$attr = $this->attr2array($attr);
 
@@ -108,24 +102,21 @@ class DocHtml extends Html
 				if (!empty($attr['parentLink'])) {
 					$link = $this->scopeLink('class', $attr['parent'], $attr['parentLink']);
 					$content .= "<small> extends {$link}</small>";
-				}
-				else {
+				} else {
 					$content .= "<small> extends {$attr['parent']}</small>";
 				}
 				unset($attr['parent'], $attr['parentLink']);
 			}
-		}
-		elseif ($scope === DocMen::METHOD) {
+		} elseif ($scope === DocMen::METHOD) {
 			$prefix = ($attr['data-access'] ?? 'public') . ' ';
 			if ($attr['data-static'] === '1')
 				$prefix = $prefix . 'static ';
 			$content = "<small>{$prefix}</small>{$name}";
-		}
-		elseif ($scope === DocMen::PROP) {
+		} elseif ($scope === DocMen::PROP) {
 			$prefix = ($attr['data-access'] ?? 'public') . ' ';
 			if ($attr['data-static'] === '1')
 				$prefix = $prefix . 'static ';
-			$name = '$' . $name;
+			$name    = '$' . $name;
 			$content = "<small>{$prefix}</small>{$name}";
 		}
 
@@ -139,9 +130,9 @@ class DocHtml extends Html
 
 	public function scopeLabel($scope, string $name, $attr = null)
 	{
-		$doc = $this->getDoc();
+		$doc   = $this->getDoc();
 		$scope = $doc->filterScope($scope);
-		$name = $doc->getShowName($scope, $name);
+		$name  = $doc->getShowName($scope, $name);
 		if (!is_array($attr))
 			$attr = $this->attr2array($attr);
 
@@ -161,11 +152,11 @@ class DocHtml extends Html
 	public function getClassMiscFields() :array
 	{
 		return [
-			'methods'   => 'Methods',
-			'props'     => 'Properties',
-			'impls'     => 'Interfaces',
-			'constants' => 'Constants',
-			'traits'    => 'Traits',
+			'methodsCount'    => 'Methods',
+			'propertiesCount' => 'Properties',
+			'implsCount'      => 'Interfaces',
+			'constantsCount'  => 'Constants',
+			'traitsCount'     => 'Traits',
 		];
 	}
 
@@ -186,35 +177,34 @@ class DocHtml extends Html
 		if (!is_array($attr))
 			$attr = $this->attr2array($attr);
 		$misc = '';
+		$address = '';
 		if (!empty($data['file'])) {
-			$file = $this->getDoc()->getShowName('file', $data['file']);
+			$file     = $this->getDoc()->getShowName('file', $data['file']);
 			$fileLink = $this->fileUri($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null);
 			if (isset($data['startLine']) && isset($data['endLine'])) {
 				$file .= " <small>[{$data['startLine']}:{$data['endLine']}]</small>";
 			}
-			$misc .= $this->tag('address', $this->link($file, $fileLink), 'source-file');
+			$address = $this->tag('address', $this->link($file, $fileLink), 'source-file');
+		} elseif ($data['isInternal']) {
+			$address = $this->tag('address', $this->scopeLink('file', ''), 'source-file');
 		}
-		elseif ($data['isInternal']) {
-			$misc .= $this->tag('address', $this->scopeLink('file', ''), 'source-file');
-		}
+
+		$items = '';
 		foreach ($this->getClassMiscFields() as $field => $name) {
-			if (empty($data[$field]) || !is_array($data[$field])) {
+			if (empty($data[$field])) {
 				continue;
-			}
-			else {
-				$count = count($data[$field]);
+			} else {
+				$count = $data[$field];
 			}
 			$inner = $name . ' <div class="detail">' . $count . '</div>';
-			$misc .= $this->tag('class-misc-' . $field, $inner, $attr);
+			$items .= $this->tag('ClassMisc:' . $field, $inner, $attr);
 		}
-		$attr['class'] = 'misc';
+		$misc .= $this->tag('ClassMiscWrap', $items, $attr);
 
-		$comment = '';
 		if (!empty($data['doc']))
-			$comment = $this->commentDoc($this->getDoc()->getComment($data['doc']));
+			$misc .= $this->docComment(DocMen::CLS, $data['doc']);
 
-
-		return $this->tag('div', $misc, $attr) . $comment;
+		return $misc . $address;
 	}
 
 	public function functionMisc(array $data, $attr = null): string
@@ -223,41 +213,143 @@ class DocHtml extends Html
 			$attr = $this->attr2array($attr);
 		$misc = '';
 		if (!empty($data['file'])) {
-			$file = $this->getDoc()->getShowName('file', $data['file']);
+			$file     = $this->getDoc()->getShowName('file', $data['file']);
 			$fileLink = $this->fileUri($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null);
 			if (isset($data['startLine']) && isset($data['endLine'])) {
 				$file .= " <small>[{$data['startLine']}:{$data['endLine']}]</small>";
 			}
 			$misc .= $this->tag('address', $this->link($file, $fileLink), 'source-file');
-		}
-		elseif (isset($data['isInternal']) && $data['isInternal']) {
+		} elseif (isset($data['isInternal']) && $data['isInternal']) {
 			$misc .= $this->tag('address', $this->scopeLink('file', ''), 'source-file');
 		}
 		$attr['class'] = 'misc';
 
 		$comment = '';
-		if (!empty($data['doc']))
-			$comment = $this->commentDoc($this->getDoc()->getComment($data['doc']));
+//		if (!empty($data['doc']))
+//			$comment = $this->commentDoc($this->getDoc()->getComment($data['doc']));
 
 		return $this->tag('div', $misc, $attr) . $comment;
 	}
 
-	public function commentDoc($comment)
+	public function docComment(string $scope, $comment)
 	{
-//		if (empty($comment))
-//			return '';
-//		$data = [
-//			(htmlentities($comment['comment']) ?? ''),
-//		];
-//		return $this->tag('comment-doc', implode('\r\n', $data));
+		$doc = [];
+		if (!empty($comment['header'])) {
+			$doc[] = '__' . htmlentities($comment['header']) . '__';
+		}
+		if (!empty($comment['detail'])) {
+			$doc[] = htmlentities($comment['detail']);
+		}
+		if ($scope === DocMen::CLS) {
+			if (!empty($comment['property'])) {
+				$doc[] = '__Public Properties__';
+				foreach ($comment['property'] as $item) {
+					$doc[] = '* `' . $item[0] . ' ' . $item[1] . ' ` ' . $item[2];
+				}
+			}
+		}
+		elseif ($scope === DocMen::FUNC || $scope === DocMen::METHOD) {
+			if (!empty($comment['param'])) {
+				$doc[] = '__Parameters__';
+				foreach ($comment['param'] as $item) {
+					$doc[] = '* `' . $item[0] . ' ' . $item[1] . ' ` ' . $item[2];
+				}
+			}
+			if (!empty($comment['return'])) {
+				$doc[] = '__Return__';
+				$doc[] = '* `' . $comment['return'][0] . ' ' . $comment['return'][1] . ' ` ' . $comment['return'][2];
+			}
+		}
+		if (!empty($comment['link'])) {
+			$doc[] = '__Reference Links__';
+			foreach ($comment['link'] as $item) {
+				$doc[] = '> [' . $item[0] . '](' . $item[0] . ')';
+			}
+		}
+		return $this->tag('DocComment', implode("\n\n", $doc));
+	}
+
+	public function functionBlock(array $data)
+	{
+		$address = '';
+		if (!empty($data['file'])) {
+			$file     = $this->getDoc()->getShowName('file', $data['file']);
+			$fileLink = $this->fileUri($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null);
+			if (isset($data['startLine']) && isset($data['endLine'])) {
+				$file .= " <small>[{$data['startLine']}:{$data['endLine']}]</small>";
+			}
+			$address = $this->tag('address', $this->link($file, $fileLink), 'source-file');
+		} elseif (isset($data['isInternal']) && $data['isInternal']) {
+			$address = $this->tag('address', $this->scopeLink('file', ''), 'source-file');
+		}
+		$args = $data['params'] ?? [];
+		$temp = [];
+		foreach ($args as $arg) {
+			$name  = '$' . $arg['name'];
+			$value = $arg['defaultValue'];
+			$type  = gettype($value);
+			if ($arg['isReference'])
+				$name = '&' . $name;
+			if ($value === true) {
+				$value = 'true';
+			} elseif ($value === false) {
+				$value = 'false';
+			} elseif ($value === null) {
+				$value = 'null';
+			} elseif ($type === KE_STR) {
+				if ($arg['name'] === 'salt') {
+					$value = "''";
+				} else {
+					$value = "'" . htmlentities($value) . "'";
+				}
+			}
+			if ($arg['hasType'])
+				$name = $arg['type'] . ' ' . $name;
+
+			if ($value === null && $arg['allowsNull'])
+				$name .= ' = ' . $type;
+			elseif ($value !== null) {
+				if (is_array($value))
+					$value = '[]';
+				$name .= ' = ' . (string)$value;
+			}
+			$temp[] = $name;
+		}
+		$return = '';
+		if ($data['returnType'] !== null) {
+			$return = ': ' . $data['returnType'];
+		}
+		$prefix = 'function';
+		if (!empty($data['class'])) {
+			$prefix = $this->getDoc()->filterAccess($data['access']);
+			if ($data['isStatic'])
+				$prefix .= ' static';
+		}
+
+		$functionName = $prefix . ' ' . $data['name'] . '(' . implode(', ', $temp) . ')' . $return;
+		if (strlen($functionName) > 100) {
+			$functionName = $prefix . ' ' . $data['name'] . "(\n\t" . implode(",\n\t", $temp) . ')' . $return;
+		}
+		$block = [
+			'```php',
+			$functionName,
+//			'{',
+//			'}',
+			'```',
+		];
+		$comment = '';
+		if (!empty($data['doc']))
+			$comment .= $this->docComment(DocMen::FUNC, $data['doc']);
+
+		return $this->tag('DocComment', implode("\n", $block)) . $comment . $address;
 	}
 
 	public function functionArgs(array $data)
 	{
 		$html = [];
-		$args = $data['args'] ?? [];
+		$args = $data['params'] ?? [];
 		foreach ($args as $arg) {
-			$name = $this->tag('var-name', '$' . $arg['name']);
+			$name         = $this->tag('var-name', '$' . $arg['name']);
 			$defaultValue = $arg['defaultValue'];
 			if ($arg['isReference'])
 				$name = '<i>&</i>' . $name;
@@ -265,15 +357,12 @@ class DocHtml extends Html
 			$valueType = gettype($defaultValue);
 			if ($defaultValue === true) {
 				$defaultValue = 'true';
-			}
-			elseif ($defaultValue === false) {
+			} elseif ($defaultValue === false) {
 				$defaultValue = 'false';
-			}
-			elseif ($valueType === KE_STR) {
+			} elseif ($valueType === KE_STR) {
 				if ($arg['name'] === 'salt') {
 					$defaultValue = "''";
-				}
-				else {
+				} else {
 					$defaultValue = "'" . htmlentities($defaultValue) . "'";
 				}
 			}
@@ -286,7 +375,7 @@ class DocHtml extends Html
 				if (is_array($defaultValue))
 					$defaultValue = '[]';
 				$name .= $this->equalSpan .
-				         $this->tag('var', (string)$defaultValue, $valueType);
+					$this->tag('var', (string)$defaultValue, $valueType);
 			}
 
 			$html[] = $name;
@@ -304,22 +393,21 @@ class DocHtml extends Html
 	public function showClassItem($class, string $type, $name, array $item, $attr = null, $tag = 'h3')
 	{
 		if ($type === DocMen::METHOD) {
-			$head = $this->scopeName('method', $name, [
-				'data-static' => $item['isStatic'] ? '1' : '0',
-				'data-access' => $this->getDoc()->filterAccess($item['access']),
-			]);
-			$head .= $this->functionArgs($item);
-			return $this->tag($tag, $head, $attr) . $this->functionMisc($item);
-		}
-		elseif ($type === DocMen::PROP) {
+			return $this->functionBlock($item);
+//			$head = $this->scopeName('method', $name, [
+//				'data-static' => $item['isStatic'] ? '1' : '0',
+//				'data-access' => $this->getDoc()->filterAccess($item['access']),
+//			]);
+//			$head .= $this->functionArgs($item);
+//			return $this->tag($tag, $head, $attr) . $this->functionMisc($item);
+		} elseif ($type === DocMen::PROP) {
 			$head = $this->scopeName(DocMen::PROP, $name, [
 				'data-static' => $item['isStatic'] ? '1' : '0',
 				'data-access' => $this->getDoc()->filterAccess($item['access']),
 			]);
 			return $this->tag($tag, $head, $attr) . $this->functionMisc($item);
-		}
-		elseif ($type === DocMen::CONST) {
-			$head = $this->scopeName(DocMen::CONST, $name);
+		} elseif ($type === DocMen::CONST) {
+			$head  = $this->scopeName(DocMen::CONST, $name);
 			$value = $this->equalSpan;
 			if ($item['type'] === KE_STR)
 				$item['value'] = "'" . htmlentities($item['value']) . "'";

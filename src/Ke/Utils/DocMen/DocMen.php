@@ -58,6 +58,8 @@ class DocMen
 
 	protected $export;
 
+	protected $dirs = [];
+
 	protected $files = [];
 
 	protected $namespaces = [];
@@ -216,10 +218,10 @@ class DocMen
 
 	public static function packetClassData(array $data): array
 	{
-		$className = $data['className'];
-		$packages = [];
-		$sort = [];
-		$position = 1;
+		$className = $data['name'];
+		$packages  = [];
+		$sort      = [];
+		$position  = 1;
 		foreach ($data['methods'] as $method) {
 			$sourceClass = $method['sourceClass'];
 			if ($sourceClass === $className)
@@ -233,7 +235,7 @@ class DocMen
 					'items' => [],
 					'count' => 0,
 				];
-				$sort[$key] = $position;
+				$sort[$key]     = $position;
 				$position *= 10;
 			}
 			$packages[$key]['items'][$method['name']] = $method;
@@ -253,22 +255,22 @@ class DocMen
 					'items' => [],
 					'count' => 0,
 				];
-				$sort[$key] = $position;
+				$sort[$key]     = $position;
 				$position *= 10;
 			}
 			$packages[$key]['items'][$name] = $prop;
 			$packages[$key]['count'] += 1;
 		}
 		if (!empty($data['constants'])) {
-			$key = 'Constants';
-			$position = 1000;
+			$key            = 'Constants';
+			$position       = 1000;
 			$packages[$key] = [
 				'class' => $data['className'],
 				'type'  => self::CONST,
 				'items' => $data['constants'],
 				'count' => count($data['constants']),
 			];
-			$sort[$key] = $position;
+			$sort[$key]     = $position;
 		}
 		array_multisort($sort, SORT_ASC, $packages);
 		return $packages;
@@ -343,9 +345,9 @@ class DocMen
 
 	public function filterParams(array $params)
 	{
-		$data = $params['data'] ?? [];
+		$data  = $params['data'] ?? [];
 		$scope = $this->filterScope($data['scope'] ?? null);
-		$name = $data['name'] ?? null;
+		$name  = $data['name'] ?? null;
 		if ($scope !== self::INDEX) {
 			if ($scope === self::FILE)
 				$name = ext($name, $params['format'] ?? null);
@@ -376,9 +378,9 @@ class DocMen
 		return $this->docDir . DS . $hash . '.php';
 	}
 
-	public function getCommentFile()
+	public function getIndexDataFile()
 	{
-		return $this->docDir . DS . 'comment.php';
+		return $this->docDir . DS . 'index.php';
 	}
 
 	public function getExportDir()
@@ -402,7 +404,7 @@ class DocMen
 			$file = $this->getLoadMainFile();
 			if (is_file($file)) {
 				$this->loadMainFile = $file;
-				$data = import($this->getLoadMainFile(), null, KE_IMPORT_ARRAY);
+				$data               = import($this->getLoadMainFile(), null, KE_IMPORT_ARRAY);
 				foreach ($data as $key => $value)
 					$this->{$key} = $value;
 			}
@@ -414,7 +416,7 @@ class DocMen
 	{
 		if ($this->loadComment === false) {
 			$this->loadComment = true;
-			$this->comments = import($this->getCommentFile(), null, KE_IMPORT_ARRAY);
+//			$this->comments    = import($this->getCommentFile(), null, KE_IMPORT_ARRAY);
 		}
 		return $this;
 	}
@@ -479,7 +481,7 @@ class DocMen
 	{
 		if (!isset($this->namespaces[$name]))
 			return false;
-		$hash = $this->namespaces[$name]['hash'];
+		$hash = $this->namespaces[$name];
 		return $this->loadHashData($hash);
 	}
 
@@ -487,7 +489,7 @@ class DocMen
 	{
 		if (!isset($this->classes[$name]))
 			return false;
-		$hash = $this->classes[$name];
+		$hash     = $this->classes[$name];
 		$hashData = $this->loadHashData($hash);
 		return $hashData['cls'][$name] ?? false;
 	}
@@ -497,8 +499,10 @@ class DocMen
 		if (!isset($this->files[$name]))
 			return false;
 		$data = $this->files[$name];
-		$path = $data['dir'] . '/' . $data['path'];
+		$dir = $this->dirs[$data['dir']] ?? '';
+		$path = $dir . '/' . $data['path'];
 		$path = realpath($path);
+		//
 		$data['source'] = '';
 		if ($path !== false && is_file($path)) {
 			$data['source'] = file_get_contents($path);
@@ -525,10 +529,10 @@ class DocMen
 
 	public function getComment($docHash)
 	{
-		if (empty($docHash))
-			return null;
-		if ($this->loadComment === false)
-			$this->loadComment();
-		return $this->comments[$docHash] ?? null;
+//		if (empty($docHash))
+//			return null;
+//		if ($this->loadComment === false)
+//			$this->loadComment();
+//		return $this->comments[$docHash] ?? null;
 	}
 }

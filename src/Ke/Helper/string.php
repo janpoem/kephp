@@ -42,7 +42,7 @@ if (!function_exists('hyphenate')) {
 }
 
 if (!function_exists('add_namespace')) {
-	function add_namespace(string $class, string $namespace, bool $isStrictCase = false, string $spr = '\\'): string
+	function add_namespace(string $class, string $namespace = null, bool $isStrictCase = false, string $spr = '\\'): string
 	{
 		$class = trim($class, KE_PATH_NOISE);
 		$namespace = trim($namespace, KE_PATH_NOISE);
@@ -55,7 +55,7 @@ if (!function_exists('add_namespace')) {
 }
 
 if (!function_exists('purge_namespace')) {
-	function purge_namespace(string $class, string $namespace, bool $isStrictCase = false): string
+	function purge_namespace(string $class, string $namespace = null, bool $isStrictCase = false): string
 	{
 		$class = trim($class, KE_PATH_NOISE);
 		$namespace = trim($namespace, KE_PATH_NOISE);

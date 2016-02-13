@@ -17,9 +17,9 @@
 //$router->routes['docmen']['class']
 
 // 拦截route，并重载
-$router->setNode('docmen', [
-	'class'      => null,
-	'controller' => 'mydoc',
-	'namespace'  => '',
-]);
+//$router->setNode('docmen', [
+//	'class'      => null,
+//	'controller' => 'mydoc',
+//	'namespace'  => '',
+//]);
 

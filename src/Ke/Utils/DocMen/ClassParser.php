@@ -63,6 +63,16 @@ class ClassParser
 
 	public $packages = [];
 
+	public $implsCount = 0;
+
+	public $traitsCount = 0;
+
+	public $methodsCount = 0;
+
+	public $propertiesCount = 0;
+
+	public $constantsCount = 0;
+
 	private $sort = [];
 
 //	protected $props = [];
@@ -117,6 +127,8 @@ class ClassParser
 		} catch (Throwable $thrown) {
 			return $this;
 		}
+		$file     = $scanner->filterFile($ref->getFileName());
+		$filePath = $file !== false ? $file['path'] : '';
 		// 基础信息解析
 		$this->name       = $ref->getName();
 		$this->shortName  = $ref->getShortName();
@@ -124,7 +136,7 @@ class ClassParser
 		$this->parent     = $this->getParentClass($ref);
 		$this->doc        = DocCommentParser::autoParse($ref->getDocComment(), $scanner, $this->scope, $this->name,
 			null);
-		$this->file       = $scanner->filterFile($ref->getFileName());
+		$this->file       = $filePath;
 		$this->startLine  = $ref->getStartLine();
 		$this->endLine    = $ref->getEndLine();
 		$this->isAbstract = $ref->isAbstract();
@@ -136,6 +148,7 @@ class ClassParser
 		foreach ($traits as $trait) {
 			$name                = $trait->getName();
 			$this->traits[$name] = $name;
+			$this->traitsCount += 1;
 		}
 
 		// 实现的接口
@@ -143,6 +156,7 @@ class ClassParser
 		foreach ($impls as $impl) {
 			$name               = $impl->getName();
 			$this->impls[$name] = $name;
+			$this->implsCount += 1;
 		}
 
 		$this->pushConstants($scanner, $ref);
@@ -154,21 +168,6 @@ class ClassParser
 		}
 
 		$scanner->addClass($this);
-
-//		var_dump($this->packages);
-//
-//		$props = $ref->getProperties();
-//		foreach ($props as $prop) {
-//			$this->parseProp($scanner, $prop, $defaultProps);
-//		}
-//
-//		$methods = $ref->getMethods();
-//		foreach ($methods as $method) {
-//			$parser                                 = new FuncParser($method);
-//			$this->methods[$method->getShortName()] = $parser->parse($scanner);
-//		}
-//
-//		$scanner->addClass($this->className, $this);
 
 		return $this;
 	}
@@ -211,6 +210,7 @@ class ClassParser
 			];
 			//
 			$this->packages[$key]['items'][] = $data;
+			$this->constantsCount += 1;
 		}
 		ksort($this->packages[$key]['items']);
 		$this->sort[$key] = $position;
@@ -248,6 +248,7 @@ class ClassParser
 //			$this->packages[$key]['items'][$name] = $parser->export();
 			$this->packages[$key]['items'][] = get_object_vars($parser);
 			$this->packages[$key]['count'] += 1;
+			$this->methodsCount += 1;
 		}
 		return $this;
 	}
@@ -282,7 +283,7 @@ class ClassParser
 			}
 			$this->packages[$key]['items'][] = $data;
 			$this->packages[$key]['count'] += 1;
-
+			$this->propertiesCount += 1;
 //			$scanner->addIndex(DocMen::PROP, $data['fullName']);
 		}
 		return $this;

@@ -60,8 +60,7 @@ if (!$doc->isLoadMainDataFile()) {
 			</div>
 		</div>
 	</div>
-<?php }
-elseif ($this->scope === DocMen::NS) { ?>
+<?php } elseif ($this->scope === DocMen::NS) { ?>
 	<?php
 	$data = $doc->getNamespace($this->name);
 	if (empty($data)) {
@@ -79,9 +78,9 @@ elseif ($this->scope === DocMen::NS) { ?>
 		<?php foreach ($data['cls'] as $cls) { ?>
 			<div class="ui vertical segment">
 				<h2 class="header"><?php
-					print $html->scopeNameLink($cls['type'], $cls['className'], [
-							'parent'     => $cls['parent'],
-							'parentLink' => true,
+					print $html->scopeNameLink($cls['type'], $cls['name'], [
+						'parent'     => $cls['parent'],
+						'parentLink' => true,
 					]);
 					?></h2>
 				<?php print $html->classMisc($cls); ?>
@@ -96,16 +95,13 @@ elseif ($this->scope === DocMen::NS) { ?>
 	<div>
 		<?php foreach ($data['fn'] as $func) { ?>
 			<div class="ui vertical segment">
-				<h3 class="header"><?php
-					print $html->scopeName(DocMen::FUNC, $func['name']);
-					print $html->functionArgs($func);
-					?></h3>
-				<?php print $html->functionMisc($func); ?>
+				<?php
+				print $html->functionBlock($func);
+				?>
 			</div>
 		<?php } ?>
 	</div>
-<?php }
-elseif ($this->scope === DocMen::CLS) { ?>
+<?php } elseif ($this->scope === DocMen::CLS) { ?>
 	<?php
 	$data = $doc->getClass($this->name);
 	if (empty($data)) {
@@ -116,8 +112,8 @@ elseif ($this->scope === DocMen::CLS) { ?>
 	?>
 	<h1 class="header"><?php
 		print $html->scopeName($data['type'], $this->name, [
-				'parent'     => $data['parent'],
-				'parentLink' => true,
+			'parent'     => $data['parent'],
+			'parentLink' => true,
 		]);
 		?></h1>
 	<?php print $html->classMisc($data); ?>
@@ -142,7 +138,7 @@ elseif ($this->scope === DocMen::CLS) { ?>
 		</div>
 	<?php } ?>
 	<?php
-	$packages = $doc->packetClassData($data);
+	$packages = $data['packages'];
 	?>
 	<div class="ui sticky static-sticky">
 		<div id="class_tab" class="ui secondary pointing menu">
@@ -151,7 +147,8 @@ elseif ($this->scope === DocMen::CLS) { ?>
 			foreach ($packages as $class => $groups) {
 				?>
 				<?php $active = $index === 0 ? ' active' : ''; ?>
-				<a class="item scope-name" href="#<?php print $doc->convertTagAttr($class) ?>" data-tab="<?php print $doc->convertTagAttr($class) ?>">
+				<a class="item scope-name" href="#<?php print $doc->convertTagAttr($class) ?>"
+				   data-tab="<?php print $doc->convertTagAttr($class) ?>">
 					<?php print $class; ?>
 				</a>
 				<?php
@@ -165,11 +162,12 @@ elseif ($this->scope === DocMen::CLS) { ?>
 	foreach ($packages as $class => $package) {
 		?>
 		<?php $active = $index === 0 ? ' active' : ''; ?>
-		<div class="ui tab" name="<?php print $doc->convertTagAttr($class) ?>" data-tab="<?php print $doc->convertTagAttr($class) ?>">
+		<div class="ui tab" name="<?php print $doc->convertTagAttr($class) ?>"
+		     data-tab="<?php print $doc->convertTagAttr($class) ?>">
 			<?php
-			$type = $package['type'];
+			$type = $package['scope'];
 			foreach ($package['items'] as $name => $item) {
-				$itemHtml = $html->showClassItem($this->name, $type, $name, $item, 'header');
+				$itemHtml = $html->showClassItem($this->name, $type, $item['name'], $item, 'header');
 				print $html->tag('div', $itemHtml, 'ui vertical segment');
 			}
 			?>
@@ -179,7 +177,7 @@ elseif ($this->scope === DocMen::CLS) { ?>
 	}
 	?>
 	<script>
-		(function($) {
+		(function ($) {
 			var tab = $('#class_tab .item');
 			var hash = location.hash.replace(/^(\#+)/, '');
 			tab.tab({
@@ -192,20 +190,19 @@ elseif ($this->scope === DocMen::CLS) { ?>
 //			else {
 //				tab.tab();
 //			}
-		}) (jQuery);
+		})(jQuery);
 
 	</script>
-<?php }
-elseif ($this->scope === DocMen::FILE) { ?>
+<?php } elseif ($this->scope === DocMen::FILE) { ?>
 	<?php
 	$data = $doc->getFile($this->name);
 	if (empty($data)) {
 		$html->warning("Unknown {$this->scope} with {$this->name}!");
 		return true;
 	}
-	$attr = [
-			'id'    => 'source',
-			'class' => 'line-numbers',
+	$attr      = [
+		'id'    => 'source',
+		'class' => 'line-numbers',
 	];
 	$startLine = $http->query('line', null);
 	if (!empty($startLine))
@@ -214,5 +211,5 @@ elseif ($this->scope === DocMen::FILE) { ?>
 	<h1 class="header"><?php print $html->scopeName($this->scope, $this->name); ?></h1>
 	<?php $web->asset('prism'); ?>
 	<pre <?php print $html->attr($attr); ?>><code
-				class="language-php"><?php print htmlentities($data['source']); ?></code></pre>
+			class="language-php"><?php print htmlentities($data['source']); ?></code></pre>
 <?php } ?>
