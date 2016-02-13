@@ -810,7 +810,7 @@ class Mydoc extends DocController
 
 ![DocMen Class展示](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen02.jpg)
 
-![DocMen命令行参数](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen04.jpg)
+![DocMen命令行参数](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen04.png)
 
 ![DocMen命令行参数](http://git.oschina.net/kephp/kephp/raw/master/misc/images/docmen03.jpg)
 
