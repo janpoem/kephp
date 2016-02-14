@@ -1,5 +1,5 @@
 {
-  "name": "kephp/core",
+  "name": "kephp/kephp",
   "description": "The core library about kephp framework.",
   "homepage": "http://kephp.com",
   "license": ["Apache License"],
@@ -14,6 +14,6 @@
     }
   ],
   "require": {
-    "php": ">=5.5.0"
+    "php": ">=7.0.3"
   }
 }

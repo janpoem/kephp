@@ -5,3 +5,4 @@ tests/
 apigen.phar
 demo/doc/
 demo/tmp/
+demo/export/
