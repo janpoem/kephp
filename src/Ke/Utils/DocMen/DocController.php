@@ -39,15 +39,18 @@ class DocController extends Controller
 			$this->html = new DocHtml();
 		$this->html->setDoc($this->doc);
 		$this->web->setHtml($this->html);
+		$this->title = 'Ke\DocMen - ' . $this->web->getController();
 	}
 
 	public function index()
 	{
+		$this->title = 'Index Page | ' . $this->title;
 		$this->view('widget/docmen/show');
 	}
 
 	public function show()
 	{
+		$this->title = ucfirst($this->scope) . ' - ' . $this->name . ' | ' . $this->title;
 		$this->view('widget/docmen/show');
 	}
 
