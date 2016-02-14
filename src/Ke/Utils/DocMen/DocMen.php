@@ -325,8 +325,8 @@ class DocMen
 	public function __construct(string $dir, string $sourceDir, string $routePath = null, \Closure $fn = null)
 	{
 		$this->docDir = $dir;
-		$this->source = real_dir($sourceDir);
-		if (empty($this->source))
+		$this->source = $sourceDir;
+		if (!is_dir($sourceDir))
 			throw new \Error("Source directory does not exist, or it is not a directory!");
 		if (!empty($routePath))
 			$this->setRoutePath($routePath);
