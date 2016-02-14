@@ -13,7 +13,7 @@ use Ke\App;
 use Ke\Cli\ReflectionCommand;
 use FilesystemIterator, Phar;
 
-class Phar_Pack extends ReflectionCommand
+class PharPack extends ReflectionCommand
 {
 
 	protected static $commandName = 'phar_pack';
@@ -61,13 +61,17 @@ class Phar_Pack extends ReflectionCommand
 
 	protected function onExecute($argv = null)
 	{
-		$class = static::class;
+		$class     = static::class;
 		$pathParam = FilesystemIterator::CURRENT_AS_FILEINFO | FilesystemIterator::KEY_AS_FILENAME;
 		try {
 			$phar = new Phar(predir($this->getSavePath()), $pathParam, $this->getFileName());
 			$phar->buildFromDirectory($this->dir, '/.php|.phtml|.inc|.tp|.txt|.json$/');
 			$phar->addFromString('pack.txt', $class . " packed in " . date('Y-m-d H:i:s'));
-			$this->console->println('Pack "' . $this->getFileName() . '" success!');
+			$this->console->println('Pack "' .
+			                        $this->getFileName() .
+			                        '" success, file export to "' .
+			                        $this->getSavePath() .
+			                        '"!');
 		}
 		catch (\Throwable $thrown) {
 			$this->console->halt($thrown->getMessage());

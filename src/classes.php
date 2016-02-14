@@ -57,7 +57,11 @@ return [
 	'Ke\\Cli\\Cmd\\NewWidget'             => __DIR__ . '/Ke/Cli/Cmd/NewWidget.php',
 	'Ke\\Cli\\Cmd\\Refs'                  => __DIR__ . '/Ke/Cli/Cmd/Refs.php',
 	'Ke\\Cli\\Cmd\\ScanTables'            => __DIR__ . '/Ke/Cli/Cmd/ScanTables.php',
+	'Ke\\Cli\\Cmd\\ScanSource'            => __DIR__ . '/Ke/Cli/Cmd/ScanSource.php',
 	'Ke\\Cli\\Cmd\\UpdateModel'           => __DIR__ . '/Ke/Cli/Cmd/UpdateModel.php',
+	'Ke\\Cli\\Cmd\\PharPack'              => __DIR__ . '/Ke/Cli/Cmd/PharPack.php',
+	// Debug
+	'Ke\\Debug\\Benchmark'                => __DIR__ . '/Ke/Debug/Benchmark.php',
 	// Utils
 	'Ke\\Utils\\Git'                      => __DIR__ . '/Ke/Utils/Git.php',
 	'Ke\\Utils\\SortAsTree'               => __DIR__ . '/Ke/Utils/SortAsTree.php',

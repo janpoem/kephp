@@ -589,8 +589,22 @@ if (!function_exists('real_path')) {
 	{
 		global $KE;
 		$paths = &$KE['paths'];
-		if (!isset($paths[$path]))
-			$paths[$path] = realpath($path);
+		// realpath居然不支持phar，这是bug吗？
+		if (!isset($paths[$path])) {
+			if (!file_exists($path)) {
+				$path = KE_APP_ROOT . '/' . $path;
+				if (!file_exists($path)) {
+					$path = KE_SCRIPT_DIR . '/' . $path;
+					if (!file_exists($path))
+						$path = false;
+				}
+			}
+			if ($path !== false) {
+				if (strpos($path, KE_DS_WIN) !== false)
+					$path = str_replace(KE_DS_WIN, KE_DS_UNIX, $path);
+			}
+			$paths[$path] = $path;
+		}
 		return $paths[$path];
 	}
 }

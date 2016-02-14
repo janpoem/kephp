@@ -21,23 +21,23 @@ class DocMen
 {
 
 	const NS_STYLE_OLD_PEAR = 0;
-	const NS_STYLE_NEW = 1;
-	const NS_STYLE_MIXED = 2;
+	const NS_STYLE_NEW      = 1;
+	const NS_STYLE_MIXED    = 2;
 
 	const PHP_INTERNAL = '&lt;PHP Internal&gt';
 
 	const DEFAULT_PRIORITY = 100;
 
-	const CLS = 'class';
-	const IMPL = 'interface';
-	const TRAIT = 'trait';
-	const NS = 'namespace';
-	const FUNC = 'function';
+	const CLS    = 'class';
+	const IMPL   = 'interface';
+	const TRAIT  = 'trait';
+	const NS     = 'namespace';
+	const FUNC   = 'function';
 	const METHOD = 'method';
-	const PROP = 'property';
-	const CONST = 'constant';
-	const FILE = 'file';
-	const INDEX = 'index';
+	const PROP   = 'property';
+	const CONST  = 'constant';
+	const FILE   = 'file';
+	const INDEX  = 'index';
 
 	private static $registerInstances = [];
 
@@ -55,7 +55,9 @@ class DocMen
 
 	private $loadComment = false;
 
-	private $showFile = true;
+	protected $showFile = true;
+
+	protected $generable = true;
 
 	protected $routeScopes = [
 		self::CLS  => self::CLS,
@@ -345,6 +347,17 @@ class DocMen
 		return $this;
 	}
 
+	public function isGenerable()
+	{
+		return $this->generable;
+	}
+
+	public function setGenerable(bool $generable)
+	{
+		$this->generable = $generable;
+		return $this;
+	}
+
 	public function setRoutePath(string $path)
 	{
 		$path = trim($path, KE_PATH_NOISE);
@@ -404,7 +417,8 @@ class DocMen
 			if ($scope === self::FILE)
 				$name = ext($name, $params['format'] ?? null);
 			$name = $this->filterName($scope, $name);
-		} else {
+		}
+		else {
 			$name = null;
 		}
 		return [$scope, $name];
@@ -565,7 +579,7 @@ class DocMen
 		$data = $this->files[$name];
 		$dir  = $this->dirs[$data['dir']] ?? '';
 		$path = $dir . '/' . $data['path'];
-		$path = realpath($path);
+		$path = real_path($path);
 		//
 		$data['source'] = '';
 		if ($path !== false && is_file($path)) {

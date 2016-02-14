@@ -25,7 +25,7 @@ class SourceScanner
 	protected $source;
 	protected $export;
 	protected $options = [
-		self::OPS_AUTO_IMPORT     => true,
+		self::OPS_AUTO_IMPORT     => false,
 		self::OPS_NS_STYLE        => DocMen::NS_STYLE_NEW,
 		self::OPS_IGNORE_FILES    => [],
 		self::OPS_NOT_PARSE_FILES => [],
@@ -66,8 +66,8 @@ class SourceScanner
 
 	public function __construct(string $dir, string $export)
 	{
-		$this->source = realpath($dir);
-		if (empty($this->source) || !is_dir($this->source))
+		$this->source = real_dir($dir);
+		if (empty($this->source))
 			throw new \Error("Please input a valid source directory!");
 		if (empty($export))
 			throw new \Error('Export directory can not be empty!');
@@ -115,7 +115,7 @@ class SourceScanner
 		foreach ($dir as $item) {
 			if ($item->isDot())
 				continue;
-			$path = $item->getRealPath();
+			$path = $item->getPathname();
 			if ($item->isDir())
 				$this->entry(new DirectoryIterator($path));
 			elseif ($item->isFile())

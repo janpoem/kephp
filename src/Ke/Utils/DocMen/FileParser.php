@@ -40,9 +40,9 @@ class FileParser
 
 	private $classParser = null;
 
-	public function __construct(string $file, bool $autoImport = true)
+	public function __construct(string $file, bool $autoImport = false)
 	{
-		$this->path = $file;
+		$this->path = real_file($file);
 		if (!is_file($this->path))
 			throw new \Error('Please input a valid file!');
 		$this->autoImport = $autoImport;
@@ -82,9 +82,9 @@ class FileParser
 				if (!$this->autoImport && !function_exists($fn)) {
 					require $this->path;
 				}
-				if (function_exists($fn) && !isset($this->functions[$fn])) {
+				if (function_exists($fn)) {
 					$ref = new \ReflectionFunction($fn);
-					if ($ref->getFileName() === $this->path) {
+					if (real_path($ref->getFileName()) === $this->path) {
 						$parser = FuncParser::autoParse($ref, $scanner);
 						$scanner->addFunction($parser);
 					}

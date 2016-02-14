@@ -11,13 +11,13 @@
 namespace Ke;
 
 if (!defined('KE_VER'))
-	require 'Base.php';
+	require __DIR__ . '/Base.php';
 
 if (!class_exists(DirectoryRegistry::class))
-	require 'DirectoryRegistry.php';
+	require __DIR__ . '/DirectoryRegistry.php';
 
 if (!class_exists(Loader::class))
-	require 'Loader.php';
+	require __DIR__ . '/Loader.php';
 
 use Exception as PhpException;
 
