@@ -2,6 +2,8 @@
 
 **版本说明：已经修复大量的bug，HTML部分已经完成，已可用于开发使用**
 
+[Ke\DocMen - kephp文档](http://kephp.herokuapp.com/doc/)
+
 目录结构简单说明：
 
 * demo - 演示站点，一些特性的展示。
