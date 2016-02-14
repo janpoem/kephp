@@ -135,6 +135,15 @@ class Web
 		return false;
 	}
 
+	public static function updateRoute(string $name, array $route)
+	{
+		if (isset(self::$routes[$name])) {
+			self::$routes[$name] = $route;
+			return true;
+		}
+		return false;
+	}
+
 	public static function removeRoutes(string $path)
 	{
 		if (isset(self::$routes[$path])) {
@@ -154,9 +163,9 @@ class Web
 		if (!$this->app->isInit())
 			$this->app->init();
 
-		$this->ob = OutputBuffer::getInstance()->start('webStart');
-		$this->mime = $this->app->getMime();
-		$this->http = $http ?? Http::current();
+		$this->ob        = OutputBuffer::getInstance()->start('webStart');
+		$this->mime      = $this->app->getMime();
+		$this->http      = $http ?? Http::current();
 		$this->component = (new Component())->setDirs([
 			'appView'        => [$this->app->appNs('View'), 100, Component::VIEW],
 			'appComponent'   => [$this->app->appNs('Component'), 100],
@@ -279,7 +288,7 @@ class Web
 	public function filterController(string $controller, bool $returnDefault = true): string
 	{
 		$controller = strtolower(str_replace(['-', '.', '/'], ['_', '_', '\\'], $controller));
-		$namespace = $this->getControllerNamespace();
+		$namespace  = $this->getControllerNamespace();
 		if (($namespaceLength = strlen($namespace)) > 0) {
 			if (stripos($controller, $namespace . '\\') === 0)
 				$controller = substr($controller, $namespaceLength + 1);
@@ -381,6 +390,7 @@ class Web
 			throw new \Error("Router not matched!");
 
 		$params = $this->filterRouterResult($result);
+
 		if (!empty($params))
 			$this->params = array_merge($this->params, $params);
 		$class = $this->getControllerClass();
@@ -434,14 +444,14 @@ class Web
 		}
 		else {
 			$params['head'] = $result->head;
-			$controller = $this->filterController($result->controller, true);
-			$namespace = $this->filterController($result->namespace, false);
+			$controller     = $this->filterController($result->controller, true);
+			$namespace      = $this->filterController($result->namespace, false);
 			if (!empty($namespace))
 				$controller = add_namespace($controller, $namespace, true, '/');
 			$params['controller'] = $controller;
 		}
 		// action过滤
-		$action = $this->filterAction($result->action, true);
+		$action           = $this->filterAction($result->action, true);
 		$params['action'] = $action;
 		// format
 		if (!empty($result->format))
@@ -601,7 +611,7 @@ class Web
 		if (($index = strpos($path, '/')) > 0) {
 			$pre = substr($path, 0, $index);
 			if ($this->component->hasScope($pre)) {
-				$path = substr($path, $index + 1);
+				$path  = substr($path, $index + 1);
 				$scope = $pre;
 			}
 		}

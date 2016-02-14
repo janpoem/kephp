@@ -169,7 +169,7 @@ class Benchmark
 	/**
 	 * 批量添加要执行的动作
 	 *
-	 * @param array $actions 以`'name' => callable`的格式，批量添加的动作
+	 * @param array $actions 以`name => callable`格式，批量添加的动作
 	 * @return $this 返回当前的基准测试的实例
 	 */
 	public function setActions(array $actions = [])

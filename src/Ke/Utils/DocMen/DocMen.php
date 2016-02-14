@@ -369,7 +369,10 @@ class DocMen
 
 	public function setShowFile(bool $isShow)
 	{
-		$this->showFile = $isShow;
+		if ($this->showFile !== $isShow) {
+			$this->showFile = $isShow;
+			Web::updateRoute($this->routePath, $this->getRoutes()[$this->routePath]);
+		}
 		return $this;
 	}
 
