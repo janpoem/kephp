@@ -10,6 +10,7 @@
 
 namespace Ke\Utils\DocMen;
 
+use Ke\Web\Asset;
 use Ke\Web\Web;
 
 /**
@@ -59,6 +60,8 @@ class DocMen
 
 	protected $generable = true;
 
+	protected $asset = null;
+
 	protected $routeScopes = [
 		self::CLS  => self::CLS,
 		self::NS   => self::NS,
@@ -85,6 +88,7 @@ class DocMen
 	protected $comments = [];
 
 	protected $missed = [];
+
 
 	/**
 	 * 向全局的Web分发路由器注册一个（多个）DocMen实例
@@ -142,6 +146,28 @@ class DocMen
 		throw new \Error('Does not found DocMen instance register by "' . $path . '"!');
 	}
 
+	public static function getStdAssetLibraries()
+	{
+		// ['vendor/prism/prism', 'css', ['id' => 'prism_theme_css']],
+		// ['vendor/prism/prism', 'js'],
+		return [
+			'docmen' => [
+				['//cdn.bootcss.com/semantic-ui/2.1.8/semantic.min.css', 'css'],
+				['//cdn.bootcss.com/jquery/1.12.0/jquery.js', 'js'],
+				['//cdn.bootcss.com/jquery.address/1.6/jquery.address.min.js', 'js'],
+				['//cdn.bootcss.com/semantic-ui/2.1.8/semantic.min.js', 'js'],
+				['//cdn.bootcss.com/marked/0.3.5/marked.min.js', 'js'],
+				'prism',
+			],
+			'prism'  => [
+				['http://7xqwoj.com1.z0.glb.clouddn.com/prism%2Fprism.css', 'css', ['id' => 'prism_theme_css']],
+				[
+					'http://7xqwoj.com1.z0.glb.clouddn.com/prism%2Fprism.js',
+					'js',
+				],
+			],
+		];
+	}
 
 	public static function filterScope($scope)
 	{
@@ -612,5 +638,18 @@ class DocMen
 //		if ($this->loadComment === false)
 //			$this->loadComment();
 //		return $this->comments[$docHash] ?? null;
+	}
+
+	public function setAsset(Asset $asset)
+	{
+		$this->asset = $asset;
+		return $this;
+	}
+
+	public function getAsset()
+	{
+		if (!isset($this->asset))
+			$this->asset = Asset::getInstance('docmen')->setLibraries(static::getStdAssetLibraries());
+		return $this->asset;
 	}
 }

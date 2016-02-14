@@ -16,7 +16,7 @@ $http = $web->http;
 <head>
 	<meta charset="UTF-8">
 	<title><?php print $this->title; ?></title>
-	<?php $web->asset('docmen'); ?>
+	<?php $this->doc->getAsset()->load('docmen'); ?>
 	<style>
 		@import url(http://fonts.useso.com/css?family=Bitter|Roboto+Mono:400,400italic,500,500italic,700,700italic,300italic,300);
 
@@ -38,6 +38,10 @@ $http = $web->http;
 		.scope-name, code, pre, header, .source-file, .func-args {
 			font-family: "Roboto Mono", "Cousine", "Source Code Pro", "Consolas", "Courier New", monospace;
 			font-weight: 300;
+		}
+
+		.hljs {
+			font-weight: 500;
 		}
 
 		.label.scope-name {
@@ -100,6 +104,7 @@ $http = $web->http;
 		.doc-comment {
 			font-size: 115%;
 		}
+
 		.doc-comment textarea {
 			display: none;
 		}
@@ -128,6 +133,10 @@ $http = $web->http;
 
 		.menu .item {
 			cursor: pointer;
+		}
+
+		pre, textarea {
+			overflow: visible;
 		}
 	</style>
 </head>
@@ -176,6 +185,10 @@ $http = $web->http;
 //			var escapedText = text.toLowerCase().replace(/[^\w]+/g, '-');
 			return '<div class="doc-header">' + text + '</div>';
 		};
+//		renderer.code = function (code, lang) {
+//			var hlCode = hljs.highlight(lang, $('<textarea/>').html(code).text());
+//			return '<pre><code class="hljs lang-'+lang+'">' + hlCode.value + '</code></pre>';
+//		};
 
 		marked.setOptions({
 			renderer: renderer,
@@ -187,6 +200,9 @@ $http = $web->http;
 			smartLists: true,
 			highlight: function (code, lang, callback) {
 				return Prism.highlight($('<textarea/>').html(code).text(), Prism.languages[lang]);
+//				code = $('<textarea/>').html(code).text();
+//				var hlCode = hljs.highlight(lang, code);
+//				return hlCode.value;
 			}
 		});
 

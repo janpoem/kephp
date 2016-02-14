@@ -58,7 +58,6 @@ class DocHtml extends Html
 	public $tagDocComment   = 'div';
 	public $classDocComment = 'doc-comment';
 
-
 	public function setDoc(DocMen $docMen)
 	{
 		$this->doc = $docMen;
@@ -102,17 +101,20 @@ class DocHtml extends Html
 				if (!empty($attr['parentLink'])) {
 					$link = $this->scopeLink('class', $attr['parent'], $attr['parentLink']);
 					$content .= "<small> extends {$link}</small>";
-				} else {
+				}
+				else {
 					$content .= "<small> extends {$attr['parent']}</small>";
 				}
 				unset($attr['parent'], $attr['parentLink']);
 			}
-		} elseif ($scope === DocMen::METHOD) {
+		}
+		elseif ($scope === DocMen::METHOD) {
 			$prefix = ($attr['data-access'] ?? 'public') . ' ';
 			if ($attr['data-static'] === '1')
 				$prefix = $prefix . 'static ';
 			$content = "<small>{$prefix}</small>{$name}";
-		} elseif ($scope === DocMen::PROP) {
+		}
+		elseif ($scope === DocMen::PROP) {
 			$prefix = ($attr['data-access'] ?? 'public') . ' ';
 			if ($attr['data-static'] === '1')
 				$prefix = $prefix . 'static ';
@@ -183,7 +185,8 @@ class DocHtml extends Html
 		}
 		if ($this->getDoc()->isShowFile()) {
 			return $this->link($fileName, $this->fileUri($file, $startLine, $endLine, $query));
-		} else {
+		}
+		else {
 			return $fileName;
 		}
 	}
@@ -195,8 +198,10 @@ class DocHtml extends Html
 		$misc    = '';
 		$address = '';
 		if (!empty($data['file'])) {
-			$address = $this->tag('address', $this->fileLink($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null), 'source-file');
-		} elseif ($data['isInternal']) {
+			$address = $this->tag('address',
+				$this->fileLink($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null), 'source-file');
+		}
+		elseif ($data['isInternal']) {
 			$address = $this->tag('address', $this->fileLink(''), 'source-file');
 		}
 
@@ -204,7 +209,8 @@ class DocHtml extends Html
 		foreach ($this->getClassMiscFields() as $field => $name) {
 			if (empty($data[$field])) {
 				continue;
-			} else {
+			}
+			else {
 				$count = $data[$field];
 			}
 			$inner = $name . ' <div class="detail">' . $count . '</div>';
@@ -224,8 +230,10 @@ class DocHtml extends Html
 			$attr = $this->attr2array($attr);
 		$misc = '';
 		if (!empty($data['file'])) {
-			$misc .= $this->tag('address', $this->fileLink($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null), 'source-file');
-		} elseif (isset($data['isInternal']) && $data['isInternal']) {
+			$misc .= $this->tag('address',
+				$this->fileLink($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null), 'source-file');
+		}
+		elseif (isset($data['isInternal']) && $data['isInternal']) {
 			$misc .= $this->tag('address', $this->fileLink(''), 'source-file');
 		}
 		$attr['class'] = 'misc';
@@ -255,7 +263,8 @@ class DocHtml extends Html
 					$detail[] = '* `' . $item[0] . ' ' . $item[1] . ' ` ' . $item[2];
 				}
 			}
-		} elseif ($scope === DocMen::FUNC || $scope === DocMen::METHOD) {
+		}
+		elseif ($scope === DocMen::FUNC || $scope === DocMen::METHOD) {
 			$table = [];
 			if (!empty($comment['param'])) {
 				$table[] = '__Parameters__';
@@ -268,8 +277,8 @@ class DocHtml extends Html
 
 			}
 			if (!empty($comment['return'])) {
-				$types = array_shift($comment['return']);
-				$types = str_replace('|', ', ', $types);
+				$types   = array_shift($comment['return']);
+				$types   = str_replace('|', ', ', $types);
 				$table[] = '__Return__';
 				$table[] = "<code>{$types}</code>";
 //				$table[] = "<code><strong>Return</strong> - {$types}</code>";
@@ -298,8 +307,10 @@ class DocHtml extends Html
 	{
 		$address = '';
 		if (!empty($data['file'])) {
-			$address = $this->tag('address', $this->fileLink($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null), 'source-file');
-		} elseif ($data['isInternal']) {
+			$address = $this->tag('address',
+				$this->fileLink($data['file'], $data['startLine'] ?? null, $data['endLine'] ?? null), 'source-file');
+		}
+		elseif ($data['isInternal']) {
 			$address = $this->tag('address', $this->fileLink(''), 'source-file');
 		}
 		$args = $data['params'] ?? [];
@@ -312,14 +323,18 @@ class DocHtml extends Html
 				$name = '&' . $name;
 			if ($value === true) {
 				$value = 'true';
-			} elseif ($value === false) {
+			}
+			elseif ($value === false) {
 				$value = 'false';
-			} elseif ($value === null) {
+			}
+			elseif ($value === null) {
 				$value = 'null';
-			} elseif ($type === KE_STR) {
+			}
+			elseif ($type === KE_STR) {
 				if ($arg['name'] === 'salt') {
 					$value = "''";
-				} else {
+				}
+				else {
 					$value = "'" . htmlentities($value) . "'";
 				}
 			}
@@ -378,12 +393,15 @@ class DocHtml extends Html
 			$valueType = gettype($defaultValue);
 			if ($defaultValue === true) {
 				$defaultValue = 'true';
-			} elseif ($defaultValue === false) {
+			}
+			elseif ($defaultValue === false) {
 				$defaultValue = 'false';
-			} elseif ($valueType === KE_STR) {
+			}
+			elseif ($valueType === KE_STR) {
 				if ($arg['name'] === 'salt') {
 					$defaultValue = "''";
-				} else {
+				}
+				else {
 					$defaultValue = "'" . htmlentities($defaultValue) . "'";
 				}
 			}
@@ -396,7 +414,7 @@ class DocHtml extends Html
 				if (is_array($defaultValue))
 					$defaultValue = '[]';
 				$name .= $this->equalSpan .
-					$this->tag('var', (string)$defaultValue, $valueType);
+				         $this->tag('var', (string)$defaultValue, $valueType);
 			}
 
 			$html[] = $name;
@@ -421,13 +439,15 @@ class DocHtml extends Html
 //			]);
 //			$head .= $this->functionArgs($item);
 //			return $this->tag($tag, $head, $attr) . $this->functionMisc($item);
-		} elseif ($type === DocMen::PROP) {
+		}
+		elseif ($type === DocMen::PROP) {
 			$head = $this->scopeName(DocMen::PROP, $name, [
 				'data-static' => $item['isStatic'] ? '1' : '0',
 				'data-access' => $this->getDoc()->filterAccess($item['access']),
 			]);
 			return $this->tag($tag, $head, $attr) . $this->functionMisc($item);
-		} elseif ($type === DocMen::CONST) {
+		}
+		elseif ($type === DocMen::CONST) {
 			$head  = $this->scopeName(DocMen::CONST, $name);
 			$value = $this->equalSpan;
 			if ($item['type'] === KE_STR)

@@ -314,6 +314,8 @@ class DirectoryRegistry
 		$scope = $this->filterScope($scope);
 		if (!empty($this->extension))
 			$file = ext($file, $this->extension);
+		if (!KE_IS_WIN && strpos($file, KE_DS_CLS) !== false)
+			$file = str_replace(KE_DS_CLS, KE_DS_UNIX, $file);
 		$dir = DIRECTORY_SEPARATOR;
 		if (!empty($this->scopeRewrites[$scope]))
 			$dir .= $this->scopeRewrites[$scope] . DIRECTORY_SEPARATOR;

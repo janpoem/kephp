@@ -156,7 +156,8 @@ class Asset
 
 	public function makeReferenceTag(string $src, string $type, array $props = null)
 	{
-		$src = $this->getBaseUri()->newUri(ext($src, $type));
+		if (!isset($props['buildUri']) || !empty($props['buildUri']))
+			$src = $this->getBaseUri()->newUri(ext($src, $type));
 		$tag = '';
 		$attr = '';
 		if (!empty($props))
