@@ -183,8 +183,7 @@ class DocHtml extends Html
 		}
 		if ($this->getDoc()->isShowFile()) {
 			return $this->link($fileName, $this->fileUri($file, $startLine, $endLine, $query));
-		}
-		else {
+		} else {
 			return $fileName;
 		}
 	}
@@ -238,41 +237,58 @@ class DocHtml extends Html
 		return $this->tag('div', $misc, $attr) . $comment;
 	}
 
-	public function docComment(string $scope, $comment)
+	public function docComment(string $scope, $comment, bool $isWrap = true)
 	{
-		$doc = [];
+		$detail = [
+			0 => '',
+		];
 		if (!empty($comment['header'])) {
-			$doc[] = '__' . htmlentities($comment['header']) . '__';
+			$detail[0] = '# ' . htmlentities($comment['header']) . '';
 		}
 		if (!empty($comment['detail'])) {
-			$doc[] = htmlentities($comment['detail']);
+			$detail[] = htmlentities($comment['detail']);
 		}
 		if ($scope === DocMen::CLS) {
 			if (!empty($comment['property'])) {
-				$doc[] = '__Public Properties__';
+				$detail[] = '__Public Properties__';
 				foreach ($comment['property'] as $item) {
-					$doc[] = '* `' . $item[0] . ' ' . $item[1] . ' ` ' . $item[2];
+					$detail[] = '* `' . $item[0] . ' ' . $item[1] . ' ` ' . $item[2];
 				}
 			}
 		} elseif ($scope === DocMen::FUNC || $scope === DocMen::METHOD) {
+			$table = [];
 			if (!empty($comment['param'])) {
-				$doc[] = '__Parameters__';
+				$table[] = '__Parameters__';
 				foreach ($comment['param'] as $item) {
-					$doc[] = '* `' . $item[0] . ' ' . $item[1] . ' ` ' . $item[2];
+					$item[0] = str_replace('|', ', ', $item[0]);
+
+					$table[] = '<code><strong>' . $item[1] . '</strong> : ' . $item[0] . '</code>';
+					$table[] = $item[2];
 				}
+
 			}
 			if (!empty($comment['return'])) {
-				$doc[] = '__Return__';
-				$doc[] = '* `' . $comment['return'][0] . ' ' . $comment['return'][1] . ' ` ' . $comment['return'][2];
+				$types = array_shift($comment['return']);
+				$types = str_replace('|', ', ', $types);
+				$table[] = '__Return__';
+				$table[] = "<code>{$types}</code>";
+//				$table[] = "<code><strong>Return</strong> - {$types}</code>";
+				$table[] = implode(' ', $comment['return']);
+//				$detail[] = '__Return__';
+//				$detail[] = '* `' . $comment['return'][0] . ' ' . $comment['return'][1] . ' ` ' . $comment['return'][2];
 			}
+			$detail[] = implode("\n\n", $table);
 		}
 		if (!empty($comment['link'])) {
-			$doc[] = '__Reference Links__';
+			$detail[] = '__Reference Links__';
 			foreach ($comment['link'] as $item) {
-				$doc[] = '> [' . $item[0] . '](' . $item[0] . ')';
+				$detail[] = '1. [' . $item[0] . '](' . $item[0] . ')';
 			}
 		}
-		return $this->tag('DocComment', implode("\n\n", $doc));
+		if ($isWrap)
+			return $this->tag('DocComment', implode("\n\n", $detail));
+		else
+			return implode("\n\n", $detail);
 	}
 
 	public function functionBlock(array $data)
@@ -331,18 +347,17 @@ class DocHtml extends Html
 		if (strlen($functionName) > 100) {
 			$functionName = $prefix . ' ' . $data['name'] . "(\n\t" . implode(",\n\t", $temp) . ')' . $return;
 		}
-		$block   = [
+		$block = [
 			'```php',
 			$functionName,
-			//			'{',
-			//			'}',
 			'```',
 		];
-		$comment = '';
-		if (!empty($data['doc']))
-			$comment .= $this->docComment(DocMen::FUNC, $data['doc']);
 
-		return $this->tag('DocComment', implode("\n", $block)) . $comment . $address;
+		if (!empty($data['doc'])) {
+			$block[] = $this->docComment(DocMen::FUNC, $data['doc'], false);
+		}
+
+		return $this->tag('DocComment', implode("\n", $block)) . $address;
 	}
 
 	public function functionArgs(array $data)

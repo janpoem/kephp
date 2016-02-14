@@ -90,23 +90,39 @@ $http = $web->http;
 			font-family: 'Bitter';
 			font-size: 16px;
 		}
+
 		.foot {
 			font-family: 'Bitter';
 			padding: 1.5em 0;
 			color: #909090;
 		}
+
 		.doc-comment {
-			font-size: 120%;
+			font-size: 115%;
 		}
+
 		.doc-comment p {
-			margin: 1.3em 0;
+			margin: 1.2em 0;
 		}
+
+		.doc-comment code strong {
+			font-weight: 500;
+		}
+
+		.doc-header {
+			margin: 1.2em 0;
+			font-weight: bold;
+			font-size: 115%;
+		}
+
 		.static-sticky {
 			background-color: #fff;
 		}
+
 		.static-sticky .divider {
 			padding: 0.5em;
 		}
+
 		.menu .item {
 			cursor: pointer;
 		}
@@ -150,20 +166,35 @@ $http = $web->http;
 			return false;
 		});
 
+		var renderer = new marked.Renderer();
+
+		renderer.heading = function (text, level) {
+			var escapedText = text.toLowerCase().replace(/[^\w]+/g, '-');
+			return '<div class="doc-header">' + text + '</div>';
+		};
+
 		marked.setOptions({
+			renderer: renderer,
+			gfm: true,
+			tables: true,
+			breaks: false,
+			pedantic: false,
+			sanitize: false,
+			smartLists: true,
 			highlight: function (code, lang, callback) {
 				return Prism.highlight(code, Prism.languages[lang]);
 			}
 		});
 
 		$('.doc-comment').each(function (i, item) {
-			$(item).html(marked($(item).text()));
+			console.log($(item).html());
+			$(item).html(marked($(item).html()));
 		});
 
-		$('.ui.sticky[data-sticky]').each(function(i, item) {
+		$('.ui.sticky[data-sticky]').each(function (i, item) {
 			$(item).sticky({context: $(item).attr('data-sticky')});
 		});
-		$('.ui.sticky.static-sticky').each(function(i, item) {
+		$('.ui.sticky.static-sticky').each(function (i, item) {
 			$(item).sticky();
 		});
 	})

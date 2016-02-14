@@ -116,7 +116,7 @@ if (!function_exists('import')) {
 				extract($_vars, $_extractMode);
 			}
 			foreach ($_path as $_index => $_item) {
-				$_return = false;
+				$_return   = false;
 				$_isImport = false;
 				if (!empty($_item)) {
 					if (is_array($_item)) {
@@ -124,7 +124,7 @@ if (!function_exists('import')) {
 						continue;
 					}
 					if (is_file($_item) && is_readable($_item)) {
-						$_return = require $_item;
+						$_return   = require $_item;
 						$_isImport = true;
 					}
 				}
@@ -139,8 +139,7 @@ if (!function_exists('import')) {
 								$_result += $_return;
 						}
 						// 其他的字符串、布尔、数值无法转化为等量的array，就放弃不管了。
-					}
-					elseif ($_mode === KE_IMPORT_PATH)
+					} elseif ($_mode === KE_IMPORT_PATH)
 						$_result[] = $_item;
 				}
 				// 多层数组的文件时，这里无法维持原来的索引顺序了
@@ -148,16 +147,15 @@ if (!function_exists('import')) {
 					$_result[] = $_return;
 			}
 			return $_result;
-		}
-		else {
-			$_return = false;
+		} else {
+			$_return   = false;
 			$_isImport = false;
 			if (!empty($_vars)) {
 				// 上下文模式，在单个文件里面，是没效果的，只在多个文件中有意义
 				extract($_vars, EXTR_SKIP);
 			}
 			if (is_file($_path) && is_readable($_path)) {
-				$_return = require $_path;
+				$_return   = require $_path;
 				$_isImport = true;
 			}
 			// 强转数组的格式，必须是成功加载的时候，才进行转换
@@ -168,8 +166,7 @@ if (!function_exists('import')) {
 					elseif (is_object($_return))
 						return (array)$_return;
 					return [];
-				}
-				elseif ($_mode === KE_IMPORT_PATH)
+				} elseif ($_mode === KE_IMPORT_PATH)
 					return $_path;
 			}
 			return $_return;
@@ -260,10 +257,9 @@ if (!function_exists('depth_query')) {
 		$keysType = gettype($keys);
 		if ($keysType === KE_STR) {
 			if (strpos($keys, $keysSpr) !== false) {
-				$keys = explode($keysSpr, $keys);
+				$keys     = explode($keysSpr, $keys);
 				$keysType = KE_ARY;
-			}
-			else {
+			} else {
 				// Janpoem 2014.09.21
 				// 调整了一些，原来只是检查isset，现在增加empty的判断
 				// 需要做更长时间的监控，是否有副作用
@@ -272,7 +268,7 @@ if (!function_exists('depth_query')) {
 
 				elseif (is_object($data))
 					return !isset($data->{$keys}) ||
-					       ($data[$keys] != 0 && empty($data->{$keys})) ? $default : $data->{$keys};
+					($data[$keys] != 0 && empty($data->{$keys})) ? $default : $data->{$keys};
 				else
 					return $default;
 			}
@@ -290,8 +286,7 @@ if (!function_exists('depth_query')) {
 						return $default;
 					else
 						$data = $data[$key];
-				}
-				elseif (is_object($data)) {
+				} elseif (is_object($data)) {
 					if (!isset($data->{$key}) || ($data->{$key} != 0 && empty($data->{$key})))
 						return $default;
 					else
@@ -299,8 +294,7 @@ if (!function_exists('depth_query')) {
 				}
 			}
 			return $data;
-		}
-		else
+		} else
 			return $default;
 	}
 }
@@ -321,15 +315,14 @@ if (!function_exists('equals')) {
 		$oldType = gettype($old);
 		$newType = gettype($new);
 		if ($oldType !== KE_ARY && $oldType !== KE_OBJ && $oldType !== KE_RES &&
-		    $newType !== KE_ARY && $newType !== KE_OBJ && $newType !== KE_RES
+			$newType !== KE_ARY && $newType !== KE_OBJ && $newType !== KE_RES
 		) {
 			if ($old === true) $old = 1;
 			elseif ($old === false) $old = 0;
 			if ($new === true) $new = 1;
 			elseif ($new === false) $new = 0;
 			return strval($old) === strval($new);
-		}
-		else {
+		} else {
 			return $old === $new;
 		}
 	}
@@ -390,12 +383,11 @@ if (!function_exists('substitute')) {
 			$regex = '#\{([^\{\}\r\n]+)\}#';
 		if (preg_match($regex, $str)) {
 			$str = preg_replace_callback($regex, function ($m) use ($args, & $matches) {
-				$key = $m[1];
+				$key           = $m[1];
 				$matches[$key] = ''; // give a default empty string
 				if (isset($args[$key]) || isset($args->$key)) {
 					$matches[$key] = $args[$key];
-				}
-				else {
+				} else {
 					$matches[$key] = depth_query($args, $key, '');
 				}
 				return $matches[$key];
@@ -484,8 +476,7 @@ if (!function_exists('parse_path')) {
 					if ($parseFormat && ($pos = strrpos($matches[2], '.')) > 0) {
 						$return[1] = substr($matches[2], 0, $pos);
 						$return[2] = strtolower(substr($matches[2], $pos + 1));
-					}
-					else {
+					} else {
 						$return[1] = $matches[2];
 					}
 				}
@@ -521,16 +512,16 @@ if (!function_exists('compare_path')) {
 			return false;
 		if (empty($delimiter))
 			$delimiter = KE_DS_UNIX;
-		$source = trim($source, KE_PATH_NOISE);
-		$target = trim($target, KE_PATH_NOISE);
-		$result = [];
+		$source      = trim($source, KE_PATH_NOISE);
+		$target      = trim($target, KE_PATH_NOISE);
+		$result      = [];
 		$splitSource = explode($delimiter, $source);
 		$splitTarget = explode($delimiter, $target);
 		if (!empty($splitSource) && !empty($splitTarget)) {
 			foreach ($splitSource as $index => $str) {
 				if (!isset($splitSource[$index]) ||
-				    !isset($splitTarget[$index]) ||
-				    strcasecmp($splitSource[$index], $splitTarget[$index]) !== 0
+					!isset($splitTarget[$index]) ||
+					strcasecmp($splitSource[$index], $splitTarget[$index]) !== 0
 				) {
 					break;
 				}
@@ -587,45 +578,41 @@ if (!function_exists('purge_path')) {
 
 		$isWinPath = false;
 		$isAbsPath = false;
-		$head = null;
+		$head      = null;
 		if ($isWinPath = preg_match('#^([a-z]\:)[\/\\\\]#i', $path, $matches)) {
-			$size = strlen($matches[0]);
-			$head = substr($path, 0, $size);
-			$path = substr($path, $size);
-			$path = trim($path, KE_PATH_NOISE);
+			$size      = strlen($matches[0]);
+			$head      = substr($path, 0, $size);
+			$path      = substr($path, $size);
+			$path      = trim($path, KE_PATH_NOISE);
 			$isAbsPath = true; // 符合windows风格的路径名，必然是绝对路径
-		}
-		else {
+		} else {
 			if (isset($path[0]) && $path[0] === $spr)
 				$isAbsPath = true;
 			$path = trim($path, KE_PATH_NOISE);
 		}
 
 		if (!empty($path) && $path !== $spr) {
-			$path = urldecode($path);
+			$path     = urldecode($path);
 			$sprQuote = preg_quote($spr);
 			if ($dot === KE_PATH_DOT_NORMALIZE) {
 				$split = explode($spr, $path);
-				$temp = [];
+				$temp  = [];
 				foreach ($split as $index => $part) {
 					if ($part === '.' || $part === $spr || empty($part))
 						continue;
 					elseif ($part === '..') {
 						array_pop($temp);
 						continue;
-					}
-					else {
+					} else {
 						$temp[] = $part;
 					}
 				}
 				$path = implode($spr, $temp);
-			}
-			elseif ($dot === KE_PATH_DOT_REMOVE) {
+			} elseif ($dot === KE_PATH_DOT_REMOVE) {
 				if (preg_match('#(\.{1,}[' . $sprQuote . ']{1,})#', $path))
 					$path = preg_replace('#(\.{1,}[' . $sprQuote . ']{1,})#', $spr, $path);
 				$path = preg_replace('#[' . $sprQuote . ']+#', $spr, $path);
-			}
-			else {
+			} else {
 				$path = preg_replace('#[' . $sprQuote . ']+#', $spr, $path);
 			}
 		}
@@ -633,17 +620,14 @@ if (!function_exists('purge_path')) {
 		if ($isWinPath) {
 			// windows的路径风格，就忽略$left的设置了
 			$path = $head . $path;
-		}
-		else {
+		} else {
 			if ($left === KE_PATH_LEFT_NATIVE) {
 				if ($isAbsPath && $path[0] !== $spr)
 					$path = $spr . $path;
-			}
-			elseif ($left === KE_PATH_LEFT_TRIM) {
+			} elseif ($left === KE_PATH_LEFT_TRIM) {
 				if (!empty($path) && $path[0] === $spr)
 					$path = ltrim($path, $spr);
-			}
-			else {
+			} else {
 				if (empty($path))
 					$path = $spr;
 				elseif ($path[0] !== $spr)
