@@ -100,6 +100,9 @@ $http = $web->http;
 		.doc-comment {
 			font-size: 115%;
 		}
+		.doc-comment textarea {
+			display: none;
+		}
 
 		.doc-comment p {
 			margin: 1.2em 0;
@@ -112,7 +115,7 @@ $http = $web->http;
 		.doc-header {
 			margin: 1.2em 0;
 			font-weight: bold;
-			font-size: 115%;
+			font-size: 120%;
 		}
 
 		.static-sticky {
@@ -166,10 +169,11 @@ $http = $web->http;
 			return false;
 		});
 
+
 		var renderer = new marked.Renderer();
 
 		renderer.heading = function (text, level) {
-			var escapedText = text.toLowerCase().replace(/[^\w]+/g, '-');
+//			var escapedText = text.toLowerCase().replace(/[^\w]+/g, '-');
 			return '<div class="doc-header">' + text + '</div>';
 		};
 
@@ -177,18 +181,19 @@ $http = $web->http;
 			renderer: renderer,
 			gfm: true,
 			tables: true,
-			breaks: false,
+			breaks: true,
 			pedantic: false,
 			sanitize: false,
 			smartLists: true,
 			highlight: function (code, lang, callback) {
-				return Prism.highlight(code, Prism.languages[lang]);
+				return Prism.highlight($('<textarea/>').html(code).text(), Prism.languages[lang]);
 			}
 		});
 
 		$('.doc-comment').each(function (i, item) {
-			console.log($(item).html());
-			$(item).html(marked($(item).html()));
+			item = $(item);
+			var textArea = item.find('textarea'), text = textArea.val();
+			$(item).append(marked(text));
 		});
 
 		$('.ui.sticky[data-sticky]').each(function (i, item) {
@@ -197,6 +202,7 @@ $http = $web->http;
 		$('.ui.sticky.static-sticky').each(function (i, item) {
 			$(item).sticky();
 		});
+
 	})
 </script>
 </body>

@@ -285,8 +285,11 @@ class DocHtml extends Html
 				$detail[] = '1. [' . $item[0] . '](' . $item[0] . ')';
 			}
 		}
-		if ($isWrap)
-			return $this->tag('DocComment', implode("\n\n", $detail));
+		if ($isWrap) {
+			$textarea = $this->textarea(implode("\n\n", $detail));
+			return $this->tag('DocComment', $textarea);
+		}
+
 		else
 			return implode("\n\n", $detail);
 	}
@@ -357,7 +360,9 @@ class DocHtml extends Html
 			$block[] = $this->docComment(DocMen::FUNC, $data['doc'], false);
 		}
 
-		return $this->tag('DocComment', implode("\n", $block)) . $address;
+		$textarea = $this->textarea(implode("\n", $block));
+
+		return $this->tag('DocComment', $textarea) . $address;
 	}
 
 	public function functionArgs(array $data)

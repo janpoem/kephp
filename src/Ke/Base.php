@@ -89,16 +89,91 @@ const KE_IMPORT_CONTEXT = 0b1000;
 
 if (!function_exists('import')) {
 	/**
-	 * 加载文件
+	 * 加载一个或多个文件。
 	 *
-	 * @param string|array $_path    要加载的路径，可以是字符串表示加载单个文件，也可以是数组表示加载多个文件。
-	 * @param array        $_vars    需要在加载时注入的环境变量，这些环境变量在加载的文件中会作为局部变量。
-	 * @param int          $_mode    返回结果的模式，
-	 *                               `KE_IMPORT_RAW` 返回原始数据（return），如果是多个文件，则以一个数组装载。
-	 *                               `KE_IMPORT_PATH` 返回成功加载过的文件的路径，单个文件，返回路径（字符串）或false（加载失败），多个文件时，返回成功加载的路径的数组（加载失败的不会在数组中）
-	 *                               `KE_IMPORT_ARRAY` 将加载文件的返回的结果转为数组格式返回。多个文件时，会将多个数组合并为，合并模式为追加，相同的Key后来者不可覆盖前者。
-	 *                               `KE_IMPORT_MERGE` 与 `KE_IMPORT_ARRAY` 相似，但以merge的方式合并，即同Key时后来者会覆盖前者。
-	 *                               `KE_IMPORT_CONTEXT` 上下文模式，只在加载多个文件时有效。这个模式，会将 `$_vars` 以 `EXTR_REFS` 的方式解开，在当前import过程中，共享 `$_vars` 的变化。
+	 * ```php
+	 * $result = import('a.php'); // a.php存在，返回return 'a'，则此函数就返回'a'
+	 *
+	 * $result = import('b.php'); // b.php不存在，则该次执行返回false
+	 *
+	 * $result = import(['a.php', 'b.php']); // ['a', false]
+	 * ```
+	 *
+	 * 传递局部变量
+	 * ```php
+	 * import('classes.php', ['dir' => '/var/www/myApp']);
+	 *
+	 * // classes.php
+	 * return [
+	 *     'App' => $dir . '/App.php',
+	 * ];
+	 * ```
+	 *
+	 * 指定不同的模式
+	 * ```php
+	 * $vars = ['dir' => '/var/www/myApp'];
+	 *
+	 * // 加载单个文件
+	 * import('classes.php', $vars, KE_IMPORT_RAW);   // [ 'App' => '/var/www/myApp/App.php' ]
+	 * import('classes.php', $vars, KE_IMPORT_PATH);  // [ 'config.php' ] 已经加载过的路径
+	 * import('classes.php', $vars, KE_IMPORT_ARRAY); // [ 'App' => '/var/www/myApp/App.php' ]
+	 *
+	 * // 加载多个文件
+	 * import(['a.php', 'classes.php'], $vars, KE_IMPORT_RAW);   // ['a', [ 'App' => '/var/www/myApp/App.php' ]]
+	 * import(['a.php', 'classes.php'], $vars, KE_IMPORT_PATH);  // ['a.php', 'config.php']
+	 * import(['a.php', 'classes.php'], $vars, KE_IMPORT_ARRAY); // [ 'App' => '/var/www/myApp/App.php' ] a.php返回的内容不是数组，所以没有
+	 * ```
+	 *
+	 * 假定有classes2.php文件，有如下内容：
+	 * ```php
+	 * // classes2.php
+	 * return [
+	 *     'App' => $dir . '/xErp/App.php',
+	 *     'Web' => $dir . '/xErp/Web.php',
+	 * ];
+	 * ```
+	 *
+	 * ```php
+	 * $vars = ['dir' => '/var/www/myApp'];
+	 *
+	 * import(['classes.php', 'classes2.php'], $vars, KE_IMPORT_ARRAY);
+	 * // [ 'App' => '/var/www/myApp/App.php', 'Web' => '/var/www/myApp/xErp/Web.php', ]
+	 * // 注意，第二个文件的App无法覆盖已经存在的App。
+	 *
+	 * import(['classes.php', 'classes2.php'], $vars, KE_IMPORT_MERGE);
+	 * // [ 'App' => '/var/www/myApp/xErp/App.php', 'Web' => '/var/www/myApp/xErp/Web.php', ]
+	 * // 注意，第二个文件的App已经覆盖掉第一个文件的App。
+	 * ```
+	 *
+	 * 上下文环境模式
+	 * ```php
+	 * // classes_rebase.php
+	 * $dir = '/var/www/newApp';
+	 * ```
+	 *
+	 * ```php
+	 * $vars = ['dir' => '/var/www/myApp'];
+	 * import(['classes_rebase.php', 'classes.php', 'classes2.php'], $vars, KE_IMPORT_ARRAY | KE_IMPORT_CONTEXT);
+	 * // [ 'App' => '/var/www/newApp/App.php', 'Web' => '/var/www/newApp/xErp/Web.php', ]
+	 * // classes_rebase.php文件已经修改了dir的变量，之后的文件dir都已经改变。
+	 *
+	 * echo $vars['dir'];
+	 * // 仍然是：'/var/www/myAp'。这个上下文环境只在import函数的流程内有效，并不会改变外部的变量。
+	 * ```
+	 *
+	 * 加载模式的说明
+	 *
+	 * **KE_IMPORT_RAW** 返回引用源数据
+	 * **KE_IMPORT_PATH** 加载成功，则返回该文件的路径（非全路径）
+	 * **KE_IMPORT_ARRAY** 加载成功，返回的结果强制转为一个数组，对于`return false`或`return 'abc'`这种，将返回一个空数组，只有返回一个对象或者数组的时候为有效的数据。当加载多个文件时，会将多个文件的结果，合并为一个数组返回，这种合并不是merge方法，当存在相同的key时，后者不能覆盖已经存在的key。
+	 * **KE_IMPORT_MERGE** 与`KE_IMPORT_ARRAY`行为类似，但是merge操作，即同key时，后来者会覆盖前者。
+	 * **KE_IMPORT_CONTEXT** 在上述四种模式下，可以附加多此模式，字面意思为，保留上下文环境。
+	 *
+	 * 注意，上述的**KE_IMPORT_ARRAY**和**KE_IMPORT_MERGE**都只是单层合并，不会做深层合并。
+	 *
+	 * @param string|array $_path 要加载的路径，可以是字符串表示加载单个文件，也可以是数组表示加载多个文件。
+	 * @param array        $_vars 需要在加载时注入的环境变量，这些环境变量在加载的文件中会作为局部变量。
+	 * @param int          $_mode 加载文件、返回结果时的模式。
 	 * @param array        &$_result 附加的返回数据，只对加载多个文件时有效
 	 * @return bool|array|mixed
 	 */
@@ -139,7 +214,8 @@ if (!function_exists('import')) {
 								$_result += $_return;
 						}
 						// 其他的字符串、布尔、数值无法转化为等量的array，就放弃不管了。
-					} elseif ($_mode === KE_IMPORT_PATH)
+					}
+					elseif ($_mode === KE_IMPORT_PATH)
 						$_result[] = $_item;
 				}
 				// 多层数组的文件时，这里无法维持原来的索引顺序了
@@ -147,7 +223,8 @@ if (!function_exists('import')) {
 					$_result[] = $_return;
 			}
 			return $_result;
-		} else {
+		}
+		else {
 			$_return   = false;
 			$_isImport = false;
 			if (!empty($_vars)) {
@@ -166,7 +243,8 @@ if (!function_exists('import')) {
 					elseif (is_object($_return))
 						return (array)$_return;
 					return [];
-				} elseif ($_mode === KE_IMPORT_PATH)
+				}
+				elseif ($_mode === KE_IMPORT_PATH)
 					return $_path;
 			}
 			return $_return;
@@ -176,7 +254,20 @@ if (!function_exists('import')) {
 
 if (!function_exists('parse_class')) {
 	/**
-	 * 解析className，解析出namespace前缀和className
+	 * 将一个类名解析出namespaceName和className。
+	 *
+	 * 返回的结果为一个数组，0: namespaceName，1: className。
+	 *
+	 * 如果class不包含namespace，则0位为null。
+	 *
+	 * ```php
+	 * list($ns, $cls) = parse_class('\MyApp\Hello_World');
+	 * // $ns => MyApp
+	 * // $cls => Hello_World
+	 * list($ns, $cls) = parse_class('Hello_World');
+	 * // $ns => null
+	 * // $cls => Hello_World
+	 * ```
 	 *
 	 * @param string $class
 	 * @return array
@@ -196,6 +287,10 @@ if (!function_exists('parse_class')) {
 if (!function_exists('error_name')) {
 	/**
 	 * 根据php的错误类型的整型值，转为字符输出
+	 *
+	 * ```php
+	 * error_name(E_ERROR); // 'Error'
+	 * ```
 	 *
 	 * @param int $code
 	 * @return string
@@ -227,25 +322,25 @@ if (!function_exists('error_name')) {
 
 if (!function_exists('depth_query')) {
 	/**
-	 * 深入查询$data
+	 * 深度查询一个数据（数组或对象），并取回对应的值。
 	 *
 	 * ```php
-	 * $data = array(
-	 *     'level1' => array(
-	 *         'level2' => array(
-	 *             0, 1, 2, 3, 4, 5
-	 *         );
-	 *     ),
-	 * );
-	 * depth_query($data, 'level1->level2'); // return array(0,1,2,3,4,5)
-	 * depth_query($data, 'level1->level2->0'); // return 0
-	 * depth_query($data, 'not_exist', 'test'); // return 'test'
+	 * $data = [
+	 *     'a' => [
+	 *         'a1' => [ 'a1-1', 'a1-2', 'a1-3'],
+	 *         'a2' => 'realy a2'
+	 *     ],
+	 *     'b' => ['b1', 'b2', 'b3],
+	 * ];
+	 *
+	 * depth_query($data, 'a->a1->0');          // 返回'a1-1'
+	 * depth_query($data, 'a->a1->4', false);   // 并不存在，你可以指定他的默认值，这里会返回你指定的false。
+	 * depth_query($data, 'b.1', false, '.');   // 你还可以指定keys的分隔符
+	 * depth_query($data, ['b', 6], false);     // keys也可以是一个数组
 	 * ```
 	 *
-	 * $keys可以为数组格式，如：array('level1', 'level2');
-	 *
-	 * @param array|object $data    数据源
-	 * @param string|array $keys    查询的keys，字符串格式为：`'key1->key2->0'`，数组格式：`array('key1', 'key2', 0)`
+	 * @param array|object $data 数据源
+	 * @param string|array $keys 查询的keys，字符串格式为：`'key1->key2->0'`，数组格式：`array('key1', 'key2', 0)`
 	 * @param mixed        $default 默认值，当查询的keys的值不存在时，返回该默认值。
 	 * @param string       $keysSpr
 	 * @return mixed
@@ -259,7 +354,8 @@ if (!function_exists('depth_query')) {
 			if (strpos($keys, $keysSpr) !== false) {
 				$keys     = explode($keysSpr, $keys);
 				$keysType = KE_ARY;
-			} else {
+			}
+			else {
 				// Janpoem 2014.09.21
 				// 调整了一些，原来只是检查isset，现在增加empty的判断
 				// 需要做更长时间的监控，是否有副作用
@@ -268,7 +364,7 @@ if (!function_exists('depth_query')) {
 
 				elseif (is_object($data))
 					return !isset($data->{$keys}) ||
-					($data[$keys] != 0 && empty($data->{$keys})) ? $default : $data->{$keys};
+					       ($data[$keys] != 0 && empty($data->{$keys})) ? $default : $data->{$keys};
 				else
 					return $default;
 			}
@@ -286,7 +382,8 @@ if (!function_exists('depth_query')) {
 						return $default;
 					else
 						$data = $data[$key];
-				} elseif (is_object($data)) {
+				}
+				elseif (is_object($data)) {
 					if (!isset($data->{$key}) || ($data->{$key} != 0 && empty($data->{$key})))
 						return $default;
 					else
@@ -294,15 +391,20 @@ if (!function_exists('depth_query')) {
 				}
 			}
 			return $data;
-		} else
+		}
+		else
 			return $default;
 	}
 }
 
 if (!function_exists('equals')) {
 	/**
-	 * 值内容是否相等
-	 * 动态类型语言的值类型检查真的蛋疼
+	 * 判断两个值的内容是否相等，对于非数组、对象、资源类型的值，会将其转为字符串进行比较。
+	 *
+	 * ```php
+	 * equals('10', 10);  // true
+	 * equals('a', ' a'); // false，后者多了一个空格
+	 * ```
 	 *
 	 * @param mixed $old
 	 * @param mixed $new
@@ -315,14 +417,15 @@ if (!function_exists('equals')) {
 		$oldType = gettype($old);
 		$newType = gettype($new);
 		if ($oldType !== KE_ARY && $oldType !== KE_OBJ && $oldType !== KE_RES &&
-			$newType !== KE_ARY && $newType !== KE_OBJ && $newType !== KE_RES
+		    $newType !== KE_ARY && $newType !== KE_OBJ && $newType !== KE_RES
 		) {
 			if ($old === true) $old = 1;
 			elseif ($old === false) $old = 0;
 			if ($new === true) $new = 1;
 			elseif ($new === false) $new = 0;
 			return strval($old) === strval($new);
-		} else {
+		}
+		else {
 			return $old === $new;
 		}
 	}
@@ -363,9 +466,53 @@ if (!function_exists('diff_milli')) {
 
 if (!function_exists('substitute')) {
 	/**
-	 * 字符串替换函数，命名源自mootools的String.substitute
+	 * 文本字符替换（函数命名源自Mootools）。
 	 *
-	 * 原本作为Utils包里面的函数，现在将他提取到Common中。
+	 * *原本作为Utils\String包里面的函数，现在将他提取到Common中。*
+	 *
+	 * ```php
+	 * // 基本的使用
+	 * $str = '你好，{name}！';
+	 * $args = ['name' => 'kephp'];
+	 * substitute($str, $args); // '你好，kephp！'
+	 *
+	 * // 如果变量不存在的话：
+	 * $str = '你好，{name}！今天是星期{weekDay}。';
+	 * substitute($str, $args); // '你好，kephp！今天是星期。'
+	 *
+	 * // 他会循环检查
+	 * $str = '你好，{name}！{tail}';
+	 * $args = [
+	 *     'name'    => 'kephp',
+	 *     'weekDay' => '六',
+	 *     'tail'    => '今天是星期{weekDay}。',
+	 * ];
+	 *
+	 * substitute($str, $args); // '你好，kephp！今天是星期六。'
+	 *
+	 * // 指定第三个参数，可以取得这次文本替换过程中所匹配到的keywords和对应的变量内容
+	 * substitute($str, $args, $matches); // matches将会包含: name, weekDay, tail
+	 * ```
+	 *
+	 * 本函数支持多层数组、对象的深度查询
+	 *
+	 * ```php
+	 * $str = '你好，{name}！{tail}{template}';
+	 * $args = [
+	 *     'name' => 'kephp',
+	 *     'message' => [
+	 *         'title' => '认识你很高兴！',
+	 *         'content' => '我想了解更多的讯息！',
+	 *     ],
+	 *     'template' => '<h1>{message->title}</h1><div>{message->content}</div>',
+	 *     'weekDay' => '六',
+	 *     'tail' => '今天是星期{weekDay}。',
+	 * ];
+	 * substitute($str, $args);
+	 * // 返回：你好，kephp！今天是星期六。<h1>认识你很高兴！</h1><div>我想了解更多的讯息！</div>
+	 * ```
+	 *
+	 * 第四个参数`$regex`，允许设定你自定义的变量的正则匹配表达式。
 	 *
 	 * @param string $str
 	 * @param array  $args
@@ -387,7 +534,8 @@ if (!function_exists('substitute')) {
 				$matches[$key] = ''; // give a default empty string
 				if (isset($args[$key]) || isset($args->$key)) {
 					$matches[$key] = $args[$key];
-				} else {
+				}
+				else {
 					$matches[$key] = depth_query($args, $key, '');
 				}
 				return $matches[$key];
@@ -401,6 +549,18 @@ if (!function_exists('substitute')) {
 global $KE;
 
 if (!function_exists('ext')) {
+	/**
+	 * 对给定的路径名追加后缀文件名，注意，这里会强制将追加的后缀名转为小写格式。
+	 *
+	 * ```php
+	 * ext('/var/www/index.html', 'html'); // 已经有html了，结果还是/var/www/index.html
+	 * ext('/var/www/index.html', 'php');  // /var/www/index.html.php
+	 * ```
+	 *
+	 * @param string $path
+	 * @param string $ext
+	 * @return string
+	 */
 	function ext(string $path, string $ext): string
 	{
 		if (!empty($path) && !empty($ext)) {
@@ -415,6 +575,16 @@ if (!function_exists('ext')) {
 }
 
 if (!function_exists('real_path')) {
+	/**
+	 * php的realpath，返回路径名的绝对路径名，并判断路径（文件或目录）是否存在。
+	 *
+	 * _不明白为什么php 7.0以后，realpath的执行效率异常低下。_
+	 *
+	 * 这个函数会将执行过一次的realpath结果，放入一个全局变量中，第二次再执行，就会从全局变量中去取。而不会再次执行realpath函数。
+	 *
+	 * @param string $path 路径名
+	 * @return string|false 路径存在，则返回路径名，不存在则返回false
+	 */
 	function real_path(string $path)
 	{
 		global $KE;
@@ -426,6 +596,12 @@ if (!function_exists('real_path')) {
 }
 
 if (!function_exists('real_dir')) {
+	/**
+	 * real_path的目录版，判定标准是路径为目录。
+	 *
+	 * @param string $path 路径名
+	 * @return string|false 路径是一个目录，则返回全路径，不存在则返回false
+	 */
 	function real_dir(string $path)
 	{
 		global $KE;
@@ -437,6 +613,12 @@ if (!function_exists('real_dir')) {
 }
 
 if (!function_exists('real_file')) {
+	/**
+	 * real_path的文件版，判定标准是路径为文件。
+	 *
+	 * @param string $path 路径名
+	 * @return string|false 路径是一个文件，则返回全路径，不存在则返回false
+	 */
 	function real_file(string $path)
 	{
 		global $KE;
@@ -449,16 +631,28 @@ if (!function_exists('real_file')) {
 
 if (!function_exists('parse_path')) {
 	/**
-	 * 解析一个路径名，拆分出目录、文件名、后缀名
+	 * 特定的路径解析方法
+	 *
+	 * 返回的结果以数组装载。
+	 *
+	 * * 0: 目录名
+	 * * 1：文件名
+	 * * 2：文件后缀格式
 	 *
 	 * 如果路径不包含相应部分的数据，那个值会为null，后缀名会强制转为小写
 	 *
 	 * ```php
-	 * parse_path('index.html'); // [null, 'index', 'html']
-	 * parse_path('/hello/world/jan.txt'); // ['/hello/world', 'jan', 'txt']
+	 * parse_path('a', true);      // [null, 'a'], 无目录，a文件名
+	 * parse_path('a/b', true);    // ['a', 'b'], a目录，b文件名
+	 * parse_path('a/b/c', true);  // ['a/b', 'c'], a/b目录，c文件名
 	 *
-	 * // 如果以路径名为末尾，则默认认为这个表示的是一个目录
-	 * parse_path('good/'); // ['good', null, null]
+	 * parse_path('a/', true);     // ['a', null], a目录，无文件
+	 * parse_path('a/b/', true);   // ['a/b', null], a/b目录，无文件
+	 * parse_path('a/b/c/', true); // ['a/b/c', null], a/b/c目录，无文件
+	 *
+	 * // 第二个参数表示的是否将后缀文件名拆解出来
+	 * parse_path('a/b/c.html', true)；    // ['a/b', 'c', 'html'], true为拆解，默认值
+	 * parse_path('a/b/c.html', false);    // ['a/b', 'c.html'], false为不拆解
 	 * ```
 	 *
 	 * @param string $path
@@ -476,7 +670,8 @@ if (!function_exists('parse_path')) {
 					if ($parseFormat && ($pos = strrpos($matches[2], '.')) > 0) {
 						$return[1] = substr($matches[2], 0, $pos);
 						$return[2] = strtolower(substr($matches[2], $pos + 1));
-					} else {
+					}
+					else {
 						$return[1] = $matches[2];
 					}
 				}
@@ -520,8 +715,8 @@ if (!function_exists('compare_path')) {
 		if (!empty($splitSource) && !empty($splitTarget)) {
 			foreach ($splitSource as $index => $str) {
 				if (!isset($splitSource[$index]) ||
-					!isset($splitTarget[$index]) ||
-					strcasecmp($splitSource[$index], $splitTarget[$index]) !== 0
+				    !isset($splitTarget[$index]) ||
+				    strcasecmp($splitSource[$index], $splitTarget[$index]) !== 0
 				) {
 					break;
 				}
@@ -549,6 +744,15 @@ const KE_PATH_LEFT_REMAIN = 0b0100;
 const KE_PATH_LEFT_NATIVE = 0b1000;
 
 if (!function_exists('purge_path')) {
+	/**
+	 * 净化一个路径名
+	 *
+	 * @param string $path
+	 * @param int    $mode
+	 * @param string $spr
+	 * @param null   $noise
+	 * @return string
+	 */
 	function purge_path(string $path, int $mode = 0, string $spr = DS, $noise = null): string
 	{
 		// 路径左边的处理模式
@@ -585,7 +789,8 @@ if (!function_exists('purge_path')) {
 			$path      = substr($path, $size);
 			$path      = trim($path, KE_PATH_NOISE);
 			$isAbsPath = true; // 符合windows风格的路径名，必然是绝对路径
-		} else {
+		}
+		else {
 			if (isset($path[0]) && $path[0] === $spr)
 				$isAbsPath = true;
 			$path = trim($path, KE_PATH_NOISE);
@@ -603,16 +808,19 @@ if (!function_exists('purge_path')) {
 					elseif ($part === '..') {
 						array_pop($temp);
 						continue;
-					} else {
+					}
+					else {
 						$temp[] = $part;
 					}
 				}
 				$path = implode($spr, $temp);
-			} elseif ($dot === KE_PATH_DOT_REMOVE) {
+			}
+			elseif ($dot === KE_PATH_DOT_REMOVE) {
 				if (preg_match('#(\.{1,}[' . $sprQuote . ']{1,})#', $path))
 					$path = preg_replace('#(\.{1,}[' . $sprQuote . ']{1,})#', $spr, $path);
 				$path = preg_replace('#[' . $sprQuote . ']+#', $spr, $path);
-			} else {
+			}
+			else {
 				$path = preg_replace('#[' . $sprQuote . ']+#', $spr, $path);
 			}
 		}
@@ -620,14 +828,17 @@ if (!function_exists('purge_path')) {
 		if ($isWinPath) {
 			// windows的路径风格，就忽略$left的设置了
 			$path = $head . $path;
-		} else {
+		}
+		else {
 			if ($left === KE_PATH_LEFT_NATIVE) {
 				if ($isAbsPath && $path[0] !== $spr)
 					$path = $spr . $path;
-			} elseif ($left === KE_PATH_LEFT_TRIM) {
+			}
+			elseif ($left === KE_PATH_LEFT_TRIM) {
 				if (!empty($path) && $path[0] === $spr)
 					$path = ltrim($path, $spr);
-			} else {
+			}
+			else {
 				if (empty($path))
 					$path = $spr;
 				elseif ($path[0] !== $spr)
@@ -641,9 +852,9 @@ if (!function_exists('purge_path')) {
 
 if (!function_exists('predir')) {
 	/**
-	 * 预先创建指定路径的目录。
+	 * 预创建指定路径的目录
 	 *
-	 * 常用于保存文件前检查文件的路径的目录是否存在。
+	 * 主要用于减少写入文件前，判断文件的目录是否存在的代码
 	 *
 	 * ```php
 	 * file_put_contents(predir('/var/www/myapp/log/abc.log'), 'anything...');

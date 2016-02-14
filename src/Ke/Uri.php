@@ -17,7 +17,7 @@ namespace Ke;
  *
  * 部分接口遵照PSR-7规范，但不完全遵守PSR-7规范的要求。
  *
- * 本类经过精心的调整，可支持任意的继承扩展，如/Ke/Web/Params则是继承自该类而实现
+ * 本类经过精心的调整，可支持任意的继承扩展，如`/Ke/Web/Http`则是继承自该类而实现
  *
  * @package Ke\Core
  * @link    https://github.com/php-fig/http-message/blob/master/src/UriInterface.php
@@ -78,13 +78,13 @@ class Uri
 	/**
 	 * 检查端口号是否为相关协议的标准端口
 	 *
-	 * <code>
+	 * ```php
 	 * Uri::isStdPort(80, 'http'); // true
 	 * Uri::isStdPort(8080, 'http'); // false
-	 * </code>
+	 * ```
 	 *
 	 * @param string $scheme scheme，必须是小写的格式
-	 * @param int    $port   端口号
+	 * @param int    $port 端口号
 	 * @return bool
 	 */
 	public static function isStdPort($port, $scheme = null): bool
@@ -92,6 +92,15 @@ class Uri
 		return !empty($scheme) && isset(self::$stdPorts[$scheme]) && self::$stdPorts[$scheme] === intval($port);
 	}
 
+	/**
+	 * 过滤路径，这个方法其实是简化版的`purge_path`
+	 *
+	 * 已经过滤过的路径，会放入静态变量中临时保存，以确保一次会话中可多次重复使用。
+	 *
+	 * @param string     $path 要过滤的路径
+	 * @param array|null $excludes 需要过滤掉的路径片段，key -> value 存放。
+	 * @return string
+	 */
 	public static function filterPath($path, array $excludes = null): string
 	{
 		if (empty($path))
@@ -141,14 +150,14 @@ class Uri
 	 *
 	 * 在cli模式，假定执行文件为：php /var/www/kephp/tests/hello.php
 	 *
-	 * 在这个执行文件中，已经定义了项目的根目录为：/var/www/kephp
+	 * 在当前环境下，已经定义了项目（App）的根目录为：/var/www/kephp
 	 *
-	 * 则当前的cli模式下，完整的URI为：cli://localhost/kephp/tests/hello.php?argv
+	 * 则当前的cli模式下，完整的URI为：cli://localhost/kephp/tests/hello.php
 	 *
-	 * 对应上述的常量：
+	 * 相应的，常量内容如下：
 	 * KE_REQUEST_SCHEME => cli
 	 * KE_REQUEST_HOST   => localhost
-	 * KE_REQUEST_URI    => /kephp/tests/hello.php?argv
+	 * KE_REQUEST_URI    => /kephp/tests/hello.php
 	 * KE_REQUEST_PATH   => /kephp/tests/hello.php
 	 *
 	 * cli模式下，KE_REQUEST_PATH的第一段，代表的就是这个项目的根目录，在执行替换的时候，可以将第一段（/kephp）替换为KE_APP常量的内容
@@ -176,18 +185,21 @@ class Uri
 				$path = str_replace('\\', '/', $path);
 			$path                   = '/' . KE_APP_DIR . $path;
 			$_SERVER['REQUEST_URI'] = $path;
-		} else {
+		}
+		else {
 			$ptcVer = substr($_SERVER['SERVER_PROTOCOL'], strpos($_SERVER['SERVER_PROTOCOL'], '/') + 1);
 			if (!isset($_SERVER['REQUEST_SCHEME'])) {
 				$_SERVER['REQUEST_SCHEME'] = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
-			} else {
+			}
+			else {
 				$_SERVER['REQUEST_SCHEME'] = strtolower($_SERVER['REQUEST_SCHEME']);
 			}
 			if (!isset($_SERVER['HTTP_HOST'])) {
 				$_SERVER['HTTP_HOST'] = $_SERVER['SERVER_NAME'];
 				if (!static::isStdPort((int)$_SERVER['SERVER_PORT'], $_SERVER['REQUEST_SCHEME']))
 					$_SERVER['HTTP_HOST'] .= ':' . $_SERVER['SERVER_PORT'];
-			} else {
+			}
+			else {
 				$_SERVER['HTTP_HOST'] = strtolower($_SERVER['HTTP_HOST']);
 			}
 			$parse = parse_url($_SERVER['REQUEST_URI']);
@@ -217,6 +229,8 @@ class Uri
 	}
 
 	/**
+	 * 返回当前PHP请求的URI实例。
+	 *
 	 * @return Uri
 	 */
 	public static function current()
@@ -231,6 +245,17 @@ class Uri
 		return self::$currentUri;
 	}
 
+	/**
+	 * Uri 构建函数
+	 *
+	 * 构建函数允许传入多种格式的参数：
+	 *
+	 * * 字符串，会执行相应的url解析方法
+	 * * 数组，`[ 'scheme' => '...', 'path' => '...', 'uri' => '...', ... ]`
+	 * * 对象，会将对象转为数组
+	 *
+	 * @param null|array|object|string $data
+	 */
 	public function __construct($data = null)
 	{
 		if (self::$isPrepare === false)
@@ -239,6 +264,41 @@ class Uri
 			$this->setData($data);
 	}
 
+	/**
+	 * 设置Uri的数据
+	 *
+	 * $data为字符串，表示为path
+	 * ```php
+	 * $uri->setData('hello');
+	 * ```
+	 *
+	 * 等价于
+	 * ```php
+	 * $uri->setData(['path' => 'hello']);
+	 * ```
+	 *
+	 * 关于路径的拼接处理
+	 * ```php
+	 * $uri = new Uri('http://www.kephp.com/test');
+	 * $uri->setData('hello');  // http://www.kephp.com/test/hello/
+	 * $uri->setData('../abc'); // http://www.kephp.com/test/hello/../abc/
+	 * $uri->setData('/login'); // http://www.kephp.com/login/ 特别注意这个
+	 * ```
+	 *
+	 * 合并查询字符
+	 * ```php
+	 * $uri->setData('hello_world?id=1');         // hello_world?id=1
+	 * $uri->setData('hello_world?id=1', 'id=2'); // hello_world?id=2
+	 * // 删除掉指定的字段
+	 * $uri->setData('hello_world?id=1', ['id' => null, 'name' => 'kephp']); // hello_world?name=kephp  id已经被删除
+	 * ```
+	 *
+	 * 如果$data是一个Uri的实例，会将这个实例克隆到自身上。
+	 *
+	 * @param array|object|string      $data
+	 * @param null|array|object|string $mergeQuery 需要合并的查询字符
+	 * @return $this|Uri
+	 */
 	public function setData($data, $mergeQuery = null)
 	{
 		if ($data instanceof static) {
@@ -248,7 +308,8 @@ class Uri
 		if ($type === KE_STR) {
 			$type = KE_ARY;
 			$data = parse_url($data);
-		} elseif ($type === KE_OBJ) {
+		}
+		elseif ($type === KE_OBJ) {
 			$type = KE_ARY;
 			$data = get_object_vars($data);
 		}
@@ -270,7 +331,8 @@ class Uri
 		if (isset($data['query'])) {
 			$this->setQuery($data['query'], $mergeQuery);
 			unset($data['query']);
-		} elseif (!empty($mergeQuery)) {
+		}
+		elseif (!empty($mergeQuery)) {
 			$this->setQuery($mergeQuery);
 		}
 
@@ -285,51 +347,92 @@ class Uri
 		return $this;
 	}
 
+	/**
+	 * 过滤数据
+	 *
+	 * 该函数实际上是提供给后继的继承的类来处理自定义的数据使用的。非uri的标准字段的数据都会被交给这个部分来处理。
+	 *
+	 * @param array $data
+	 * @return $this
+	 */
 	protected function filterData(array $data)
 	{
 		$this->data = array_merge($this->data, $data);
 		return $this;
 	}
 
+	/**
+	 * 数组形式取回当前Uri实例的数据
+	 *
+	 * @return array
+	 */
 	public function getData(): array
 	{
 		return $this->data;
 	}
 
+	/**
+	 * 动态获取属性的魔术方法实现
+	 *
+	 * @param string $field
+	 * @return array|mixed|null|string
+	 */
 	public function __get($field)
 	{
 		if ($field === 'port') {
 			return $this->getPort();
-		} elseif ($field === 'hostPort') {
+		}
+		elseif ($field === 'hostPort') {
 			return $this->getHost(true);
-		} elseif ($field === 'authority') {
+		}
+		elseif ($field === 'authority') {
 			return $this->getAuthority();
-		} elseif ($field === 'uri') {
+		}
+		elseif ($field === 'uri') {
 			return $this->toUri();
-		} elseif ($field === 'fullUri') {
+		}
+		elseif ($field === 'fullUri') {
 			return $this->toUri(true);
-		} elseif ($field === 'userInfo') {
+		}
+		elseif ($field === 'userInfo') {
 			return $this->getUserInfo();
-		} elseif ($field === 'query') {
+		}
+		elseif ($field === 'query') {
 			return $this->queryData;
-		} elseif ($field === 'queryString') {
+		}
+		elseif ($field === 'queryString') {
 			return empty($this->data['query']) ? '' : $this->data['query'];
-		} else {
+		}
+		else {
 			return empty($this->data[$field]) ? '' : $this->data[$field];
 		}
 	}
 
+	/**
+	 * 动态设置属性的魔术方法
+	 *
+	 * @param string $field
+	 * @param mixed  $value
+	 */
 	public function __set($field, $value)
 	{
 		if ($field === 'mergeQuery') {
 			$this->mergeQuery($value);
-		} elseif ($field === 'query') {
+		}
+		elseif ($field === 'query') {
 			$this->setQuery($value, false);
-		} else {
+		}
+		else {
 			$this->setData([$field => $value]);
 		}
 	}
 
+	/**
+	 * 将自己的数据克隆并写入到指定的Uri实例对象上。
+	 *
+	 * @param Uri $clone
+	 * @return Uri
+	 */
 	public function cloneTo(Uri $clone)
 	{
 		$clone->data      = array_intersect_key($this->data, $clone->data);
@@ -337,6 +440,13 @@ class Uri
 		return $clone;
 	}
 
+	/**
+	 * 基于当前的Uri克隆出一个新的Uri实例，如果指定了参数，会将参数写入到新的Uri实例
+	 *
+	 * @param null $uri
+	 * @param null $mergeQuery
+	 * @return Uri
+	 */
 	public function newUri($uri = null, $mergeQuery = null)
 	{
 		$clone = $this->cloneTo(new Uri());
@@ -349,10 +459,13 @@ class Uri
 	/**
 	 * 设置uri的协议
 	 *
-	 * <code>
-	 * $uri->setScheme('http://www.163.com/')
-	 * $uri->setScheme('https')
-	 * </code>
+	 * ```php
+	 * $uri->setScheme('http://www.163.com/');
+	 * $uri->setScheme('https');
+	 * $uri->setScheme('ftp:'); // 写入的实际上是ftp
+	 * ```
+	 *
+	 * 该方法会将scheme强制转为小写。
 	 *
 	 * @param string $scheme uri的协议
 	 * @return $this
@@ -371,11 +484,32 @@ class Uri
 		return $this;
 	}
 
+	/**
+	 * 取得Uri的协议，如果Uri没指定协议，返回空字符
+	 *
+	 * @return string
+	 */
 	public function getScheme()
 	{
 		return empty($this->data['scheme']) ? '' : $this->data['scheme'];
 	}
 
+	/**
+	 * 设置Uri的Host
+	 *
+	 * 该函数也会强制将host转为小写。
+	 *
+	 * 如果传入的$host包含scheme和port，该函数也会同时更新
+	 *
+	 * ```php
+	 * $uri->setHost('192.168.1.100');
+	 * $uri->setHost('http://www.kephp.com:90/'); // 分别写入了scheme: http, host: www.kephp.com, port: 90
+	 * ```
+	 *
+	 * @param string $host
+	 * @param null   $port
+	 * @return $this
+	 */
 	public function setHost($host, $port = null)
 	{
 		if ($host !== $this->data['host']) {
@@ -403,6 +537,12 @@ class Uri
 		return $this;
 	}
 
+	/**
+	 * 取得当前Uri的Host
+	 *
+	 * @param bool $withPort 是否返回包含端口号
+	 * @return string
+	 */
 	public function getHost($withPort = false)
 	{
 		$host = empty($this->data['host']) ? '' : $this->data['host'];
@@ -413,6 +553,14 @@ class Uri
 		return $host;
 	}
 
+	/**
+	 * 设置Uri的Port
+	 *
+	 *
+	 *
+	 * @param string|int $port 端口号，允许是字符串的数值，如'99'
+	 * @return $this
+	 */
 	public function setPort($port)
 	{
 		if (is_numeric($port))
@@ -420,11 +568,23 @@ class Uri
 		return $this;
 	}
 
+	/**
+	 * 取回Uri的Port
+	 *
+	 * @return int|null
+	 */
 	public function getPort()
 	{
 		return isset($this->data['port']) ? $this->data['port'] : null;
 	}
 
+	/**
+	 * 设置uri的user和pass部分
+	 *
+	 * @param string      $user
+	 * @param string|null $pass
+	 * @return $this
+	 */
 	public function setUserInfo($user, $pass = null)
 	{
 		if ($user !== $this->data['user'])
@@ -434,6 +594,11 @@ class Uri
 		return $this;
 	}
 
+	/**
+	 * 取回uri的user和pass部分
+	 *
+	 * @return string
+	 */
 	public function getUserInfo()
 	{
 		if (empty($this->data['user']))
@@ -441,6 +606,13 @@ class Uri
 		return $this->data['user'] . (empty($this->data['pass']) ? '' : ':' . $this->data['pass']);
 	}
 
+	/**
+	 * 取回uri的Authority
+	 *
+	 * `[user[:password]@]host[:port]`
+	 *
+	 * @return string
+	 */
 	public function getAuthority()
 	{
 		if (empty($this->data['host']))
@@ -452,6 +624,30 @@ class Uri
 		return $result;
 	}
 
+	/**
+	 * 设置Uri的路径
+	 *
+	 * $path允许包含`#`和`?`部分，并会自动将他们拆开
+	 *
+	 * ```php
+	 * $uri->setPath('hello_world?id=1#part_1');
+	 * ```
+	 *
+	 * 路径的第一个字符为`/`，表示为重置Uri的路径，否则则是在当前的路径基础上添加路径
+	 *
+	 * ```php
+	 * $uri->setPath('plus');   // 叠加路径
+	 * $uri->setPath('/reset'); // 重置路径
+	 * ```
+	 *
+	 * 第二个参数`$isMergeQuery`，用来说明如果路径包含了QueryString，则此次的QueryString是替换还是合并。
+	 *
+	 * 同时，`$isMergeQuery`也可以是一个数组或字符串，作为附加的QueryString写入
+	 *
+	 * @param string $path 路径名
+	 * @param mixed  $isMergeQuery 整型或布尔类型，表示是否合并查询字符，如果是字符、数组、对象，则表示合并查询字符，且追加合并。
+	 * @return $this
+	 */
 	public function setPath($path, $isMergeQuery = false)
 	{
 		// 先对路径进行过滤
@@ -474,7 +670,8 @@ class Uri
 					$this->data['path'] .= '/';
 				$this->data['path'] .= $path;
 			}
-		} else {
+		}
+		else {
 			$this->data['path'] = $path;
 		}
 		if (!empty($query))
@@ -484,6 +681,12 @@ class Uri
 		return $this;
 	}
 
+	/**
+	 * 设置绝对路径，处理方式与`setPath`一致，但是会确保一定是重置路径。
+	 *
+	 * @param string $path
+	 * @return Uri
+	 */
 	public function setAbsPath($path)
 	{
 		if (!isset($path[0]) || $path[0] !== '/')
@@ -491,11 +694,35 @@ class Uri
 		return $this->setPath($path);
 	}
 
+	/**
+	 * 取回当前Uri的路径。
+	 *
+	 * @return string
+	 */
 	public function getPath()
 	{
 		return empty($this->data['path']) ? '' : $this->data['path'];
 	}
 
+	/**
+	 * 设置Uri的查询字符串
+	 *
+	 * 第二个参数与`setPath`的第二个参数的作用相同。
+	 *
+	 * 如果不指定第二个参数，则默认是以当前写入的QueryString替换掉当前的QueryString
+	 *
+	 * ```php
+	 * $uri = new Uri('/?id=1&name=a');                 // ?id=1&name=a
+	 * $uri->setQuery('search=xxx');                    // ?search=xxx
+	 * $uri->setQuery('search=xxx', true);              // ?id=1&name=a&search=xxx
+	 * $uri->setQuery('search=xxx', 'id=2');            // ?id=2&name=a&search=xxx
+	 * $uri->setQuery('search=xxx', ['id' => null]);    // ?name=a&search=xxx
+	 * ```
+	 *
+	 * @param string|array|object $query 写入的查询字符，允许多种格式
+	 * @param mixed               $mergeQuery 整型或布尔类型，表示是否合并查询字符，如果是字符、数组、对象，则表示合并查询字符，且追加合并。
+	 * @return $this
+	 */
 	public function setQuery($query, $mergeQuery = false)
 	{
 		$isMerge   = false;
@@ -506,13 +733,16 @@ class Uri
 			$mergeData = $mergeQuery;
 		if (empty($query)) {
 			$query = [];
-		} else {
+		}
+		else {
 			$type = gettype($query);
 			if ($type === KE_OBJ) {
 				$query = get_object_vars($query);
-			} elseif ($type === KE_ARY) {
+			}
+			elseif ($type === KE_ARY) {
 				// @todo 严格来说，当query为一个数组的时候，应该循环遍历，并执行key, value的urlencode
-			} else {
+			}
+			else {
 				// 强制转为字符串类型
 				if ($type !== KE_STR)
 					$query = (string)$query;
@@ -543,21 +773,52 @@ class Uri
 		return $this;
 	}
 
+	/**
+	 * 合并写入查询字符
+	 *
+	 * @param string|array|object $query
+	 * @return Uri
+	 */
 	public function mergeQuery($query)
 	{
 		return $this->setQuery($query, true);
 	}
 
+	/**
+	 * 获得当前Uri的查询字符，注意这个方法返回的是字符格式
+	 *
+	 * @return string
+	 */
 	public function getQuery()
 	{
 		return empty($this->data['query']) ? '' : $this->data['query'];
 	}
 
+	/**
+	 * 以数组形式取回当前Uri的查询字符
+	 *
+	 * @return string
+	 */
 	public function getQueryData()
 	{
 		return $this->queryData;
 	}
 
+	/**
+	 * 查询并取回当前Uri的QueryString某个key的值
+	 *
+	 * 该函数允许深度查询
+	 *
+	 * ```php
+	 * $uri->query('id'); // 有则返回id，没有则返回null
+	 * $uri->query('id', false); // 指定当id不存在时的默认返回值
+	 * $uri->query('words->a');  // 深度查询
+	 * ```
+	 *
+	 * @param string|array $keys
+	 * @param null         $default
+	 * @return mixed
+	 */
 	public function query($keys, $default = null)
 	{
 		if (isset($this->queryData[$keys]))
@@ -565,6 +826,12 @@ class Uri
 		return depth_query($this->queryData, $keys, $default);
 	}
 
+	/**
+	 * 设置Uri的fragment
+	 *
+	 * @param string $fragment
+	 * @return $this
+	 */
 	public function setFragment($fragment)
 	{
 		if (isset($fragment[0]) && $fragment[0] === '#')
@@ -573,16 +840,40 @@ class Uri
 		return $this;
 	}
 
+	/**
+	 * 取回Fragment
+	 *
+	 * @return string
+	 */
 	public function getFragment()
 	{
 		return empty($this->data['fragment']) ? '' : $this->data['fragment'];
 	}
 
+	/**
+	 * 获得当前Uri的字符输出内容
+	 *
+	 * @return string
+	 */
 	public function __toString()
 	{
 		return $this->toUri();
 	}
 
+	/**
+	 * 生成字符串Uri
+	 *
+	 * 允许指定参数是否强制包含Authority信息。
+	 *
+	 * 如当前PHP的全局信息是：http://www.kephp.com/test/
+	 *
+	 * 而Uri的数据为：http://www.kephp.com/test/admin/post/edit/1 （这个Uri为本地Uri）
+	 *
+	 * 在不指定`$isWithAuthority`时，`toUri`方法会返回`/test/admin/post/edit/1`，而不包含Authority信息。
+	 *
+	 * @param null $isWithAuthority
+	 * @return string
+	 */
 	public function toUri($isWithAuthority = null)
 	{
 		if (!isset($isWithAuthority))
@@ -608,16 +899,28 @@ class Uri
 		return $uri;
 	}
 
+	/**
+	 * 判断当前Uri是否为本地Uri
+	 *
+	 * 这里所谓的本地，不是指host是否为localhost，而是指这个Uri的scheme和host是否和全局信息（$_SERVER）相同，相同则表示为本地Uri。
+	 *
+	 * @return bool
+	 */
 	public function isLocalhost()
 	{
 		if (isset($this->data['scheme']) && $this->data['scheme'] === KE_REQUEST_SCHEME &&
-			$this->getHost(true) === KE_REQUEST_HOST
+		    $this->getHost(true) === KE_REQUEST_HOST
 		) {
 			return true;
 		}
 		return false;
 	}
 
+	/**
+	 * 是否隐藏Authority
+	 *
+	 * @return bool
+	 */
 	public function isHideAuthority()
 	{
 		if ($this->isHideAuthority)
@@ -629,6 +932,12 @@ class Uri
 		return false;
 	}
 
+	/**
+	 * 设置uri是否隐藏Authority
+	 *
+	 * @param bool $isHide
+	 * @return $this
+	 */
 	public function setHideAuthority($isHide)
 	{
 		$this->isHideAuthority = (bool)$isHide;
