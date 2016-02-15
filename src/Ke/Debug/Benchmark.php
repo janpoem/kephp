@@ -88,13 +88,13 @@ class Benchmark
 	 * 添加要执行的动作（action）。
 	 *
 	 * $action允许以下的几种格式：
-	 * - \Closure，闭包函数
-	 * - string，字符串格式，表示为一般的函数，如：`hello_world`，也可以表示静态类的方法，如：`Hello::world`
-	 * - array，数组格式，表示为类、实例的方法，如：[$obj, 'sayHi']、['Hello', 'World']等。
+	 * - `\Closure`，闭包函数
+	 * - `string`，字符串格式，表示为一般的函数，如：`hello_world`，也可以表示静态类的方法，如：`Hello::world`
+	 * - `array`，数组格式，表示为类、实例的方法，如：[$obj, 'sayHi']、['Hello', 'World']等。
 	 *
 	 * 在执行的过程中，会将当前的基准测试的实例作为第一个参数传入，以方便手动标记一些统计的信息。比如：
 	 *
-	 * <code>
+	 * ```php
 	 * function hello_world(Benchmark $bm) {
 	 *     $bm->markMemory('init'); // 记录下初始的内存，这里表示的实际上执行这个方法时候的内存使用情况。
 	 *     // 执行一些操作
@@ -105,12 +105,12 @@ class Benchmark
 	 *     'test1' => 'hello_world',
 	 * ]);
 	 * $bm->run();
-	 * </code>
+	 * ```
 	 *
 	 * 当需要对一个类、实例的方法，执行基准测试的时候，因为需要使用到这个类、实例的属性，这个方法才能生效，所以最好的做法，
 	 * 是直接在一个闭包内调用这个类、实例的方法，或者在这个类、实例基准上创建相同的基准测试方法入口，来执行他们。如：
 	 *
-	 * <code>
+	 * ```php
 	 * class Hello {
 	 *
 	 *     // 假定这是我们需要测试的函数
@@ -147,8 +147,7 @@ class Benchmark
 	 *     },
 	 * ]);
 	 * $bm->run('Jack');
-	 *
-	 * </code>
+	 * ```
 	 *
 	 * @param string $name 该动作的名称，最好以字符串的方式
 	 * @param \Closure|array|string|callable $action 该动作的实际执行的函数，必须为可执行的函数`is_callable($action)`

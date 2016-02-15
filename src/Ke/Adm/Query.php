@@ -102,6 +102,9 @@ class Query
 		return $this->getAdapter()->getQueryBuilder();
 	}
 
+	/**
+	 * @return array|DataList
+	 */
 	public function find()
 	{
 		if (isset($this->pagination))
@@ -114,7 +117,7 @@ class Query
 	}
 
 	/**
-	 * @return array|mixed|Model
+	 * @return array|Model
 	 */
 	public function findOne()
 	{
@@ -125,6 +128,9 @@ class Query
 		return $data;
 	}
 
+	/**
+	 * @return int
+	 */
 	public function count()
 	{
 		$this->select('COUNT(*)');
@@ -138,12 +144,20 @@ class Query
 		return $this->getAdapter()->query($sql, $args, DbAdapter::ONE, DbAdapter::FETCH_COLUMN, 0);
 	}
 
+	/**
+	 * @param int|string $column
+	 * @return array
+	 */
 	public function column($column)
 	{
 		$this->getQueryBuilder()->buildSelect($this, $sql, $args);
 		return $this->getAdapter()->query($sql, $args, DbAdapter::MULTI, DbAdapter::FETCH_COLUMN, $column);
 	}
 
+	/**
+	 * @param int|string $column
+	 * @return string|int
+	 */
 	public function columnOne($column)
 	{
 		$this->getQueryBuilder()->buildSelect($this, $sql, $args);
@@ -151,11 +165,13 @@ class Query
 	}
 
 	/**
-	 * 设置查询的字段，每一次执行，都会清空已有查询字段，如果要追加查询，请使用addSelect
+	 * 设置查询的字段
 	 *
-	 * <code>
+	 * 每一次执行，都会清空已有查询字段，如果要追加查询，请使用addSelect
+	 *
+	 * ```php
 	 * $query->select('id', 'name', 'title', ['test', 'ok', 'what']); // 支持多维数组格式
-	 * </code>
+	 * ```
 	 *
 	 * @param mixed ...$args
 	 * @return $this
@@ -198,7 +214,7 @@ class Query
 	/**
 	 * 联合表查询
 	 *
-	 * <code>
+	 * ```php
 	 * $query->from('user');                                // tb1 => user
 	 * $query->join('user_log.user_id', 'user.id');         // tb2 => user_log
 	 * $query->join('user_log.user_id', 'tb1.id');          // 等同于上述
@@ -207,7 +223,7 @@ class Query
 	 *
 	 * $query->join(Sql::LEFT_JOIN, 'user_log.user_id', 'user.id'); // 指定连接的方式，第一个参数必须为int类型
 	 * $query->join(Sql::LEFT_JOIN, 'user_log.user_id', 'user.id', [ 'tb1.id' => '1' ]); // 增加连接查询的条件
-	 * </code>
+	 * ```
 	 *
 	 * @param array ...$args
 	 * @return $this|Query
@@ -239,8 +255,9 @@ class Query
 	}
 
 	/**
+	 * Where查询
 	 *
-	 * <code>
+	 * ```php
 	 * // id > 100
 	 * $query->where('id', '>', 100);
 	 * // id > 0 AND status in (1)
@@ -256,7 +273,7 @@ class Query
 	 *         ['OR', ...],
 	 *     ],
 	 * ]);
-	 * </code>
+	 * ```
 	 *
 	 * @param array ...$args
 	 * @return $this|Query
@@ -377,15 +394,16 @@ class Query
 	}
 
 	/**
+	 * Order查询
 	 *
-	 * <code>
+	 * ```php
 	 * $query->order(['id', 1], 'name');        // id ASC, name
 	 * $query->order('id ASC', 'status DESC');  // id ASC, status DESC
 	 * $query->order([
 	 *     ['id', 'status', 'created_at', 1],
 	 *     ['updated_at', -1],
 	 * ]);  // id,status,created_at ASC, updated_at DESC
-	 * </code>
+	 * ```
 	 *
 	 * @param array ...$args
 	 * @return $this|Query
@@ -420,10 +438,11 @@ class Query
 	}
 
 	/**
+	 * Group
 	 *
-	 * <code>
+	 * ```php
 	 * $query->group('id');
-	 * </code>
+	 * ```
 	 *
 	 * @param string|null $field
 	 * @return $this
@@ -441,6 +460,17 @@ class Query
 		return $this->pagination;
 	}
 
+	/**
+	 * 分页查询
+	 *
+	 * ```php
+	 * $query->paginate(10);
+	 * $query->paginate([ 'size': 10, 'current': 1, 'field': 'page' ]);
+	 * ```
+	 *
+	 * @param int|array $options
+	 * @return $this
+	 */
 	public function paginate($options)
 	{
 		$this->getPagination()->setOptions($options);

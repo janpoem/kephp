@@ -161,11 +161,12 @@ class DocMen
 			],
 			'prism'  => [
 				['http://7xqwoj.com1.z0.glb.clouddn.com/prism%2Fprism.css', 'css', ['id' => 'prism_theme_css']],
-				[
-					'http://7xqwoj.com1.z0.glb.clouddn.com/prism%2Fprism.js',
-					'js',
-				],
+				['http://7xqwoj.com1.z0.glb.clouddn.com/prism%2Fprism.js', 'js',],
 			],
+		    'hljs' => [
+			    ['//cdn.bootcss.com/highlight.js/9.1.0/highlight.min.js', 'js'],
+			    ['//cdn.bootcss.com/highlight.js/9.1.0/styles/tomorrow-night.min.css', 'css', ['id' => 'hljs_theme_css']],
+		    ],
 		];
 	}
 

@@ -201,8 +201,10 @@ $http = $web->http;
 			return '<div class="doc-header">' + text + '</div>';
 		};
 //		renderer.code = function (code, lang) {
+//			if (!lang)
+//				lang = 'php';
 //			var hlCode = hljs.highlight(lang, $('<textarea/>').html(code).text());
-//			return '<pre><code class="hljs lang-'+lang+'">' + hlCode.value + '</code></pre>';
+//			return '<pre><code class="hljs lineNumbers lang-'+lang+'">' + hlCode.value + '</code></pre>';
 //		};
 
 		marked.setOptions({
@@ -214,6 +216,8 @@ $http = $web->http;
 			sanitize: false,
 			smartLists: true,
 			highlight: function (code, lang, callback) {
+				if (typeof lang === 'undefined' || !lang || lang.length <= 0)
+					lang = 'php';
 				return Prism.highlight($('<textarea/>').html(code).text(), Prism.languages[lang]);
 //				code = $('<textarea/>').html(code).text();
 //				var hlCode = hljs.highlight(lang, code);
