@@ -90,10 +90,12 @@ class NewApp extends ReflectionCommand
 		'appNamespace'  => '',
 	];
 
+	protected $entryFile = '/Ke/App.php';
+
 	/**
 	 * @var string
 	 * @type string
-	 * @field    ns
+	 * @field    namespace
 	 * @shortcut n
 	 */
 	protected $appNamespace = '';
@@ -101,10 +103,18 @@ class NewApp extends ReflectionCommand
 	protected function onPrepare($argv = null)
 	{
 		$this->thisApp = App::getApp();
-		$root = $this->getNewAppDir();
+		$root          = $this->getNewAppDir();
 		if (is_dir($root))
 			throw new \Exception("Directory {$root} is existing!");
-		$this->context['kephpLibEntry'] = realpath($this->thisApp->kephp('Ke/App.php'));
+		$kephpEntry = relative_path($root, $this->thisApp->kephp());
+		list($path, $phar) = split_phar($kephpEntry);
+		if ($phar !== false) {
+			$kephpEntry = "'phar://' . __DIR__ . '{$path}/{$phar}{$this->entryFile}'";
+		}
+		else {
+			$kephpEntry = "__DIR__ . '{$path}{$this->entryFile}'";
+		}
+		$this->context['kephpLibEntry'] = $kephpEntry;
 		if (empty($this->appNamespace))
 			$this->appNamespace = path2class($this->name);
 		else {
@@ -112,8 +122,7 @@ class NewApp extends ReflectionCommand
 				throw new \Exception("App namespace only can use char in a-z0-9_.");
 			}
 		}
-
-		$this->context['appNamespace'] = $this->appNamespace;
+		$this->context['appNamespace'] = trim($this->appNamespace, KE_PATH_NOISE);
 	}
 
 	protected function onExecute($argv = null)
@@ -133,7 +142,7 @@ class NewApp extends ReflectionCommand
 
 	public function getNewAppDir()
 	{
-		return $this->getAppParentDir() . DS . $this->name;
+		return getcwd() . DS . $this->name;
 	}
 
 	public function entry(string $parent, array $data, $name = null)

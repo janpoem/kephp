@@ -35,6 +35,8 @@ class Console
 		'new' => 'add',
 	];
 
+	private $cwd = '';
+
 	/**
 	 * @param null $argv
 	 * @return Console
@@ -49,7 +51,7 @@ class Console
 
 	public function getGlobalCommandScopes(): array
 	{
-		$scopes = $this->getAppCommandScopes();
+		$scopes                 = $this->getAppCommandScopes();
 		$scopes['Ke\\Cli\\Cmd'] = __DIR__ . DS . 'Cmd';
 		return $scopes;
 	}
@@ -75,6 +77,7 @@ class Console
 
 		$this->app->getLoader()->loadHelper('string');
 		$this->writer = new Writer();
+		$this->cwd    = real_path(getcwd());
 
 		// 将错误和异常处理，从App中接管过来。
 		register_shutdown_function(function () {
@@ -96,7 +99,7 @@ class Console
 	 */
 	public function errorHandle($err, $msg, $file, $line, $context)
 	{
-		$err = error_name($err);
+		$err  = error_name($err);
 		$time = date('Y-m-d H:i:s');
 		$this->halt("[{$err}][{$time}] {$msg} ({$file}#{$line})");
 	}
@@ -106,8 +109,8 @@ class Console
 	 */
 	public function exceptionHandle(Throwable $throw)
 	{
-		$err = get_class($throw);
-		$msg = $throw->getMessage();
+		$err  = get_class($throw);
+		$msg  = $throw->getMessage();
 		$time = date('Y-m-d H:i:s');
 		$file = $throw->getFile();
 		$line = $throw->getLine();
@@ -125,6 +128,11 @@ class Console
 		if (!isset($this->argv))
 			$this->argv = Argv::current();
 		return $this->argv;
+	}
+
+	public function getCwd()
+	{
+		return $this->cwd;
 	}
 
 	public function print(...$args)
@@ -173,10 +181,10 @@ class Console
 			$argv = $this->getArgv();
 		if (empty($argv[0]))
 			throw new Exception('No command found in argv.');
-		$cmd = $this->getAliasCommand($argv[0]);
-		$class = null;
-		$path = null;
-		$scopes = $this->getGlobalCommandScopes();
+		$cmd      = $this->getAliasCommand($argv[0]);
+		$class    = null;
+		$path     = null;
+		$scopes   = $this->getGlobalCommandScopes();
 		$commands = $this->makeCommands($cmd);
 		foreach ($scopes as $ns => $dir) {
 			foreach ($commands as $command) {
@@ -208,9 +216,9 @@ class Console
 			return [];
 		$base = str_replace(['\\', '-', '.',], ['/', '_', '_',], $command);
 
-		$lower = strtolower($command);
-		$lowerNoUnder = str_replace('_', '', $lower);
-		$camelCase = preg_replace_callback('#([\-\_\/\.\\\\])([a-z])#', function ($matches) {
+		$lower            = strtolower($command);
+		$lowerNoUnder     = str_replace('_', '', $lower);
+		$camelCase        = preg_replace_callback('#([\-\_\/\.\\\\])([a-z])#', function ($matches) {
 			if ($matches[1] === '/' || $matches[1] === '\\')
 				return strtoupper($matches[0]);
 			else

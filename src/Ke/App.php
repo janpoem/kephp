@@ -119,8 +119,6 @@ class App
 		define('KE_APP_ROOT', $this->root);
 		/** App的目录名 */
 		define('KE_APP_DIR', basename($this->root));
-		/** 当前PHP运行的模式，只有两种，cli和web */
-		define('KE_APP_MODE', PHP_SAPI === 'cli' ? KE_CLI : KE_WEB);
 
 		// 后注册，让后继承的App类，可以以声明属性的方式来添加
 		if (!isset($this->aliases['web']))

@@ -35,6 +35,9 @@ const KE_CLI = 'cli';
  */
 const KE_WEB = 'web';
 
+/** 当前PHP运行的模式，只有两种，cli和web */
+define('KE_APP_MODE', PHP_SAPI === 'cli' ? KE_CLI : KE_WEB);
+
 /** KE_APP_ENV:开发环境 */
 const KE_DEV = 'development';
 /** KE_APP_ENV:测试环境 */
@@ -60,13 +63,15 @@ const KE_OBJ = 'object';
 /** 资源类型 */
 const KE_RES = 'resource';
 
-const DS = DIRECTORY_SEPARATOR;
 /** 命名空间的分隔符 */
 const KE_DS_CLS = '\\';
 /** Windows系统的目录分隔符 */
 const KE_DS_WIN = '\\';
 /** Unix, Linux系统的目录分隔符 */
 const KE_DS_UNIX = '/';
+
+const DS = DIRECTORY_SEPARATOR;
+
 
 /** 是否WINDOWS环境 */
 const KE_IS_WIN = DIRECTORY_SEPARATOR === KE_DS_WIN;
@@ -887,3 +892,78 @@ if (!function_exists('predir')) {
 	}
 }
 
+if (!function_exists('convert_path_slash')) {
+	function convert_path_slash(string $path = null, $replace = KE_DS_UNIX): string
+	{
+		if (empty($path))
+			return '';
+		if ($replace !== KE_DS_UNIX && $replace !== KE_DS_WIN)
+			$replace = KE_DS_UNIX;
+		$search = $replace === KE_DS_UNIX ? KE_DS_WIN : KE_DS_UNIX;
+		if (strpos($path, $search) !== false)
+			$path = str_replace($search, $replace, $path);
+		return $path;
+	}
+}
+
+if (!function_exists('split_phar')) {
+	function split_phar(string $path)
+	{
+		$phar = false;
+		if (preg_match('#^phar://(.*)[\/\\\\]([^\/\\\\]+\.phar)#i', $path, $matches)) {
+			$path = $matches[1];
+			$phar = $matches[2];
+		}
+		elseif (preg_match('#^phar://(.*)#', $path, $matches)) {
+			$path = $matches[1];
+		}
+		return [$path, $phar];
+	}
+}
+
+if (!function_exists('relative_path')) {
+	function relative_path(string $target, string $source, string $plus = null, $slash = KE_DS_UNIX)
+	{
+		if ($slash !== KE_DS_UNIX && $slash !== KE_DS_WIN)
+			$slash = KE_DS_UNIX;
+		$source = convert_path_slash($source, $slash);
+		$target = convert_path_slash($target, $slash);
+		if (isset($plus))
+			$plus = ltrim($plus, KE_PATH_NOISE);
+		list($source, $phar) = split_phar($source);
+
+		$relative = $source;
+
+		if (strlen($source) > 0) {
+			$samePart = compare_path($source, $target, $slash);
+			if (!empty($samePart)) {
+				$samePart    = preg_quote($samePart);
+				$quoteSlash  = preg_quote($slash);
+				$regex       = "#^({$quoteSlash}?{$samePart}{$quoteSlash}?)#i";
+				$sourceTail  = preg_replace($regex, '', $source);
+				$sourceTail  = trim($sourceTail, KE_PATH_NOISE);
+				$targetTail  = preg_replace($regex, '', $target);
+				$targetTail  = trim($targetTail, KE_PATH_NOISE);
+				$targetDepth = 0;
+				if (strlen($targetTail) > 0) {
+					$targetSplit = explode($slash, $targetTail);
+					$targetDepth = count($targetSplit);
+				}
+				$relative = str_repeat($slash . '..', $targetDepth);
+				if (strlen($sourceTail) > 0)
+					$relative .= $slash . $sourceTail;
+			}
+		}
+
+		if ($phar !== false) {
+			$relative = 'phar://' . $relative;
+			$relative .= $slash . $phar;
+		}
+
+		if (strlen($plus) > 0) {
+			$relative .= $slash . convert_path_slash($plus);
+		}
+
+		return $relative;
+	}
+}

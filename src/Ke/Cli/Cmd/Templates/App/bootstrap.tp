@@ -3,9 +3,7 @@
  * kephp bootstrap file.
  */
 
-$kephpApp = '{kephpLibEntry}';
-
-require $kephpApp;
+require {kephpLibEntry};
 require 'src/{appNamespace}/App.php';
 
 /** @var \Ke\App $APP */

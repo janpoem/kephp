@@ -52,7 +52,7 @@ class PharPack extends ReflectionCommand
 	protected function onPrepare($argv = null)
 	{
 		if (empty($this->export))
-			$this->export = App::getApp()->export();
+			$this->export = KE_SCRIPT_DIR;
 		if (empty($this->name))
 			$this->name = basename($this->dir);
 		if (intval(ini_get('phar.readonly')) > 0)
@@ -61,12 +61,15 @@ class PharPack extends ReflectionCommand
 
 	protected function onExecute($argv = null)
 	{
+		$stub      = $this->dir . '/stub';
 		$class     = static::class;
 		$pathParam = FilesystemIterator::CURRENT_AS_FILEINFO | FilesystemIterator::KEY_AS_FILENAME;
 		try {
 			$phar = new Phar(predir($this->getSavePath()), $pathParam, $this->getFileName());
 			$phar->buildFromDirectory($this->dir, '/.php|.phtml|.inc|.tp|.txt|.json$/');
 			$phar->addFromString('pack.txt', $class . " packed in " . date('Y-m-d H:i:s'));
+			if (is_file($stub) && is_readable($stub))
+				$phar->setStub(substitute(file_get_contents($stub), ['file' => $this->getFileName()]));
 			$this->console->println('Pack "' .
 			                        $this->getFileName() .
 			                        '" success, file export to "' .
