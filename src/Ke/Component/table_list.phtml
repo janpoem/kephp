@@ -144,10 +144,7 @@ $checkboxClass = $html->getBaseClass('input', 'checkbox');
 			<?php
 		} else {
 			foreach ($rows as $index => $row) {
-				$clone = $row;
-				if (is_object($row))
-					$clone = (array)$row;
-				$clone = new ArrayObject($clone);
+				$clone = new ArrayObject((array)$row);
 				if ($onRow) {
 					call_user_func($onRow, $html, $row, $clone);
 				}

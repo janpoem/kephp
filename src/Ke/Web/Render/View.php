@@ -24,6 +24,8 @@ class View extends Renderer
 
 	private $layoutStatus = 0;
 
+	private $isInitContent = false;
+
 	private $content = '';
 
 	public function __construct(string $view = null, string $layout = null)
@@ -64,6 +66,8 @@ class View extends Renderer
 
 	public function getContent()
 	{
+		if ($this->isInitContent)
+			return $this->content;
 		$isDebug = $this->web->isDebug();
 		if ($this->view === false) {
 			if ($isDebug)
@@ -92,6 +96,7 @@ class View extends Renderer
 				$this->content = $this->context->import($layout, ['content' => $this->content]);
 				$this->layoutStatus++; // 2 : layout文件加载成功
 			}
+			$this->isInitContent = true;
 			return $this->content;
 		}
 		catch (Throwable $thrown) {

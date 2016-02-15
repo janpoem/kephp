@@ -144,7 +144,7 @@ class Web
 		return false;
 	}
 
-	public static function removeRoutes(string $path)
+	public static function removeRoute(string $path)
 	{
 		if (isset(self::$routes[$path])) {
 			unset(self::$routes[$path]);

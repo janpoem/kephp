@@ -139,14 +139,22 @@ class Result
 			$this->mode = Router::MODE_CLASS;
 		}
 		else {
-			if (isset($data['namespace']))
-				$this->namespace = empty($data['namespace']) ? '' : $data['namespace'];
+//			if (isset($data['namespace']))
+//				$this->namespace = empty($data['namespace']) ? '' : $data['namespace'];
 			if (!empty($data['controller'])) {
 				$this->mode = Router::MODE_CONTROLLER;
 				$this->controller = $data['controller'];
+				if (!empty($data['namespace']))
+					$this->namespace = $data['namespace'];
 			}
 			else {
 				$this->mode = Router::MODE_TRADITION;
+				if ($this->node !== Router::ROOT) {
+					if (!isset($data['namespace']))
+						$this->namespace = $this->node;
+					else
+						$this->namespace = $data['namespace'];
+				}
 			}
 		}
 		if (!empty($data['action']))

@@ -76,7 +76,6 @@ class Router
 		'month'      => self::PATTERN_MONTH,
 		'day'        => self::PATTERN_DAY,
 		'format'     => self::PATTERN_FORMAT,
-		'tail'       => '',
 	];
 
 	/**
@@ -180,8 +179,8 @@ class Router
 			$node = trim($node, KE_PATH_NOISE);
 			$path = isset($route['path']) ? trim($route['path'], KE_PATH_NOISE) : $node;
 			$this->paths[$path] = $node;
-			if ($node !== self::ROOT && !isset($route['namespace']))
-				$route['namespace'] = $node;
+//			if ($node !== self::ROOT && !isset($route['namespace']))
+//				$route['namespace'] = $node;
 		}
 		return $this;
 	}
@@ -243,18 +242,32 @@ class Router
 	{
 		if (!isset($this->routes[$rs->node]))
 			return $this;
-		$node = &$this->routes[$rs->node];
+		$data = &$this->routes[$rs->node];
 		if ($rs->node !== self::ROOT) {
-			if (!isset($node['namespace'])) {
+			if (!isset($data['namespace'])) {
+//				$node['namespace'] = $rs->node;
 			}
 		}
-		$rs->assign($node);
+		$rs->assign($data);
 
-		if (!empty($node['mappings']) && is_array($node['mappings']))
-			$this->loopMappings($node['mappings'], $rs);
-		// 已经设定了action，就不去匹配后面的了
+		if (!empty($data['mappings']) && is_array($data['mappings']))
+			$this->loopMappings($data['mappings'], $rs);
+
+//		if (!$rs->matched) {
+//			// 已经设定了action，就不去匹配后面的了
+//			if (!empty($rs->action)) {
+//				$rs->matched = true;
+//			}
+//			else {
+//				if ($rs->mode === self::MODE_TRADITION) {
+//					$this->loopMappings($this->controllerMappings, $rs);
+//				}
+//				else {
+//					$this->loopMappings($this->actionMappings, $rs);
+//				}
+//			}
+//		}
 		if (!$rs->matched) {
-
 			if ($rs->mode === self::MODE_CLASS && !empty($rs->action)) {
 				$rs->matched = true;
 			}
@@ -264,6 +277,9 @@ class Router
 				}
 				else {
 					$this->loopMappings($this->actionMappings, $rs);
+				}
+				if (empty($rs->action) && !empty($data['action'])) {
+					$rs->action = $data['action'];
 				}
 			}
 		}

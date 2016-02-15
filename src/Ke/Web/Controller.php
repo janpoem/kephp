@@ -33,7 +33,7 @@ class Controller
 	/** @var null */
 	public $layout = null;
 
-	public function __construct()
+	final public function __construct()
 	{
 		$this->web = Web::getWeb();
 		$this->http = $this->web->http;

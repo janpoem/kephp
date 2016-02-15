@@ -121,7 +121,7 @@ class DocMen
 	{
 		if (isset(self::$registerInstances[$path])) {
 			unset(self::$registerInstances[$path]);
-			Web::removeRoutes($path);
+			Web::removeRoute($path);
 			return true;
 		}
 		return false;
