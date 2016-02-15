@@ -95,6 +95,8 @@ $return = $return ?? false;
 if (empty($return))
 	$return = $web->http->query('ref', null);
 
+$isUpload = $isUpload ?? false;
+
 $buttons = [
 	[$submit, 'submit'],
     [$reset, 'reset'],
@@ -108,6 +110,9 @@ $formAttr = [
 	'method' => $method,
 	'action' => $action,
 ];
+
+if ($isUpload)
+	$formAttr['enctype'] = 'multipart/form-data';
 
 $isPost = strtolower($method) === 'post';
 $postData = [];
