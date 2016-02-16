@@ -553,6 +553,7 @@ class DocMen
 	public function loadWikiFile(string $fullPath)
 	{
 		$this->loadWikiAutoIndex += 1;
+		$fullPath = real_path($fullPath);
 		if (is_file($fullPath)) {
 			$content                        = file_get_contents($fullPath);
 			$this->renewWikiData[$fullPath] = true;
