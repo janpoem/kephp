@@ -591,7 +591,7 @@ class DocMen
 			}
 			$mtime = filemtime($fullPath);
 			if (!isset($this->wikiIndex[$relative]['mtime']) || $mtime !== $this->wikiIndex[$relative]['mtime']) {
-				$data                       = $this->loadWikiFile($relative);
+				$data = $this->loadWikiFile($fullPath);
 				if ($data === false)
 					return false;
 				$this->wikiIndex[$relative] = array_merge($this->wikiIndex[$relative], $data);
@@ -604,11 +604,17 @@ class DocMen
 	public function loadWikiContent(string $relative)
 	{
 		$basePath = $this->getWikiDir();
-		$relative = trim($relative, KE_PATH_NOISE);
-		$relative = convert_path_slash($relative, KE_DS_UNIX);
-		$fullPath = $basePath . '/' . $relative;
-		if (is_file($fullPath))
-			return file_get_contents($fullPath);
+		$exts = ['html', 'markdown', 'md', ''];
+		$fileName = pathinfo($relative, PATHINFO_FILENAME);
+		if (empty($fileName))
+			return '';
+		foreach ($exts as $ext) {
+			$fullPath = $basePath . DS . ext($fileName, $ext);
+			if (is_file($fullPath)) {
+				return file_get_contents($fullPath);
+				break;
+			}
+		}
 		return '';
 	}
 
