@@ -572,6 +572,7 @@ class DocMen
 			$this->loadWikiIndexData();
 		$basePath = $this->getWikiDir();
 		$relative = trim($relative, KE_PATH_NOISE);
+		$relative = convert_path_slash($relative, KE_DS_UNIX);
 		$fullPath = $basePath . '/' . $relative;
 		if (!isset($this->wikiIndex[$relative]) && $loadFile) {
 			$data = $this->loadWikiFile($fullPath);
@@ -601,6 +602,7 @@ class DocMen
 	{
 		$basePath = $this->getWikiDir();
 		$relative = trim($relative, KE_PATH_NOISE);
+		$relative = convert_path_slash($relative, KE_DS_UNIX);
 		$fullPath = $basePath . '/' . $relative;
 		if (is_file($fullPath))
 			return file_get_contents($fullPath);
