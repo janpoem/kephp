@@ -23,6 +23,7 @@ global $app;
 $docs = [
 	new DocMen($app->path('doc/kephp2'), $app->kephp(), 'kephp', function() {
 		$this->setGenerable(false);
+
 	}),
 ];
 

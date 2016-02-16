@@ -303,6 +303,17 @@ class DocHtml extends Html
 			return implode("\n\n", $detail);
 	}
 
+	public function docCommentWithTextArea($content, $attr = null): string
+	{
+		if (empty($content))
+			$content = '';
+		elseif (is_array($content))
+			$content = implode("\n\n", $content);
+		elseif (!is_string($content))
+			$content = (string)$content;
+		return $this->tag('DocComment', $this->textarea($content), $attr);
+	}
+
 	public function functionBlock(array $data)
 	{
 		$address = '';

@@ -231,4 +231,26 @@ if (!$doc->isLoadMainDataFile()) {
 	<?php $web->asset('prism'); ?>
 	<pre <?php print $html->attr($attr); ?>><code
 			class="language-php"><?php print htmlentities($data['source']); ?></code></pre>
+<?php } elseif ($this->scope === DocMen::WIKI) { ?>
+<?php
+	$wikiBasePath = $doc->getWikiDir();
+
+	$doc->entryWikiDir(null, function(DirectoryIterator $item) use ($doc, $wikiBasePath, $web, $html) {
+		$path = $item->getPathname();
+		$relative = relative_path($wikiBasePath, $path);
+		$data = $doc->getWikiIndexData($relative, true);
+		$link = $html->link($data['title'], $web->controllerLink('wiki/' . $data['relative']));
+		print $html->tag('li', $link);
+	});
+
+	if (!empty($this->name)) {
+		$data = $doc->getWikiIndexData($this->name);
+		if ($data === false) {
+			$html->warning("Unknown {$this->scope} with {$this->name}!");
+			return true;
+		}
+		$content = $doc->loadWikiContent($this->name);
+		echo $html->docCommentWithTextArea(htmlentities($content), 'wiki');
+	}
+?>
 <?php } ?>

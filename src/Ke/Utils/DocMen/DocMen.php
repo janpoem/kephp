@@ -10,6 +10,8 @@
 
 namespace Ke\Utils\DocMen;
 
+use DirectoryIterator;
+use Ke\App;
 use Ke\Web\Asset;
 use Ke\Web\Web;
 
@@ -39,6 +41,7 @@ class DocMen
 	const CONST  = 'constant';
 	const FILE   = 'file';
 	const INDEX  = 'index';
+	const WIKI   = 'wiki';
 
 	private static $registerInstances = [];
 
@@ -60,6 +63,8 @@ class DocMen
 
 	protected $generable = true;
 
+	protected $withWiki = false;
+
 	protected $asset = null;
 
 	protected $routeScopes = [
@@ -67,6 +72,7 @@ class DocMen
 		self::NS   => self::NS,
 		self::FUNC => self::FUNC,
 		self::FILE => self::FILE,
+		'wiki'     => 'wiki',
 	];
 
 	protected $source;
@@ -89,6 +95,13 @@ class DocMen
 
 	protected $missed = [];
 
+	protected $loadWikiAutoIndex = 0;
+
+	protected $isLoadWikiIndex = false;
+
+	protected $renewWikiData = [];
+
+	protected $wikiIndex = [];
 
 	/**
 	 * 向全局的Web分发路由器注册一个（多个）DocMen实例
@@ -163,10 +176,13 @@ class DocMen
 				['http://7xqwoj.com1.z0.glb.clouddn.com/prism%2Fprism.css', 'css', ['id' => 'prism_theme_css']],
 				['http://7xqwoj.com1.z0.glb.clouddn.com/prism%2Fprism.js', 'js',],
 			],
-		    'hljs' => [
-			    ['//cdn.bootcss.com/highlight.js/9.1.0/highlight.min.js', 'js'],
-			    ['//cdn.bootcss.com/highlight.js/9.1.0/styles/tomorrow-night.min.css', 'css', ['id' => 'hljs_theme_css']],
-		    ],
+			'hljs'   => [
+				['//cdn.bootcss.com/highlight.js/9.1.0/highlight.min.js', 'js'],
+				[
+					'//cdn.bootcss.com/highlight.js/9.1.0/styles/tomorrow-night.min.css', 'css',
+					['id' => 'hljs_theme_css'],
+				],
+			],
 		];
 	}
 
@@ -201,6 +217,8 @@ class DocMen
 			case 'abstract class' :
 			case 'final class' :
 				return self::CLS;
+			case 'wiki' :
+				return self::WIKI;
 			default :
 				if (empty($scope))
 					return self::INDEX;
@@ -388,6 +406,20 @@ class DocMen
 		return $this;
 	}
 
+	public function isWithWiki()
+	{
+		return $this->withWiki;
+	}
+
+	public function setWithWiki(bool $withWiki)
+	{
+		if ($this->withWiki !== $withWiki) {
+			$this->withWiki = $withWiki;
+			Web::updateRoute($this->routePath, $this->getRoutes()[$this->routePath]);
+		}
+		return $this;
+	}
+
 	public function setRoutePath(string $path)
 	{
 		$path = trim($path, KE_PATH_NOISE);
@@ -419,6 +451,9 @@ class DocMen
 		if (!$this->isShowFile()) {
 			unset($scopes[DocMen::FILE]);
 		}
+		if (!$this->isWithWiki()) {
+			unset($scopes[self::WIKI]);
+		}
 		return implode('|', array_keys($scopes));
 	}
 
@@ -445,6 +480,8 @@ class DocMen
 		$name  = $data['name'] ?? null;
 		if ($scope !== self::INDEX) {
 			if ($scope === self::FILE)
+				$name = ext($name, $params['format'] ?? null);
+			elseif ($scope === self::WIKI)
 				$name = ext($name, $params['format'] ?? null);
 			$name = $this->filterName($scope, $name);
 		}
@@ -487,6 +524,126 @@ class DocMen
 	public function getSourceDir()
 	{
 		return $this->source;
+	}
+
+	public function getWikiDir()
+	{
+		if (!$this->isWithWiki())
+			return false;
+		return real_dir($this->docDir . DS . '/wiki');
+	}
+
+	public function getWikiIndexFile()
+	{
+		return $this->docDir . DS . 'wiki.php';
+	}
+
+	public function loadWikiIndexData()
+	{
+		if ($this->isLoadWikiIndex === false) {
+			$file = $this->getWikiIndexFile();
+			if (is_file($file)) {
+				$this->wikiIndex = import($file);
+			}
+			$this->isLoadWikiIndex = true;
+		}
+		return $this;
+	}
+
+	public function loadWikiFile(string $fullPath)
+	{
+		$this->loadWikiAutoIndex += 1;
+		if (is_file($fullPath)) {
+			$content                        = file_get_contents($fullPath);
+			$this->renewWikiData[$fullPath] = true;
+			if (preg_match('#^\#[\s\t]+(.*)[\r\n]+#', $content, $matches)) {
+				return ['title' => trim($matches[1]), 'mtime' => filemtime($fullPath)];
+			}
+			else {
+				return ['title' => basename($fullPath), 'mtime' => filemtime($fullPath)];
+			}
+		}
+		return false;
+	}
+
+	public function getWikiIndexData(string $relative, bool $loadFile = false)
+	{
+		if ($this->isLoadWikiIndex === false)
+			$this->loadWikiIndexData();
+		$basePath = $this->getWikiDir();
+		$relative = trim($relative, KE_PATH_NOISE);
+		$fullPath = $basePath . '/' . $relative;
+		if (!isset($this->wikiIndex[$relative]) && $loadFile) {
+			$data = $this->loadWikiFile($fullPath);
+			if ($data === false)
+				return false;
+			$data['relative']           = $relative;
+			$data['index']              = $this->loadWikiAutoIndex;
+			$this->wikiIndex[$relative] = $data;
+		}
+		else {
+			if (!is_file($fullPath)) {
+				unset($this->wikiIndex[$relative]);
+				$this->writeWikiIndex();
+				return false;
+			}
+			$mtime = filemtime($fullPath);
+			if (!isset($this->wikiIndex[$relative]['mtime']) || $mtime !== $this->wikiIndex[$relative]['mtime']) {
+				$data                       = $this->loadWikiFile($relative);
+				$this->wikiIndex[$relative] = array_merge($this->wikiIndex[$relative], $data);
+				$this->writeWikiIndex();
+			}
+		}
+		return $this->wikiIndex[$relative];
+	}
+
+	public function loadWikiContent(string $relative)
+	{
+		$basePath = $this->getWikiDir();
+		$relative = trim($relative, KE_PATH_NOISE);
+		$fullPath = $basePath . '/' . $relative;
+		if (is_file($fullPath))
+			return file_get_contents($fullPath);
+		return '';
+	}
+
+	public function entryWikiDir(DirectoryIterator $dir = null, \Closure $fn)
+	{
+		if (!$this->isWithWiki())
+			return $this;
+		if (!isset($dir)) {
+			$wikiDir = $this->getWikiDir();
+			if (empty($wikiDir) || !is_dir($wikiDir))
+				throw new \Error('Can\'t found wiki directory, please confirm it is existing!');
+			$dir = new DirectoryIterator($this->getWikiDir());
+		}
+		foreach ($dir as $item) {
+			if ($item->isDot())
+				continue;
+			if ($item->isDir())
+				$this->entryWikiDir(new DirectoryIterator($item->getPathname()), $fn);
+			elseif ($item->isFile()) {
+				$path = $item->getPathname();
+				// ignore some strange paths
+				if (preg_match('#[^\/\\\\]+(\.md|markdown)$#', $path, $matches)) {
+					$fn($item);
+				}
+				else {
+					continue;
+				}
+			}
+		}
+		// 遍历完的时候
+		if (!empty($this->renewWikiData)) {
+			file_put_contents($this->getWikiIndexFile(), "<?php\r\nreturn " . var_export($this->wikiIndex, true) . ';');
+		}
+		return $this;
+	}
+
+	public function writeWikiIndex()
+	{
+		file_put_contents($this->getWikiIndexFile(), "<?php\r\nreturn " . var_export($this->wikiIndex, true) . ';');
+
 	}
 
 	public function isLoadMainDataFile()

@@ -50,6 +50,8 @@ class DocController extends Controller
 
 	public function show()
 	{
+		if ($this->scope === DocMen::WIKI && !$this->doc->isWithWiki())
+			$this->onMissing($this->scope);
 		$this->title = ucfirst($this->scope) . ' - ' . $this->name . ' | ' . $this->title;
 		$this->view('widget/docmen/show');
 	}
@@ -60,7 +62,7 @@ class DocController extends Controller
 			$this->onMissing(__FUNCTION__);
 		else {
 			try {
-				$scanner = $this->doc->getScanner();
+				$scanner    = $this->doc->getScanner();
 				$startParse = microtime();
 				$scanner->start();
 				$startWrite = microtime();
@@ -70,7 +72,7 @@ class DocController extends Controller
 					'total parsed', count($scanner->getClasses()), 'classes,',
 					count($scanner->getNamespaces()), 'namespaces,',
 					count($scanner->getFunctions()), 'functions,',
-					"write all data", 'used', round(diff_milli($startWrite), 4), 'ms'
+					"write all data", 'used', round(diff_milli($startWrite), 4), 'ms',
 				]));
 			}
 			catch (\Throwable $thrown) {
@@ -78,4 +80,5 @@ class DocController extends Controller
 			}
 		}
 	}
+
 }

@@ -55,6 +55,15 @@ $http = $web->http;
 			font-weight: 300;
 		}
 
+		code {
+			padding: 0 3px;
+			margin: 0 3px;
+			background-color: #f5f2f0;
+			color: #07a;
+			font-weight: 500;
+			border-radius: 3px;
+		}
+
 		.hljs {
 			font-weight: 500;
 		}
@@ -197,8 +206,14 @@ $http = $web->http;
 		var renderer = new marked.Renderer();
 
 		renderer.heading = function (text, level) {
+			if (this.inWiki) {
+				return '<h'+level+'>' + text + '</h'+level+'>';
+			}
+			else {
+				return '<div class="doc-header">' + text + '</div>';
+			}
 //			var escapedText = text.toLowerCase().replace(/[^\w]+/g, '-');
-			return '<div class="doc-header">' + text + '</div>';
+
 		};
 //		renderer.code = function (code, lang) {
 //			if (!lang)
@@ -228,6 +243,10 @@ $http = $web->http;
 		$('.doc-comment').each(function (i, item) {
 			item = $(item);
 			var textArea = item.find('textarea'), text = textArea.val();
+			if (item.hasClass('wiki') && marked.defaults.renderer) {
+				marked.defaults.renderer.inWiki = true;
+			}
+			text = $('<textarea/>').html(text).text();
 			$(item).append(marked(text));
 		});
 
