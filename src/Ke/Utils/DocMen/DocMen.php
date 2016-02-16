@@ -591,6 +591,8 @@ class DocMen
 			$mtime = filemtime($fullPath);
 			if (!isset($this->wikiIndex[$relative]['mtime']) || $mtime !== $this->wikiIndex[$relative]['mtime']) {
 				$data                       = $this->loadWikiFile($relative);
+				if ($data === false)
+					return false;
 				$this->wikiIndex[$relative] = array_merge($this->wikiIndex[$relative], $data);
 				$this->writeWikiIndex();
 			}

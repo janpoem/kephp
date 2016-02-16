@@ -6,11 +6,12 @@
 if (PHP_SAPI !== 'cli')
 	exit('This file can only be used in CLI mode!');
 
+$entryFile = $_SERVER['SCRIPT_FILENAME'];
 $cwd = getcwd();
 $found = false;
 foreach (['ke.php', 'kephp.phar'] as $file) {
 	$file = $cwd . '/' . $file;
-	if (is_file(($file))) {
+	if (realpath($file) !== $entryFile && is_file(($file))) {
 		try {
 			require $file;
 			$found = $file;
