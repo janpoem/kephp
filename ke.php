@@ -1,26 +1,27 @@
 <?php
 /**
- * kephp cli entry file.
+ * kephp global cli entry file.
  */
 
 if (PHP_SAPI !== 'cli')
 	exit('This file can only be used in CLI mode!');
 
-$entryFile = $_SERVER['SCRIPT_FILENAME'];
 $cwd = getcwd();
 $found = false;
-foreach (['ke.php', 'kephp.phar'] as $file) {
-	$file = $cwd . '/' . $file;
-	if (realpath($file) !== $entryFile && is_file(($file))) {
-		try {
-			require $file;
-			$found = $file;
+if (dirname($_SERVER['SCRIPT_FILENAME']) !== $cwd) {
+	foreach (['ke.php', 'kephp.phar'] as $file) {
+		$file = $cwd . '/' . $file;
+		if (is_file(($file))) {
+			try {
+				require $file;
+				$found = $file;
+			}
+			catch (Throwable $thrown) {
+				// something wrong in here.
+				$found = false;
+			}
+			break;
 		}
-		catch (Throwable $thrown) {
-			// something wrong in here.
-			$found = false;
-		}
-		break;
 	}
 }
 
