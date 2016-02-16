@@ -103,6 +103,8 @@ class DocMen
 
 	protected $wikiIndex = [];
 
+	protected $title = null;
+
 	/**
 	 * 向全局的Web分发路由器注册一个（多个）DocMen实例
 	 *
@@ -420,6 +422,19 @@ class DocMen
 		return $this;
 	}
 
+	public function setTitle(string $title)
+	{
+		$this->title = $title;
+		return $this;
+	}
+
+	public function getTitle()
+	{
+		if ($this->title === null)
+			return $this->routePath;
+		return $this->title;
+	}
+
 	public function setRoutePath(string $path)
 	{
 		$path = trim($path, KE_PATH_NOISE);
@@ -533,78 +548,78 @@ class DocMen
 		return real_dir($this->docDir . DS . '/wiki');
 	}
 
-	public function getWikiIndexFile()
-	{
-		return $this->docDir . DS . 'wiki.php';
-	}
+//	public function getWikiIndexFile()
+//	{
+//		return $this->docDir . DS . 'wiki.php';
+//	}
 
-	public function loadWikiIndexData()
-	{
-		if ($this->isLoadWikiIndex === false) {
-			$file = $this->getWikiIndexFile();
-			if (is_file($file)) {
-				$this->wikiIndex = import($file);
-			}
-			$this->isLoadWikiIndex = true;
-		}
-		return $this;
-	}
+//	public function loadWikiIndexData()
+//	{
+//		if ($this->isLoadWikiIndex === false) {
+//			$file = $this->getWikiIndexFile();
+//			if (is_file($file)) {
+//				$this->wikiIndex = import($file);
+//			}
+//			$this->isLoadWikiIndex = true;
+//		}
+//		return $this;
+//	}
 
-	public function loadWikiFile(string $fullPath)
-	{
-		$this->loadWikiAutoIndex += 1;
-		$fullPath = real_path($fullPath);
-		if (is_file($fullPath)) {
-			$content                        = file_get_contents($fullPath);
-			$this->renewWikiData[$fullPath] = true;
-			if (preg_match('#^\#[\s\t]+(.*)[\r\n]+#', $content, $matches)) {
-				return ['title' => trim($matches[1]), 'mtime' => filemtime($fullPath)];
-			}
-			else {
-				return ['title' => basename($fullPath), 'mtime' => filemtime($fullPath)];
-			}
-		}
-		return false;
-	}
+//	public function loadWikiFile(string $fullPath)
+//	{
+//		$this->loadWikiAutoIndex += 1;
+//		$fullPath = real_path($fullPath);
+//		if (is_file($fullPath)) {
+//			$content                        = file_get_contents($fullPath);
+//			$this->renewWikiData[$fullPath] = true;
+//			if (preg_match('#^\#[\s\t]+(.*)[\r\n]+#', $content, $matches)) {
+//				return ['title' => trim($matches[1]), 'mtime' => filemtime($fullPath)];
+//			}
+//			else {
+//				return ['title' => basename($fullPath), 'mtime' => filemtime($fullPath)];
+//			}
+//		}
+//		return false;
+//	}
 
-	public function getWikiIndexData(string $relative, bool $loadFile = false)
-	{
-		if ($this->isLoadWikiIndex === false)
-			$this->loadWikiIndexData();
-		$basePath = $this->getWikiDir();
-		$relative = trim($relative, KE_PATH_NOISE);
-		$relative = convert_path_slash($relative, KE_DS_UNIX);
-		$fullPath = $basePath . '/' . $relative;
-		if (!isset($this->wikiIndex[$relative]) && $loadFile) {
-			$data = $this->loadWikiFile($fullPath);
-			if ($data === false)
-				return false;
-			$data['relative']           = $relative;
-			$data['index']              = $this->loadWikiAutoIndex;
-			$this->wikiIndex[$relative] = $data;
-		}
-		else {
-			if (!is_file($fullPath)) {
-				unset($this->wikiIndex[$relative]);
-				$this->writeWikiIndex();
-				return false;
-			}
-			$mtime = filemtime($fullPath);
-			if (!isset($this->wikiIndex[$relative]['mtime']) || $mtime !== $this->wikiIndex[$relative]['mtime']) {
-				$data = $this->loadWikiFile($fullPath);
-				if ($data === false)
-					return false;
-				$this->wikiIndex[$relative] = array_merge($this->wikiIndex[$relative], $data);
-				$this->writeWikiIndex();
-			}
-		}
-		return $this->wikiIndex[$relative];
-	}
+//	public function getWikiIndexData(string $relative, bool $loadFile = false)
+//	{
+//		if ($this->isLoadWikiIndex === false)
+//			$this->loadWikiIndexData();
+//		$basePath = $this->getWikiDir();
+//		$relative = trim($relative, KE_PATH_NOISE);
+//		$relative = convert_path_slash($relative, KE_DS_UNIX);
+//		$fullPath = $basePath . '/' . $relative;
+//		if (!isset($this->wikiIndex[$relative]) && $loadFile) {
+//			$data = $this->loadWikiFile($fullPath);
+//			if ($data === false)
+//				return false;
+//			$data['relative']           = $relative;
+//			$data['index']              = $this->loadWikiAutoIndex;
+//			$this->wikiIndex[$relative] = $data;
+//		}
+//		else {
+//			if (!is_file($fullPath)) {
+//				unset($this->wikiIndex[$relative]);
+//				$this->writeWikiIndex();
+//				return false;
+//			}
+//			$mtime = filemtime($fullPath);
+//			if (!isset($this->wikiIndex[$relative]['mtime']) || $mtime !== $this->wikiIndex[$relative]['mtime']) {
+//				$data = $this->loadWikiFile($fullPath);
+//				if ($data === false)
+//					return false;
+//				$this->wikiIndex[$relative] = array_merge($this->wikiIndex[$relative], $data);
+//				$this->writeWikiIndex();
+//			}
+//		}
+//		return $this->wikiIndex[$relative];
+//	}
 
 	public function loadWikiContent(string $relative)
 	{
 		$basePath = $this->getWikiDir();
-		$exts = ['html', 'markdown', 'md', ''];
+		$exts     = ['html', 'markdown', 'md', ''];
 		$fileName = pathinfo($relative, PATHINFO_FILENAME);
 		if (empty($fileName))
 			return '';
@@ -617,45 +632,45 @@ class DocMen
 		}
 		return '';
 	}
-
-	public function entryWikiDir(DirectoryIterator $dir = null, \Closure $fn)
-	{
-		if (!$this->isWithWiki())
-			return $this;
-		if (!isset($dir)) {
-			$wikiDir = $this->getWikiDir();
-			if (empty($wikiDir) || !is_dir($wikiDir))
-				throw new \Error('Can\'t found wiki directory, please confirm it is existing!');
-			$dir = new DirectoryIterator($this->getWikiDir());
-		}
-		foreach ($dir as $item) {
-			if ($item->isDot())
-				continue;
-			if ($item->isDir())
-				$this->entryWikiDir(new DirectoryIterator($item->getPathname()), $fn);
-			elseif ($item->isFile()) {
-				$path = $item->getPathname();
-				// ignore some strange paths
-				if (preg_match('#[^\/\\\\]+(\.md|markdown)$#', $path, $matches)) {
-					$fn($item);
-				}
-				else {
-					continue;
-				}
-			}
-		}
-		// 遍历完的时候
-		if (!empty($this->renewWikiData)) {
-			file_put_contents($this->getWikiIndexFile(), "<?php\r\nreturn " . var_export($this->wikiIndex, true) . ';');
-		}
-		return $this;
-	}
-
-	public function writeWikiIndex()
-	{
-		file_put_contents($this->getWikiIndexFile(), "<?php\r\nreturn " . var_export($this->wikiIndex, true) . ';');
-
-	}
+//
+//	public function entryWikiDir(DirectoryIterator $dir = null, \Closure $fn)
+//	{
+//		if (!$this->isWithWiki())
+//			return $this;
+//		if (!isset($dir)) {
+//			$wikiDir = $this->getWikiDir();
+//			if (empty($wikiDir) || !is_dir($wikiDir))
+//				throw new \Error('Can\'t found wiki directory, please confirm it is existing!');
+//			$dir = new DirectoryIterator($this->getWikiDir());
+//		}
+//		foreach ($dir as $item) {
+//			if ($item->isDot())
+//				continue;
+//			if ($item->isDir())
+//				$this->entryWikiDir(new DirectoryIterator($item->getPathname()), $fn);
+//			elseif ($item->isFile()) {
+//				$path = $item->getPathname();
+//				// ignore some strange paths
+//				if (preg_match('#[^\/\\\\]+(\.md|markdown)$#', $path, $matches)) {
+//					$fn($item);
+//				}
+//				else {
+//					continue;
+//				}
+//			}
+//		}
+//		// 遍历完的时候
+//		if (!empty($this->renewWikiData)) {
+//			file_put_contents($this->getWikiIndexFile(), "<?php\r\nreturn " . var_export($this->wikiIndex, true) . ';');
+//		}
+//		return $this;
+//	}
+//
+//	public function writeWikiIndex()
+//	{
+//		file_put_contents($this->getWikiIndexFile(), "<?php\r\nreturn " . var_export($this->wikiIndex, true) . ';');
+//
+//	}
 
 	public function isLoadMainDataFile()
 	{

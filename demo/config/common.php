@@ -21,9 +21,9 @@ use \Ke\Utils\DocMen\DocMen;
 global $app;
 
 $docs = [
-	new DocMen($app->path('doc/kephp2'), $app->kephp(), 'kephp', function() {
+	new DocMen($app->path('doc/kephp2'), $app->kephp(), '*', function() {
 		$this->setGenerable(false);
-
+		$this->setTitle('kephp');
 	}),
 ];
 

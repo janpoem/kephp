@@ -6,7 +6,7 @@
 use \Ke\Adm;
 use \Ke\Utils\DocMen\DocMen;
 
-DocMen::getInstance('kephp')->setShowFile(true)->setGenerable(true)->setWithWiki(true);
+DocMen::getInstance('*')->setShowFile(true)->setGenerable(true)->setWithWiki(true);
 
 // Database config
 Adm\Db::define([

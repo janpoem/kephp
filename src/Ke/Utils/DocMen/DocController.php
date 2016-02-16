@@ -13,6 +13,7 @@ namespace Ke\Utils\DocMen;
 use Ke\App;
 use Ke\Cli\Cmd\ScanSource;
 use Ke\Web\Controller;
+use Ke\Web\Route\Router;
 
 class DocController extends Controller
 {
@@ -31,15 +32,18 @@ class DocController extends Controller
 
 	protected function onConstruct()
 	{
+		$controller = $this->web->getController();
+		if (empty($controller))
+			$controller = Router::ROOT;
 		if (!isset($this->doc) && !($this->doc instanceof DocMen))
-			$this->doc = DocMen::getInstance($this->web->getController());
+			$this->doc = DocMen::getInstance($controller);
 		$this->doc->prepare();
 		list($this->scope, $this->name) = $this->doc->filterParams($this->web->params());
 		if (!isset($this->html) && !($this->html instanceof DocHtml))
 			$this->html = new DocHtml();
 		$this->html->setDoc($this->doc);
 		$this->web->setHtml($this->html);
-		$this->title = 'Ke\DocMen - ' . $this->web->getController();
+		$this->title = 'Ke\DocMen - ' . $this->doc->getTitle();
 	}
 
 	public function index()

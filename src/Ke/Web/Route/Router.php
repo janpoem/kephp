@@ -117,7 +117,7 @@ class Router
 	 * @var array 路由模式配置表
 	 */
 	public $routes = [
-		'*' => [],
+//		'*' => [],
 //		'*' => [
 //			'controller' => 'index',
 //			'mappings'   => [],
@@ -175,6 +175,8 @@ class Router
 
 	private function prepareRoutes()
 	{
+		if (!isset($this->routes[self::ROOT]))
+			$this->routes[self::ROOT] = [];
 		foreach ($this->routes as $node => &$route) {
 			$node = trim($node, KE_PATH_NOISE);
 			$path = isset($route['path']) ? trim($route['path'], KE_PATH_NOISE) : $node;
