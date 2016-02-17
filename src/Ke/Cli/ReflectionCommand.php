@@ -19,8 +19,8 @@ abstract class ReflectionCommand extends Command
 	protected static function loadColumns()
 	{
 		$columns = self::$columns;
-		$ref = new \ReflectionClass(static::class);
-		$props = $ref->getProperties();
+		$ref     = new \ReflectionClass(static::class);
+		$props   = $ref->getProperties();
 		foreach ($props as $prop) {
 			if ($prop->isStatic())
 				continue;
@@ -33,12 +33,17 @@ abstract class ReflectionCommand extends Command
 			$isMatch = preg_match_all(self::REGEX_DOC, $doc, $matches, PREG_SET_ORDER);
 			if (!$isMatch)
 				continue;
-			$rename = preg_replace_callback('#([A-Z])#', function($m) {
+			$rename = preg_replace_callback('#([A-Z])#', function ($m) {
 				return '-' . strtolower($m[1]);
 			}, $name);
 			$column = [];
 			foreach ($matches as $match) {
-				$column[$match[1]] = isset($match[2]) ? $match[2] : null;
+				$field = $match[1];
+				$value = isset($match[2]) ? $match[2] : null;
+				if ($field === 'require') {
+					$value = static::verifyValue('bool', $value);
+				}
+				$column[$field] = $value;
 			}
 			if (!isset($column['field']) || strlen($column['field']) <= 0) {
 				$column['field'] = $rename;
@@ -46,5 +51,18 @@ abstract class ReflectionCommand extends Command
 			$columns[$rename] = $column;
 		}
 		return $columns;
+	}
+
+	public function filterRequire($value)
+	{
+		if (is_string($value)) {
+			$value = strtolower($value);
+			if ($value === 'true')
+				return true;
+			elseif ($value === 'false')
+				return false;
+
+		}
+
 	}
 }

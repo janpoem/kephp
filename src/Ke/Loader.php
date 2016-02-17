@@ -24,11 +24,15 @@ class Loader extends DirectoryRegistry
 
 	const HELPER = 'helper';
 
+	const CLS = 'class';
+
 	const LOADED = 1;
 
 	const NOT_LOADED = 0;
 
 	const UNDEFINED = -1;
+
+	protected $defaultScope = self::CLS;
 
 	/**
 	 * @var array 已知的类和对应的存放路径

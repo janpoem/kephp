@@ -180,7 +180,7 @@ class App
 
 		$this->loader = new Loader([
 			'dirs'    => [
-				'appSrc'    => [$appSrc, 100],
+				'appSrc'    => [$appSrc, 100, Loader::CLS],
 				'appHelper' => ["{$appNsPath}/Helper", 100, Loader::HELPER],
 				'keHelper'  => ["{$this->dirs['kephp']}/Ke/Helper", 1000, Loader::HELPER],
 			],

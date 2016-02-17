@@ -233,7 +233,7 @@ $http = $web->http;
 			highlight: function (code, lang, callback) {
 				if (typeof lang === 'undefined' || !lang || lang.length <= 0)
 					lang = 'php';
-				return Prism.highlight($('<textarea/>').html(code).text(), Prism.languages[lang]);
+				return Prism.highlight(code, Prism.languages[lang]);
 //				code = $('<textarea/>').html(code).text();
 //				var hlCode = hljs.highlight(lang, code);
 //				return hlCode.value;

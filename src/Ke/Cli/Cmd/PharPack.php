@@ -52,7 +52,7 @@ class PharPack extends ReflectionCommand
 	protected function onPrepare($argv = null)
 	{
 		if (empty($this->export))
-			$this->export = KE_SCRIPT_DIR;
+			$this->export = getcwd();
 		if (empty($this->name))
 			$this->name = basename($this->dir);
 		if (intval(ini_get('phar.readonly')) > 0)

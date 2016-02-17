@@ -129,7 +129,7 @@ abstract class Command
 				return !$column['default'];
 			return (bool)$value;
 		}
-		elseif ($type === KE_INT) {
+		elseif ($type === KE_INT || $type === 'int') {
 			return (int)$value;
 		}
 		elseif ($type === KE_FLOAT) {
@@ -140,8 +140,7 @@ abstract class Command
 				if (strpos($value, ',') > 0) {
 					$result = [];
 					foreach (explode(',', $value) as $item) {
-						if (!empty(($item = trim($item))))
-							$result[] = $item;
+						$result[] = trim($item);
 					}
 					return $result;
 				}
@@ -151,41 +150,34 @@ abstract class Command
 		elseif ($type === 'dir') {
 			if (empty($value))
 				return false;
-			$value = realpath($value);
-			if (is_dir($value))
-				return $value;
-			return false;
+			return real_dir($value);
 		}
 		elseif ($type === 'file') {
 			if (empty($value))
 				return false;
-			$value = realpath($value);
-			if (is_file($value) && is_readable($value))
-				return $value;
-			return false;
+			return real_file($value);
 		}
 		elseif ($type === 'realpath') {
 			if (empty($value))
 				return KE_SCRIPT_DIR;
-			return realpath($value);
+			return real_path($value);
 		}
 		elseif ($type === 'json') {
 			$decode = json_decode($value, true);
 			return $decode;
 		}
-		elseif (($type === 'concat' || $type === 'dirs' || $type === 'files') && isset($column['args'][0])) {
+		elseif (($type === 'dirs' || $type === 'files')) {
 			if (empty($value))
 				return [];
-			$value = explode($column['args'][0], $value);
-			$value = array_filter($value); // 过滤空值
+			$value = static::verifyValue('array', $value, $column);
 			if ($type === 'dirs') {
-				foreach ($value as & $item) {
-					$item = static::verifyValue($item, 'dir', $column);
+				foreach ($value as $index => $item) {
+					$value[$index] = static::verifyValue('dir', $item, $column);
 				}
 			}
 			elseif ($type === 'files') {
-				foreach ($value as & $item) {
-					$item = static::verifyValue($item, 'file', $column);
+				foreach ($value as $index => $item) {
+					$value[$index] = static::verifyValue('file', $item, $column);
 				}
 			}
 			return $value;

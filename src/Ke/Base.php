@@ -596,13 +596,13 @@ if (!function_exists('real_path')) {
 		$paths = &$KE['paths'];
 		// realpath居然不支持phar，这是bug吗？
 		if (!isset($paths[$path])) {
-			if (!file_exists($path)) {
-				$path = KE_APP_ROOT . '/' . $path;
-				if (!file_exists($path)) {
-					$path = KE_SCRIPT_DIR . '/' . $path;
-					if (!file_exists($path))
-						$path = false;
-				}
+			// 先基于php本身的realpath过滤一次
+			// 这个版本的php realpath充满了奇怪的味道
+			// 如果直接：$path = realpath($path);，是会出错的，phar内的路径处理会出问题
+			$realPath = realpath($path);
+			// 我也是醉了，显然不能对$path的值进行改变。
+			if ($realPath !== false) {
+				$path = $realPath;
 			}
 			if ($path !== false) {
 				if (strpos($path, KE_DS_WIN) !== false)
@@ -625,6 +625,8 @@ if (!function_exists('real_dir')) {
 	{
 		global $KE;
 		$realPath = $KE['paths'][$path] ?? real_path($path);
+		if ($realPath === false)
+			return false;
 		if (!isset($KE['stats'][$realPath][0]))
 			$KE['stats'][$realPath][0] = $realPath === false ? false : is_dir($realPath);
 		return $KE['stats'][$realPath][0] ? $realPath : false;
@@ -642,6 +644,8 @@ if (!function_exists('real_file')) {
 	{
 		global $KE;
 		$realPath = $KE['paths'][$path] ?? real_path($path);
+		if ($realPath === false)
+			return false;
 		if (!isset($KE['stats'][$realPath][1]))
 			$KE['stats'][$realPath][1] = $realPath === false ? false : is_file($realPath);
 		return $KE['stats'][$realPath][1] ? $realPath : false;
