@@ -33,9 +33,9 @@ $test->setName('ok');
 $ser = serialize($test);
 $unSer = unserialize($ser);
 
-var_dump($unSer->getName()); // null 为什么
-var_dump($unSer);            // 你会看到，$name属性是有内容的。
-/// output : php 7.0.3
+var_dump($unSer->getName()); // null
+var_dump($unSer);
+// php 7.0.3
 /**
 D:\htdocs\array_object.php:36:null
 
@@ -48,7 +48,7 @@ object(Test)[2]
 				'b' => string 'b' (length=1)
 
  */
-// php 5.6.8
+// php 5.6.x
 /**
 string 'ok' (length=2)
 
