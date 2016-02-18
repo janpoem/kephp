@@ -187,6 +187,7 @@ if (!function_exists('import')) {
 		if (empty($_path))
 			return false;
 		$_modeArray = ($_mode & KE_IMPORT_ARRAY) === KE_IMPORT_ARRAY;
+		$_modeMerge = ($_mode & KE_IMPORT_MERGE) === KE_IMPORT_MERGE;
 		if (is_array($_path)) {
 			$_result = $_result ?? [];
 			if (!empty($_vars)) {
@@ -213,7 +214,7 @@ if (!function_exists('import')) {
 						if (is_object($_return))
 							$_return = (array)$_return;
 						if (!empty($_return) && is_array($_return)) {
-							if ($_mode === KE_IMPORT_MERGE)
+							if ($_modeMerge)
 								$_result = $_return + $_result;
 							else
 								$_result += $_return;
@@ -365,13 +366,19 @@ if (!function_exists('depth_query')) {
 				// 调整了一些，原来只是检查isset，现在增加empty的判断
 				// 需要做更长时间的监控，是否有副作用
 				if (is_array($data))
-					return !isset($data[$keys]) || ($data[$keys] != 0 && empty($data[$keys])) ? $default : $data[$keys];
-
+					return isset($data[$keys]) ? $data[$keys] : $default;
 				elseif (is_object($data))
-					return !isset($data->{$keys}) ||
-					       ($data[$keys] != 0 && empty($data->{$keys})) ? $default : $data->{$keys};
+					return isset($data->{$keys}) ? $data->{$keys} : $default;
 				else
 					return $default;
+//				if (is_array($data))
+//					return !isset($data[$keys]) || ($data[$keys] !== 0 && $data[$keys] !== 0.00 && $data[$keys] !== '0' && empty($data[$keys])) ? $default : $data[$keys];
+//
+//				elseif (is_object($data))
+//					return !isset($data->{$keys}) ||
+//					       ($data->{$keys} !== 0 && $data->{$keys} !== 0.00 && $data->{$keys} !== '0' && empty($data->{$keys})) ? $default : $data->{$keys};
+//				else
+//					return $default;
 			}
 		}
 		if (!empty($data) || (!empty($keys) && $keysType === KE_ARY)) {
@@ -383,16 +390,24 @@ if (!function_exists('depth_query')) {
 				// 调整了一些，原来只是检查isset，现在增加empty的判断
 				// 需要做更长时间的监控，是否有副作用
 				if (is_array($data)) {
-					if (!isset($data[$key]) || ($data[$key] != 0 && empty($data[$key])))
+					if (!isset($data[$key]))
 						return $default;
 					else
 						$data = $data[$key];
+//					if (!isset($data[$key]) || ($data[$keys] !== 0 && $data[$keys] !== 0.00 && $data[$keys] !== '0' && empty($data[$key])))
+//						return $default;
+//					else
+//						$data = $data[$key];
 				}
 				elseif (is_object($data)) {
-					if (!isset($data->{$key}) || ($data->{$key} != 0 && empty($data->{$key})))
+					if (!isset($data->{$key}))
 						return $default;
 					else
 						$data = $data->{$key};
+//					if (!isset($data->{$key}) || ($data->{$keys} !== 0 && empty($data->{$key})))
+//						return $default;
+//					else
+//						$data = $data->{$key};
 				}
 			}
 			return $data;
