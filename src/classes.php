@@ -79,6 +79,7 @@ return [
 	'Ke\\Utils\\DocMen\\DocMen'           => __DIR__ . '/Ke/Utils/DocMen/DocMen.php',
 	'Ke\\Utils\\DocMen\\DocHtml'          => __DIR__ . '/Ke/Utils/DocMen/DocHtml.php',
 	'Ke\\Utils\\DocMen\\DocController'    => __DIR__ . '/Ke/Utils/DocMen/DocController.php',
+	'Ke\\Utils\\PinyinConverter'          => __DIR__ . '/Ke/Utils/PinyinConverter.php',
 	// Web
 	'Ke\\Web\\Asset'                      => __DIR__ . '/Ke/Web/Asset.php',
 	'Ke\\Web\\Component'                  => __DIR__ . '/Ke/Web/Component.php',
