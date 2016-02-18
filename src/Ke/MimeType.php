@@ -256,38 +256,30 @@ class MimeType
 		return $result;
 	}
 
-	public static function detectFile($file, $return = self::FILE_MIME)
+	public static function detectFile(string $file, $return = self::FILE_MIME)
 	{
 		if (!extension_loaded('fileinfo'))
 			return false;
 		if (is_file($file) && is_readable($file)) {
-//			$finfo = finfo_open(FILEINFO_MIME);
-//			foreach (glob($file) as $item) {
-//				@finfo_file($finfo, $item);
-//			}
-//			var_dump();
-//			foreach (glob("*") as $file) {
-//				var_dump($file);
-//				echo finfo_file($finfo, $file) . "\n";
-//			}
-//			$info = finfo_file($finfo, $file);
-//			$type = null;
-//			$encoding = null;
-//			if (strpos($info, '; ')) {
-//				list($type, $encoding) = explode('; ', $info);
-//				if ($return > self::FILE_MIME && !empty($encoding) && strpos($encoding, '=')) {
-//					list(, $encoding) = explode('=', $encoding);
-//				}
-//			} else {
-//				$type = $info;
-//			}
-//			finfo_close($handle);
-//			if ($return === self::FILE_MIME)
-//				return $type;
-//			elseif ($return === self::FILE_ENC)
-//				return $encoding;
-//			else
-//				return [$type, $encoding];
+			$finfo = finfo_open(FILEINFO_MIME);
+			$info = finfo_file($finfo, $file);
+			$type = null;
+			$encoding = null;
+			if (strpos($info, '; ')) {
+				list($type, $encoding) = explode('; ', $info);
+				if ($return > self::FILE_MIME && !empty($encoding) && strpos($encoding, '=')) {
+					list(, $encoding) = explode('=', $encoding);
+				}
+			} else {
+				$type = $info;
+			}
+			finfo_close($finfo);
+			if ($return === self::FILE_MIME)
+				return $type;
+			elseif ($return === self::FILE_ENC)
+				return $encoding;
+			else
+				return [$type, $encoding];
 		}
 		return false;
 	}
