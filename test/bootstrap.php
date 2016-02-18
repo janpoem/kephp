@@ -1,4 +1,7 @@
 <?php
+/**
+ * PHPUnit bootstrap file.
+ */
 
 require __DIR__ . '/../src/Ke/App.php';
 
@@ -6,7 +9,7 @@ require __DIR__ . '/../src/Ke/App.php';
 global $app;
 
 try {
-	$app = new \Test\App(__DIR__);
+	$app = new \Ke\App(__DIR__);
 	$app->init();
 }
 catch (Throwable $throw) {

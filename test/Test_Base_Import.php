@@ -109,10 +109,15 @@ class Test_Base_Import extends PHPUnit_Framework_TestCase
 			'a' => 'none',
 			'b' => 'none',
 		];
-		import([
+		$result = [
+			'a' => 'a1',
+		    'b' => 'b1',
+		];
+		$return = import([
 			'misc/context1.php', // 在这里，a和b，被修改了值，
 			'misc/context2.php', // 进入到这里，a和b，已经是新的值
 		], $vars, KE_IMPORT_MERGE | KE_IMPORT_CONTEXT);
+		$this->assertEquals($result, $return);
 		// 最终返回的时候，$vars并没有发生任何改变，只是在import的内部流程里发生了变化
 		// Web\Context里面，并不使用这个机制，这种机制还是有局限性
 	}

@@ -1,3 +1,11 @@
 <?php
 
-var_dump(get_defined_vars());
+//return [
+//	'b' => $a,
+//    'a' => $b,
+//];
+
+return [
+	'a' => $a . 1,
+	'b' => $b . 1,
+];
