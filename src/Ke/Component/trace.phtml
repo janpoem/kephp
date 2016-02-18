@@ -1,6 +1,8 @@
 <?php
 /**
  * @var \Ke\Web\Web     $web
+ * @var \Ke\Web\Http    $http
+ * @var \Ke\Web\Html    $html
  * @var \Ke\Web\Context $this
  */
 
@@ -22,12 +24,12 @@ $options = [
 			$clone['function'] = $html->tag('code', $clone['function']);
 		}
 	},
-	'attr' => [
+	'attr'    => [
 		'class' => 'red',
 	],
 ];
 
-$table = $this->html->tableList($trace, $options);
+$table = $html->tableList($trace, $options);
 ?>
-<address><?php print $file . '#' . $line; ?></address>
+	<address><?php print $file . '#' . $line; ?></address>
 <?php print $table; ?>

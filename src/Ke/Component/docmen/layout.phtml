@@ -1,15 +1,11 @@
 <?php
 /**
- * @var \Ke\Web\Web     $web
- * @var \Ke\Web\Context $this
- * @var string          $content
+ * @var \Ke\Web\Web              $web
+ * @var \Ke\Web\Http             $http
+ * @var \Ke\Web\Context          $this
+ * @var string                   $content
+ * @var \Ke\Utils\DocMen\DocHtml $html
  */
-
-/** @var \Ke\Web\Html $html */
-$html = $this->html;
-/** @var \Ke\Web\Http $http */
-$http = $web->http;
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -21,15 +17,44 @@ $http = $web->http;
 		@import url(http://fonts.useso.com/css?family=Bitter|Roboto+Mono:400,400italic,500,500italic,700,700italic,300italic,300);
 
 		body, input, select, textarea, p {
-			font-family: "PingFang SC","PingHei","STHeitiSC-Light","Helvetica Neue","Helvetica","Hiragino Sans GB","Microsoft YaHei","Arial",sans-serif;
+			font-family: "PingFang SC", "PingHei", "STHeitiSC-Light", "Helvetica Neue", "Helvetica", "Hiragino Sans GB", "Microsoft YaHei", "Arial", sans-serif;
 		}
 
-		@font-face{font-family:"PingFang-SC";font-weight:100;src:local("PingFang SC ExtraLight")}
-		@font-face{font-family:"PingFang-SC";font-weight:300;src:local("PingFang SC Light")}
-		@font-face{font-family:"PingFang-SC";font-weight:400;src:local("PingFang SC Regular")}
-		@font-face{font-family:"PingFang-SC";font-weight:600;src:local("PingFang SC Medium")}
-		@font-face{font-family:"PingFang-SC";font-weight:700;src:local("PingFang SC Bold")}
-		@font-face{font-family:"PingFang-SC";font-weight:800;src:local("PingFang SC Heavy")}
+		@font-face {
+			font-family: "PingFang-SC";
+			font-weight: 100;
+			src: local("PingFang SC ExtraLight")
+		}
+
+		@font-face {
+			font-family: "PingFang-SC";
+			font-weight: 300;
+			src: local("PingFang SC Light")
+		}
+
+		@font-face {
+			font-family: "PingFang-SC";
+			font-weight: 400;
+			src: local("PingFang SC Regular")
+		}
+
+		@font-face {
+			font-family: "PingFang-SC";
+			font-weight: 600;
+			src: local("PingFang SC Medium")
+		}
+
+		@font-face {
+			font-family: "PingFang-SC";
+			font-weight: 700;
+			src: local("PingFang SC Bold")
+		}
+
+		@font-face {
+			font-family: "PingFang-SC";
+			font-weight: 800;
+			src: local("PingFang SC Heavy")
+		}
 
 		strong, h1, h2, h3, h4, h5, h6 {
 			font-weight: 600;
@@ -207,7 +232,7 @@ $http = $web->http;
 
 		renderer.heading = function (text, level) {
 			if (this.inWiki) {
-				return '<h'+level+'>' + text + '</h'+level+'>';
+				return '<h' + level + '>' + text + '</h' + level + '>';
 			}
 			else {
 				return '<div class="doc-header">' + text + '</div>';

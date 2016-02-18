@@ -1,22 +1,20 @@
 <?php
 /**
- * @var \Ke\Web\Context $this
- * @var \Ke\Web\Web     $web
- * @var string          $content
+ * @var \Ke\Web\Context          $this
+ * @var \Ke\Web\Http             $http
+ * @var \Ke\Web\Web              $web
+ * @var string                   $content
+ * @var \Ke\Utils\DocMen\DocHtml $html
  */
-
-/** @var \Ke\Web\Html $html */
-$html = $this->html;
-/** @var \Ke\Web\Http $http */
-$http = $web->http;
 
 $currentName = $this->doc->getTitle();
 ?>
 <div class="ui inverted menu">
 	<div class="ui container">
-		<a class="head item" href="<?php print $web->controllerLink(); ?>"><span class="logo">Ke\DocMen - <?php print $currentName; ?></span></a>
+		<a class="head item" href="<?php print $web->controllerLink(); ?>"><span
+				class="logo">Ke\DocMen - <?php print $currentName; ?></span></a>
 		<?php if ($this->doc->isGenerable()) { ?>
-		<a class="item" href="<?php print $web->controllerLink('generate') ?>" data-ajax="1">Generate</a>
+			<a class="item" href="<?php print $web->controllerLink('generate') ?>" data-ajax="1">Generate</a>
 		<?php } ?>
 		<?php if ($this->doc->isWithWiki()) { ?>
 			<a class="item" href="<?php print $web->controllerLink('wiki') ?>">Wiki</a>

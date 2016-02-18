@@ -2,13 +2,15 @@
 /**
  * 公共组件，Table List
  *
- * @var \Ke\Web\Web $web
+ * @var \Ke\Web\Web     $web
+ * @var \Ke\Web\Http    $http
+ * @var \Ke\Web\Html    $html
  * @var \Ke\Web\Context $this
  */
 
 use Ke\Web\Html;
 
-$html = $this->html;
+//$html = $this->html;
 $rows = $rows ?? [];
 
 $rowsType = false;
@@ -108,7 +110,8 @@ $checkboxClass = $html->getBaseClass('input', 'checkbox');
 			<?php if (empty($columns)) { ?>
 				<th><?php print $html->getText(Html::TABLE_HEAD_EMPTY); ?></th>
 				<?php
-			} else {
+			}
+			else {
 				foreach ($columns as $field => $column) {
 					$column = $html->mkTableColumn($field, $column, $columnsType, $modelColumns[$field] ?? null);
 					$columns[$field] = $column;
@@ -142,7 +145,8 @@ $checkboxClass = $html->getBaseClass('input', 'checkbox');
 				</td>
 			</tr>
 			<?php
-		} else {
+		}
+		else {
 			foreach ($rows as $index => $row) {
 				$clone = new ArrayObject((array)$row);
 				if ($onRow) {

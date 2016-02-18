@@ -5,14 +5,15 @@
  * 转为早期的组件化form，不再使用声明一个对象的form
  *
  * @var \Ke\Web\Web     $web
+ * @var \Ke\Web\Http    $http
+ * @var \Ke\Web\Html    $html
  * @var \Ke\Web\Context $this
  */
 
 use Ke\Web\Html;
 use Ke\Adm\Model;
 
-$http = $web->http;
-$html = $this->html;
+//$html = $this->html;
 $data = $data ?? [];
 $dataType = false;
 

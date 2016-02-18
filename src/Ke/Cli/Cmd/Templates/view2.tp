@@ -5,11 +5,9 @@
  * @var \Ke\Web\Context $this
  * @var \Ke\Web\Web     $web
  * @var string          $content
+ * @var \Ke\Web\Http	$http
+ * @var \Ke\Web\Html	$html
  */
 
-/** @var \Ke\Web\Html $html */
-$html = $this->html;
-/** @var \Ke\Web\Http $http */
-$http = $web->http;
 
 ?>

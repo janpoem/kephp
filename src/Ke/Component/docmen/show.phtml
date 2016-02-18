@@ -1,16 +1,14 @@
 <?php
 /**
- * @var \Ke\Web\Context $this
- * @var \Ke\Web\Web     $web
- * @var string          $content
+ * @var \Ke\Web\Context          $this
+ * @var \Ke\Web\Http             $http
+ * @var \Ke\Web\Web              $web
+ * @var string                   $content
+ * @var \Ke\Utils\DocMen\DocHtml $html
  */
 
 use Ke\Utils\DocMen\DocMen;
 
-/** @var \Ke\Utils\DocMen\DocHtml $html */
-$html = $this->html;
-/** @var \Ke\Web\Http $http */
-$http = $web->http;
 /** @var \Ke\Utils\DocMen\DocMen $doc */
 $doc = $this->doc;
 ?>
@@ -31,8 +29,8 @@ if (!$doc->isLoadMainDataFile()) {
 				'path'    => [
 					'label'  => 'Path',
 					'onShow' => function (\Ke\Utils\DocMen\DocHtml $html, $value) {
-					    return $html->fileLink($value);
-					}
+						return $html->fileLink($value);
+					},
 				],
 				'dir'     => false,
 				'message' => 'Message',
@@ -79,7 +77,8 @@ if (!$doc->isLoadMainDataFile()) {
 			</div>
 		</div>
 	</div>
-<?php } elseif ($this->scope === DocMen::NS) { ?>
+<?php }
+elseif ($this->scope === DocMen::NS) { ?>
 	<?php
 	$data = $doc->getNamespace($this->name);
 	if (empty($data)) {
@@ -120,7 +119,8 @@ if (!$doc->isLoadMainDataFile()) {
 			</div>
 		<?php } ?>
 	</div>
-<?php } elseif ($this->scope === DocMen::CLS) { ?>
+<?php }
+elseif ($this->scope === DocMen::CLS) { ?>
 	<?php
 	$data = $doc->getClass($this->name);
 	if (empty($data)) {
@@ -212,14 +212,15 @@ if (!$doc->isLoadMainDataFile()) {
 		})(jQuery);
 
 	</script>
-<?php } elseif ($this->scope === DocMen::FILE) { ?>
+<?php }
+elseif ($this->scope === DocMen::FILE) { ?>
 	<?php
 	$data = $doc->getFile($this->name);
 	if (empty($data)) {
 		$html->warning("Unknown {$this->scope} with {$this->name}!");
 		return true;
 	}
-	$attr      = [
+	$attr = [
 		'id'    => 'source',
 		'class' => 'line-numbers',
 	];
@@ -231,8 +232,9 @@ if (!$doc->isLoadMainDataFile()) {
 	<?php $web->asset('prism'); ?>
 	<pre <?php print $html->attr($attr); ?>><code
 			class="language-php"><?php print htmlentities($data['source']); ?></code></pre>
-<?php } elseif ($this->scope === DocMen::WIKI) { ?>
-<?php
+<?php }
+elseif ($this->scope === DocMen::WIKI) { ?>
+	<?php
 	$wikiBasePath = $doc->getWikiDir();
 
 	if (empty($this->name))
@@ -250,5 +252,5 @@ if (!$doc->isLoadMainDataFile()) {
 		echo $html->docCommentWithTextArea(htmlentities($content), 'wiki');
 		echo $warning;
 	}
-?>
+	?>
 <?php } ?>

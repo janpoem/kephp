@@ -1,18 +1,15 @@
 <?php
 /**
- * @var \Ke\Web\Context $this
- * @var \Ke\Web\Web     $web
- * @var string          $content
+ * @var \Ke\Web\Context          $this
+ * @var \Ke\Web\Http             $http
+ * @var \Ke\Web\Web              $web
+ * @var string                   $content
+ * @var \Ke\Utils\DocMen\DocHtml $html
  */
 
 use Ke\Utils\DocMen\DocMen;
 
-/** @var \Ke\Utils\DocMen\DocHtml $html */
-$html = $this->html;
-/** @var \Ke\Web\Http $http */
-$http = $web->http;
 /** @var \Ke\Utils\DocMen\DocMen $doc */
-//var_dump($this);
 $doc = $this->doc;
 ?>
 <div class="ui left close rail">

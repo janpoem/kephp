@@ -21,14 +21,12 @@ class Context
 
 	public $layout = '';
 
+	/** @var Web */
 	public $web;
-
-	public $html;
 
 	public function __construct()
 	{
 		$this->web = Web::getWeb();
-		$this->html = $this->web->getHtml();
 	}
 
 	public function assign($key, $value = null)
@@ -50,16 +48,31 @@ class Context
 		return empty($this->layout) ? $layout : $this->layout;
 	}
 
-	public function import($_FILE, array $_VARS = null, bool $isStrict = false)
+	public function getHtml(): Html
 	{
-		$web = $this->web;
+		if (isset($this->html) && $this->html instanceof Html)
+			return $this->html;
+		return $this->web->getHtml();
+	}
+
+	public function filterVars(array $vars = null): array
+	{
+		return $vars ?? [];
+	}
+
+	public function import($_file, array $_vars = null, bool $isStrict = false)
+	{
 		$content = '';
-		if (is_file($_FILE) && is_readable($_FILE)) {
-			$content = $web->ob->getFunctionBuffer(null, function () use ($web, $_FILE, $_VARS) {
-				if (!empty($_VARS))
-					extract($_VARS);
-				unset($_VARS);
-				require $_FILE;
+		if (is_file($_file) && is_readable($_file)) {
+			$_vars = $this->filterVars($_vars);
+			$content = $this->web->ob->getFunctionBuffer(null, function () use ($_file, $_vars) {
+				if (!empty($_vars))
+					extract($_vars, EXTR_SKIP);
+				unset($_vars);
+				$web = $this->web;
+				$http = $web->http;
+				$html = $this->getHtml();
+				require $_file;
 			});
 		}
 		return $content;
