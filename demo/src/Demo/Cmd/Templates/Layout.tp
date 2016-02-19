@@ -1,0 +1,19 @@
+<?php
+/**
+ * @var \Ke\Web\Web $web
+ * @var \Ke\Web\Context $this
+ * @var string          $content
+ * @var \Ke\Web\Http	$http
+ * @var \Ke\Web\Html	$html
+ */
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title><?php print $this->title; ?></title>
+</head>
+<body>
+	<?php print $content; ?>
+</body>
+</html>

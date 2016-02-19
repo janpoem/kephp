@@ -91,13 +91,30 @@ class NewView extends ReflectionCommand
 		return $path;
 	}
 
+	public function getTemplateFile()
+	{
+		return 'View.tp';
+	}
+
+	public function getTemplatePath(): string
+	{
+		$tpl = '/Templates/' . $this->getTemplateFile();
+		$scopes = $this->console->getAppCommandScopes();
+		foreach ($scopes as $ns => $dir) {
+			if (real_file($path = $dir . $tpl)) {
+				return $path;
+			}
+		}
+		return __DIR__ . $tpl;
+	}
+
 	public function buildContent(): string
 	{
-		$tpl = __DIR__ . '/Templates/view2.tp';
+		$tpl = $this->getTemplatePath();
 		$content = file_get_contents($tpl);
 		$vars = [
-			'path' => "{$this->controller}/{$this->view}",
-		    'class' => $this->class,
+			'path'  => "{$this->controller}/{$this->view}",
+			'class' => $this->class,
 		];
 		return substitute($content, $vars);
 	}

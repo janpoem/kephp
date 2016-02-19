@@ -13,6 +13,6 @@ class Index extends Controller
 
 	public function index()
 	{
-		$pinyin = PinyinConverter::loadCache('pinyin_without_tone');
+//		$pinyin = PinyinConverter::loadCache('pinyin_without_tone');
 	}
 }

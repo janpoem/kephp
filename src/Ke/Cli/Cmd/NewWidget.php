@@ -69,9 +69,21 @@ class NewWidget extends ReflectionCommand
 		return $path;
 	}
 
+	public function getTemplatePath(): string
+	{
+		$tpl = '/Templates/' . $this->template;
+		$scopes = $this->console->getAppCommandScopes();
+		foreach ($scopes as $ns => $dir) {
+			if (real_file($path = $dir . $tpl)) {
+				return $path;
+			}
+		}
+		return __DIR__ . $tpl;
+	}
+
 	public function buildContent(): string
 	{
-		$tpl = __DIR__ . '/Templates/' . $this->template;
+		$tpl = $this->getTemplatePath();
 		$content = file_get_contents($tpl);
 		return $content;
 	}

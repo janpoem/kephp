@@ -1,9 +1,15 @@
 <?php
 /**
- * view: index/index
- * @var Demo\Controller\Index
+ * view: {path}
+ * @var {class}
  * @var \Ke\Web\Context $this
  * @var \Ke\Web\Web     $web
  * @var string          $content
+ * @var \Ke\Web\Http	$http
+ * @var \Ke\Web\Html	$html
  */
+
+
 ?>
+
+hello world
