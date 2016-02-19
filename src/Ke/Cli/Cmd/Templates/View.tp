@@ -4,7 +4,6 @@
  * @var {class}
  * @var \Ke\Web\Context $this
  * @var \Ke\Web\Web     $web
- * @var string          $content
  * @var \Ke\Web\Http	$http
  * @var \Ke\Web\Html	$html
  */
