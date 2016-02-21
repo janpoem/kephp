@@ -171,6 +171,12 @@ class Model extends ArrayObject implements CacheModelImpl
 			}
 			$columns[$pk] = $filter->initColumn($pk, $columns[$pk], $groupColumns, true, $pkAutoInc);
 
+			if (static::isEnableCache()) {
+				$fields = array_keys($dbColumns);
+				sort($fields, SORT_ASC | SORT_STRING);
+				$groupColumns['columnsHash'] = hash('crc32b', implode('|', $fields));
+			}
+
 			static::$pk = &$pk;
 			static::$pkAutoInc = &$pkAutoInc;
 			static::$columns = &$columns;
@@ -363,7 +369,7 @@ class Model extends ArrayObject implements CacheModelImpl
 	{
 		if (static::$_init === false)
 			static::initModel();
-		return empty(static::$pk) ? static::$pk : false;
+		return !empty(static::$pk) ? static::$pk : false;
 	}
 
 	public static function isPkAutoInc()
@@ -494,8 +500,14 @@ class Model extends ArrayObject implements CacheModelImpl
 		$list = new DataList();
 		$list->setModel($query->getModel());
 		$list->setPagination($query->getPagination());
+		$pk = static::getPkField();
 		foreach ($data as $row) {
-			$list[] = self::newInstance($row, $query, $source);
+			if ($pk !== false && isset($row[$pk])) {
+				$list[$row[$pk]] = self::newInstance($row, $query, $source);
+			}
+			else {
+				$list[] = self::newInstance($row, $query, $source);
+			}
 		}
 		return $list;
 	}
@@ -856,6 +868,7 @@ class Model extends ArrayObject implements CacheModelImpl
 			$this->afterSave($process, $data);
 			if ($this->isCached() || static::isEnableCache())
 				$this->saveCache();
+
 			return self::SAVE_SUCCESS;
 		}
 		return self::SAVE_FAILURE;
@@ -943,6 +956,23 @@ class Model extends ArrayObject implements CacheModelImpl
 	public function isValidCache(): bool
 	{
 		return $this->isExists();
+	}
+
+	public static function makeCacheKey(string $pk): string
+	{
+		return static::class . '.' . $pk;
+	}
+
+	public function getCacheKey(): string
+	{
+		return static::makeCacheKey($this->getPk());
+	}
+
+	public function makeCacheHash(): string
+	{
+		if (static::$_init === false)
+			static::initModel();
+		return static::getGroupColumns('columnsHash');
 	}
 
 //	protected function onCreateCache()
