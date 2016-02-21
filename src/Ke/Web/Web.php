@@ -457,8 +457,8 @@ class Web
 		if (!empty($result->format))
 			$params['format'] = $result->format;
 		// tail
-		if (!empty(($tail = trim($result->tail, KE_PATH_NOISE)))) {
-			$params['tail'] = $tail;
+		if ($result->tail !== '') {
+			$params['tail'] = $result->tail;
 		}
 		// data
 		if (!empty($result->data)) {
