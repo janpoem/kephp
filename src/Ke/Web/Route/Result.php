@@ -27,6 +27,8 @@ class Result
 
 	public $head = null;
 
+	public $actionMatch = '';
+
 	public $tail = '';
 
 	public $format = '';
@@ -117,16 +119,16 @@ class Result
 
 	public function splitFormat(string $path): array
 	{
-		$path = trim($path, KE_PATH_NOISE);
+		$path = rtrim($path, KE_PATH_NOISE);
 		$format = '';
-		if (!empty($path)) {
+		if ($path !== '') {
 			$parse = parse_path($path);
 			$path = '';
-			if (!empty($parse[0]))
+			if ($parse[0] !== '')
 				$path = $parse[0];
-			if (!empty($parse[1]))
-				$path .= (empty($path) ? '' : '/') . $parse[1];
-			if (!empty($parse[2]))
+			if ($parse[1] !== '')
+				$path .= ($path === '' ? '' : '/') . $parse[1];
+			if (isset($parse[2]) && $parse[2] !== '')
 				$format = $parse[2];
 		}
 		return [$path, $format];
