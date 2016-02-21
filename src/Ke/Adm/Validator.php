@@ -116,20 +116,20 @@ class Validator
 					$error = [Model::ERR_STR_LEN_GREET_THAN, 'max' => $column['max']];
 				}
 				// 邮箱
-				elseif ($isEmail && !$this->isEmail($value, $obj, $process))
+				elseif ((!$allowEmpty || $length > 0) && $isEmail && !$this->isEmail($value, $obj, $process))
 					$error = [Model::ERR_NOT_EMAIL];
-				elseif (!empty($column['pattern']) && !$this->isMatch($value, $column['pattern'], $obj, $process)) {
+				elseif ((!$allowEmpty || $length > 0) && !empty($column['pattern']) && !$this->isMatch($value, $column['pattern'], $obj, $process)) {
 					if (!empty($column['sample']))
 						$error = [Model::ERR_NOT_MATCH_SAMPLE, 'sample' => $column['sample']];
 					else
 						$error = [Model::ERR_NOT_MATCH];
 				}
-				elseif (!empty($column['equal']) &&
+				elseif ((!$allowEmpty || $length > 0) && !empty($column['equal']) &&
 				        (!isset($obj[$column['equal']]) || !equals($obj[$column['equal']], $value))
 				) {
 					$error = [Model::ERR_NOT_EQUAL, 'equalLabel' => $obj->getLabel($column['equal'])];
 				}
-				elseif (!empty($column['options']) &&
+				elseif ((!$allowEmpty || $length > 0) && !empty($column['options']) &&
 				        is_array($column['options']) &&
 				        !empty($column['inRange']) &&
 				        !isset($column['options'][$value])
