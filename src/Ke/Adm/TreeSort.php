@@ -1,61 +1,24 @@
 <?php
 /**
- * KePHP, Keep PHP easy!
- *
- * @license   http://www.apache.org/licenses/LICENSE-2.0
- * @copyright Copyright 2015 KePHP Authors All Rights Reserved
- * @link      http://kephp.com ( https://git.oschina.net/kephp/kephp-core )
- * @author    曾建凯 <janpoem@163.com>
+ * Created by PhpStorm.
+ * User: Janpoem
+ * Date: 2016/2/20 0020
+ * Time: 16:10
  */
 
-namespace Ke\Utils;
+namespace Ke\Adm;
 
 use Exception;
-use Ke\Adm\Model;
 
-/*
+interface TreeSortImpl
+{
 
-// 实际数据库测试用例
-$tree = Ke\Utils\SortAsTree::factoryModel('Region', 'id', 'parent', 'position', 'name');
-$tree->sort(function ($tree, $index, $data, $depth) {
-	echo str_repeat('->', $depth), $data['id'], '<br />';
-});
+	public static function getTreeSort(): TreeSort;
 
-// 自己构建虚拟数据进行测试
-$data = array(
-	array('id' => 1, 'parent_id' => 0, 'position' => 4),
-	array('id' => 2, 'parent_id' => 1, 'position' => 2),
-	array('id' => 12, 'parent_id' => 10, 'position' => 22),
-	array('id' => 15, 'parent_id' => 3, 'position' => 23),
-	array('id' => 14, 'parent_id' => 5, 'position' => 12),
-	array('id' => 3, 'parent_id' => 2, 'position' => 4),
-	array('id' => 4, 'parent_id' => 3, 'position' => 3),
-	array('id' => 5, 'parent_id' => 0, 'position' => 2),
-	array('id' => 6, 'parent_id' => 4, 'position' => 9),
-	array('id' => 23, 'parent_id' => 15, 'position' => 23),
-	array('id' => 16, 'parent_id' => 4, 'position' =>2),
-	array('id' => 17, 'parent_id' => 16, 'position' =>3),
-	array('id' => 18, 'parent_id' => 16, 'position' =>1),
-	array('id' => 19, 'parent_id' => 6, 'position' =>2),
-	array('id' => 20, 'parent_id' => 23, 'position' =>2),
-);
-$tree = new Ke\Utils\SortAsTree($data, null, SORT_ASC);
-$tree->sort(function ($tree, $index, $data, $depth) {
-	echo str_repeat('->', $depth), $data['id'], '<br/>';
-});
+//	public function getDepth(): int;
+}
 
- */
-
-/**
- * Class SortAsTree
- *
- * 无限分类的树形列表
- *
- *
- * @package Agi\Util
- * @author  Janpoem created at 2014/10/22 11:16
- */
-class SortAsTree
+class TreeSort
 {
 
 	private $sortModes = [
@@ -70,6 +33,8 @@ class SortAsTree
 	];
 
 	private $isPrepare = false;
+
+	private $isPrepareSorted = '';
 
 	private $rootNode = 'p#root';
 
@@ -101,23 +66,35 @@ class SortAsTree
 
 	protected $fields = false;
 
-	public static function factoryModel(
-		$model,
-		$primaryField = null,
-		$parentField = null,
-		$sortField = null,
-		$select = null
-	) {
-		if (!is_subclass_of($model, Model::class))
-			throw new Exception('Not a Adm\\Model class!');
-		$instance = new static();
-		$instance->setFields($primaryField, $parentField, $sortField);
-		$fields = implode(',', $instance->getFields());
-		if (!empty($select))
-			$fields .= ' ,' . $select;
-		$instance->setData($model::find(['select' => $fields, 'array' => 1]));
-		return $instance;
-	}
+	protected $sortedResult = [];
+
+	protected $isPaginate = false;
+
+	protected $paginateIds = null;
+
+	protected $pageSize = 0;
+
+	protected $pageCurrent = 1;
+
+	protected $pageTotal = 0;
+
+//	public static function factoryModel(
+//		$model,
+//		$primaryField = null,
+//		$parentField = null,
+//		$sortField = null,
+//		$select = null
+//	) {
+//		if (!is_subclass_of($model, Model::class))
+//			throw new Exception('Not a Adm\\Model class!');
+//		$instance = new static();
+//		$instance->setFields($primaryField, $parentField, $sortField);
+//		$fields = implode(',', $instance->getFields());
+//		if (!empty($select))
+//			$fields .= ' ,' . $select;
+//		$instance->setData($model::find(['select' => $fields, 'array' => 1]));
+//		return $instance;
+//	}
 
 	public static function __set_state(array $data)
 	{
@@ -251,6 +228,36 @@ class SortAsTree
 		return $this;
 	}
 
+	public function updateData(Model $obj, array $data)
+	{
+		if ($obj->isNew())
+			return $this;
+		$pk = $obj[$this->primaryField];
+		if (!isset($this->data[$pk])) {
+			$realData = array_intersect_key((array)$obj, $this->fields);
+			$this->data[$pk] = $realData;
+			$this->prepare(true);
+		}
+		else {
+			$realData = array_intersect_key($data, $this->fields);
+			if (!empty($realData)) {
+				$this->data[$pk] = array_merge($this->data[$pk], $realData);
+				$this->prepare(true);
+			}
+		}
+		return $this;
+	}
+
+	public function deleteData(Model $obj)
+	{
+		$pk = $obj[$this->primaryField];
+		if (isset($this->data[$pk])) {
+			unset($this->data[$pk]);
+			$this->prepare(true);
+		}
+		return $this;
+	}
+
 	public function getData()
 	{
 		return $this->data;
@@ -269,9 +276,15 @@ class SortAsTree
 		return array_keys($v[0]);
 	}
 
-	public function prepare()
+	public function makeSortedKey(): string
 	{
-		if ($this->isPrepare)
+		return $this->primaryField . '-' . $this->parentField . '-' . $this->sortField . '-' .
+		       $this->sortMode . '-' . $this->sortType;
+	}
+
+	public function prepare(bool $isRefresh = false)
+	{
+		if ($this->isPrepare && !$isRefresh)
 			return $this;
 		$this->isPrepare = true;
 		$enableSort = $this->sortField !== false;
@@ -332,8 +345,144 @@ class SortAsTree
 		$this->nodeLevels = $nodeLevels;
 		$this->parentGroups = $parentGroups;
 		unset($pkMapNode, $parentGroups, $sortGroups);
+
+		$this->sortedResult = [];
+		$this->sortedResult = $this->fillIds(null, 0);
 		return $this;
 	}
+
+	public function getNodeIds($node)
+	{
+		if (strpos($node, 'p#') !== 0)
+			$node = "p#{$node}";
+		if (!isset($this->parentGroups[$node]))
+			return [];
+		return $this->parentGroups[$node];
+	}
+
+	public function fillIds($node = null, int $depth = 0, array &$result = null)
+	{
+		if (empty($node))
+			$node = 'root';
+		$result = $result ?? [];
+		foreach ($this->getNodeIds($node) as $id) {
+			$result[$id] = $depth;
+			$this->fillIds($id, $depth + 1, $result);
+		}
+		return $result;
+	}
+
+	public function loop($node = null, bool $includeSelf = true, callable $fn = null)
+	{
+		if (!$this->isPrepare)
+			$this->prepare();
+		if (empty($node))
+			$node = 'root';
+		if ($node === 'root') {
+			foreach ($this->sortedResult as $id => $dep) {
+				yield $dep => $id;
+			}
+		}
+		else {
+			$depth = 0;
+			$ids = [];
+			if (isset($this->data[$node])) {
+				if ($includeSelf) {
+					$ids[$node] = $depth;
+					$depth += 1;
+				}
+			}
+			$this->fillIds($node, $depth, $ids);
+			foreach ($ids as $id => $dep) {
+				if (isset($fn))
+					yield $dep => $fn($id);
+				else
+					yield $dep => $id;
+			}
+		}
+	}
+
+	public function getTotalCount()
+	{
+		return count($this->data);
+	}
+
+	public function paginate(int $size, int $page = 1)
+	{
+		if ($size <= 0)
+			$size = 10;
+		if ($page <= 1)
+			$page = 1;
+		$total = $this->getTotalCount();
+		$pageTotal = intval($total / $size);
+		if ($total % $size > 0)
+			$pageTotal += 1;
+		if ($page > $pageTotal)
+			$page = $pageTotal;
+		$this->pageSize = $size;
+		$this->pageCurrent = $page;
+		$this->pageTotal = $pageTotal;
+		$this->isPaginate = true;
+		$this->paginateIds = null;
+		return $this;
+	}
+
+	public function getPaginateIds()
+	{
+		$ids = array_keys($this->sortedResult);
+		if (!$this->isPaginate)
+			return $ids;
+		if (empty($this->paginateIds)) {
+			$offset = ($this->pageCurrent - 1) * $this->pageSize;
+			$this->paginateIds = array_slice($ids, $offset, $this->pageSize);
+		}
+		return $this->paginateIds;
+	}
+
+	public function getPagination()
+	{
+		if (!$this->isPaginate)
+			return null;
+		$pagination = new Pagination([
+			'size'    => $this->pageSize,
+			'current' => $this->pageCurrent,
+			'total'   => $this->pageTotal,
+		]);
+		return $pagination;
+	}
+
+	public function getDepth($id)
+	{
+		if (isset($this->sortedResult[$id]))
+			return $this->sortedResult[$id];
+		return -1;
+	}
+
+//	public function paginate(int $size, int $offset = 0, callable $fn = null)
+//	{
+//		$ids = array_keys($this->sortedResult);
+//		$count = count($this->sortedResult);
+//		for ($i = 0; $i < $size; $i++) {
+//			$index = $offset + $i;
+//			if ($index > $count - 1)
+//				break;
+//			$id = $ids[$index];
+//			$dep = $this->sortedResult[$id];
+//			if (isset($fn))
+//				yield $dep => $fn($id);
+//			else
+//				yield $dep => $id;
+//		}
+//	}
+//
+//	public function getPaginateIds(int $size, int $offset = 0)
+//	{
+//		$result = [];
+//		foreach ($this->paginate($size, $offset) as $id) {
+//			$result[] = $id;
+//		}
+//		return $result;
+//	}
 
 	public function loopNode($node, $callback, $depth = null, & $completed = [], & $index = 0)
 	{
