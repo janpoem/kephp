@@ -10,6 +10,7 @@
 
 namespace Ke\Web;
 
+use Ke\Adm\Model;
 use Ke\Adm\Pagination;
 use Ke\Uri;
 
@@ -23,43 +24,50 @@ use Ke\Uri;
 class Html
 {
 
-	const DATA_ARRAY = 0;
+	const DATA_ARRAY        = 0;
 	const DATA_ARRAY_ACCESS = 1;
-	const DATA_GENERATOR = 2;
+	const DATA_GENERATOR    = 2;
+
+	const HORIZONTAL = 0;
+	const VERTICAL   = 1;
 
 	const TABLE_HEAD_FROM_COLUMNS = 'columns';
-	const TABLE_HEAD_FROM_DATA = 'data';
+	const TABLE_HEAD_FROM_DATA    = 'data';
 
 	const MSG_DEFAULT = 'default'; // 默认的，正常、普通的消息
 	const MSG_SUCCESS = 'success'; // 成功，通过，很好
-	const MSG_NOTICE = 'notice'; // 提示、通知，可忽略
-	const MSG_WARN = 'warning'; // 警告，但不中断，不致命
-	const MSG_ERROR = 'error'; // 错误，中断，致命
+	const MSG_NOTICE  = 'notice'; // 提示、通知，可忽略
+	const MSG_WARN    = 'warning'; // 警告，但不中断，不致命
+	const MSG_ERROR   = 'error'; // 错误，中断，致命
 
-	const PAGE_FIRST = 'pageFirst';
-	const PAGE_LAST = 'pageLast';
-	const PAGE_PREV = 'pagePrev';
-	const PAGE_NEXT = 'pageNext';
-	const PAGE_CUR = 'pageCurrent';
-	const PAGE_TOTAL = 'pageTotal';
-	const PAGE_ITEM = 'pageLink';
+	const PAGE_FIRST    = 'pageFirst';
+	const PAGE_LAST     = 'pageLast';
+	const PAGE_PREV     = 'pagePrev';
+	const PAGE_NEXT     = 'pageNext';
+	const PAGE_CUR      = 'pageCurrent';
+	const PAGE_TOTAL    = 'pageTotal';
+	const PAGE_ITEM     = 'pageLink';
 	const PAGE_ELLIPSIS = 'pageEllipsis';
-	const PAGE_GOTO = 'pageGoto';
-	const PAGE_ROW = 'pageRow';
+	const PAGE_GOTO     = 'pageGoto';
+	const PAGE_ROW      = 'pageRow';
 
 	const SUBMIT = 'submit';
-	const RESET = 'reset';
+	const RESET  = 'reset';
 	const RETURN = 'return';
 
-	const TABLE_EMPTY = 'tableEmpty';
+	const TABLE_EMPTY        = 'tableEmpty';
 	const TABLE_HEAD_INVALID = 'tableHeadInvalid';
-	const TABLE_HEAD_EMPTY = 'tableHeadEmpty';
-	const TABLE_HEAD_TAIL = 'tableHeadTail';
+	const TABLE_HEAD_EMPTY   = 'tableHeadEmpty';
+	const TABLE_HEAD_TAIL    = 'tableHeadTail';
+
+	const TEXT_NONE = 'none';
 
 	/** @var \DOMDocument */
 	private $DOM = null;
 
 	private $autoId = 0;
+
+	private static $instances = [];
 
 	protected $xhtmlStyle = true;
 
@@ -118,47 +126,78 @@ class Html
 		self::PAGE_ITEM          => '%d',
 		self::PAGE_ELLIPSIS      => '...',
 		self::PAGE_GOTO          => '跳转',
-		self::PAGE_ROW           => '{first}{prev}{links}{next}{last} {current} / {total} {button}',
 		self::SUBMIT             => '提交',
 		self::RESET              => '重置',
 		self::RETURN             => '返回',
+		self::TEXT_NONE          => '无',
 	];
 
 	public $labelColon = ' : ';
 
 	// 分页的设置
-	public $pageLinks = 2;
+	public $pageLinks     = 6;
 	public $pageFirstLast = false;
-	public $pagePrevNext = true;
-	public $pageGoto = false; // 'input', 'select'
+	public $pagePrevNext  = true;
+	public $pageGoto      = false; // 'input', 'select'
+	public $pageRow       = '{first}{prev}{links}{next}{last} {current} / {total} {button}';
 
-	public $tagPageWrap = 'div';
-	public $tagPageLink = 'a';
-	public $tagPageSpan = 'span';
+	public $tagPageWrap   = 'div';
+	public $tagPageLink   = 'a';
+	public $tagPageSpan   = 'span';
 	public $tagPageButton = 'button';
+	public $tagPageLinks  = 'div';
 
-	public $classPageWrap = 'page-wrap';
-	public $classPageSpan = 'page-span';
-	public $classPageLink = 'page-link';
-	public $classPageButton = 'page-button';
+	public $classPageWrap         = 'page-wrap';
+	public $classPageSpan         = 'page-span';
+	public $classPageLink         = 'page-link';
+	public $classPageLinks        = 'page-links';
+	public $classPageButton       = 'page-button';
 	public $classPageSpanEllipsis = 'page-span page-ellipsis';
-	public $classPageSpanInput = 'page-span page-input';
+	public $classPageSpanInput    = 'page-span page-input';
 
-	public $tagFieldSet = 'div';
-	public $tagFieldSetLegend = '';
-	public $tagFieldSetContent = '';
+	public $tagFieldSet        = 'div';
+	public $tagFieldSetLegend  = 'div';
+	public $tagFieldSetContent = 'div';
+	public $tagFieldSetError   = 'div';
 
-	public $classFieldSet = 'field';
-	public $classFieldSetLegend = 'field-legend';
+	public $tagLabelInline   = 'label';
+	public $classLabelInline = 'label-inline';
+
+	public $classFieldSet        = 'field';
+	public $classFieldSetLegend  = 'field-legend';
 	public $classFieldSetContent = 'field-content';
+	public $classFieldSetError   = 'field-error';
+
+	public $classForm = 'form';
+
+	public $tagButtonLink = 'a';
 
 	// message
-	public $tagMessage = 'div';
+	public $tagMessage   = 'div';
 	public $classMessage = 'message';
 //	public $tagFieldset = 'p';
 //	public $classFieldset = 'class12';
 
 	public $classTableList = 'table-list';
+
+	public $buttonsDelimiter = '';
+
+	/**
+	 * @return Html
+	 */
+	public static function getInstance()
+	{
+		$class = static::class;
+		if (!isset(self::$instances[$class]))
+			self::$instances[$class] = new static();
+		return self::$instances[$class];
+	}
+
+	public function __construct()
+	{
+		$class = static::class;
+		self::$instances[$class] = $this;
+	}
 
 	public function isClosingTag(string $tag): bool
 	{
@@ -192,10 +231,11 @@ class Html
 		foreach ($attributes as $attr => $setting) {
 			$type = gettype($setting);
 			if ($type === KE_STR) {
-				$type    = KE_ARY;
+				$type = KE_ARY;
 				$setting = ['type' => $setting];
-			} elseif ($type === KE_OBJ) {
-				$type    = KE_ARY;
+			}
+			elseif ($type === KE_OBJ) {
+				$type = KE_ARY;
 				$setting = (array)$setting;
 			}
 			if ($type !== KE_ARY)
@@ -278,7 +318,7 @@ class Html
 		if (empty($attr))
 			return [];
 		$data = [];
-		$dom  = $this->getDOM();
+		$dom = $this->getDOM();
 		$dom->loadHTML("<div {$attr}>");
 		$els = $dom->getElementsByTagName('div');
 		if (isset($els[0])) {
@@ -298,7 +338,8 @@ class Html
 		elseif ($attr[0] === '?') {
 			parse_str(substr($attr, 1), $result);
 			return $result;
-		} else {
+		}
+		else {
 			return $this->parseAttrByPreg($attr);
 		}
 	}
@@ -347,7 +388,8 @@ class Html
 				if (empty($value))
 					return false;
 				return [$name, $name];
-			} elseif ($setting['type'] === 'link') {
+			}
+			elseif ($setting['type'] === 'link') {
 				return [$name, $this->filterLink($value)];
 			}
 		}
@@ -361,11 +403,13 @@ class Html
 			elseif ($type === KE_ARY) {
 				// todo: 数组的话，自动构建特定的属性
 				return [$name, $this->specialAttr($name, ...$value)];
-			} elseif ($type === KE_STR)
+			}
+			elseif ($type === KE_STR)
 				return [$name, $value];
 			else
 				return false;
-		} elseif ($name === 'class') {
+		}
+		elseif ($name === 'class') {
 			if (empty($value))
 				return false;
 			elseif ($type === KE_ARY) {
@@ -374,17 +418,17 @@ class Html
 					return [$name, implode(' ', $value)];
 				else
 					return false;
-			} elseif ($type === KE_STR)
+			}
+			elseif ($type === KE_STR)
 				return [$name, $value]; // 字符串，不再过滤了，直接输出
 			else
 				return false;
-		} else {
-			if (empty($value) && $value !== 0 && $value !== '0' && $value !== 0.00) {
-				if ($name === 'value')
-					return [$name, ''];
-				else
-					return [$name, $name];
-			} elseif ($type === KE_ARY || $type === KE_OBJ)
+		}
+		else {
+			if (strlen($value) === 0) {
+				return [$name, ''];
+			}
+			elseif ($type === KE_ARY || $type === KE_OBJ)
 				return false;
 			elseif ($type === KE_STR)
 				return [$name, htmlentities($value)];
@@ -395,7 +439,7 @@ class Html
 
 	public function filterLink($link)
 	{
-		$web  = Web::getWeb();
+		$web = Web::getWeb();
 		$type = gettype($link);
 		if ($type === KE_ARY) {
 			// 数组分两种情况：
@@ -407,21 +451,24 @@ class Html
 					return $web->http->newUri($first, $link);
 				}
 				return $web->uri($first, $link);
-			} else {
+			}
+			else {
 				// 如果没有指定0的路径，尝试理解为，基于当前的uri，并且设置查询字符串
 				return $web->http->newUri()->setQuery($link);
 			}
-		} elseif ($type === KE_OBJ) {
+		}
+		elseif ($type === KE_OBJ) {
 			// 对象
 			if (!($link instanceof Uri))
 				$link = new Uri($link);
 			return $link;
-		} else {
+		}
+		else {
 			$link = (string)$link;
 			if (isset($link[0]) && $link[0] === '#') {
 				return $web->http->newUri($link);
 			}
-			return $web->uri($web);
+			return $web->uri($link);
 		}
 	}
 
@@ -431,12 +478,14 @@ class Html
 		if ($type === KE_STR) {
 			$class = trim($class);
 			if (strpos($class, ' ') > 0) {
-				$class  = explode(' ', $class);
+				$class = explode(' ', $class);
 				$result = array_merge($result, array_flip(array_filter($class)));
-			} else {
+			}
+			else {
 				$result[$class] = 1;
 			}
-		} elseif ($type === KE_ARY || $type === KE_OBJ) {
+		}
+		elseif ($type === KE_ARY || $type === KE_OBJ) {
 			if ($type === KE_OBJ)
 				$class = (array)$class;
 			array_walk_recursive($class, function ($item) use (&$result) {
@@ -445,7 +494,8 @@ class Html
 					$this->filterClass($item, $result);
 				}
 			});
-		} else {
+		}
+		else {
 			return [];
 		}
 		return array_keys($result);
@@ -475,7 +525,23 @@ class Html
 				$attr['class'][] = $class;
 			else
 				$attr['class'] = [$attr['class'], $class];
-		} else
+		}
+		else
+			$attr['class'] = $class;
+		return $attr;
+	}
+
+	public function unShiftClass(array &$attr, $class): array
+	{
+		if (empty($class))
+			return $attr;
+		if (isset($attr['class'])) {
+			if (is_array($attr['class']))
+				array_unshift($attr['class'], $class);
+			else
+				$attr['class'] = [$class, $attr['class']];
+		}
+		else
 			$attr['class'] = $class;
 		return $attr;
 	}
@@ -486,9 +552,11 @@ class Html
 		if ($type === KE_STR) {
 			// 解析字符串，就没有打扁不打扁的问题了
 			$attr = ['class' => $attr];
-		} elseif ($type === KE_OBJ) {
+		}
+		elseif ($type === KE_OBJ) {
 			$attr = get_object_vars($attr);
-		} elseif ($type !== KE_ARY) {
+		}
+		elseif ($type !== KE_ARY) {
 			$attr = [];
 		}
 		return $attr;
@@ -528,19 +596,22 @@ class Html
 		$type = gettype($content);
 		if (is_callable($content)) {
 			return call_user_func($content, $this);
-		} elseif ($type === KE_STR)
+		}
+		elseif ($type === KE_STR)
 			return $content;
 		elseif ($type === KE_ARY) {
 			$buffer = $buffer ?? [];
 			foreach ($content as $item) {
 				if (is_array($item)) {
 					$buffer[] = $this->tag(...$item);
-				} else {
+				}
+				else {
 					$buffer[] = (string)$item;
 				}
 			}
 			return implode('', $buffer);
-		} else
+		}
+		else
 			return (string)$content;
 	}
 
@@ -584,7 +655,7 @@ class Html
 		//////////////////////////////////////////////////////////////////
 		// 算法3：这个更变态，10000次，只要75ms，暂时用这个方案了，比较满意
 		//////////////////////////////////////////////////////////////////
-		$tag  = str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $tag)));
+		$tag = str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $tag)));
 		$head = strtok($tag, ':');
 		$tail = ucfirst(strtok(':'));
 		if (!empty($attr['type']))
@@ -623,16 +694,17 @@ class Html
 			$field = $this->tag2field($tag, $attr);
 			// 两者相同，表示没有指定type
 			if ($field[0] === $field[1]) {
-				$tagField   = 'tag' . $field[0];
+				$tagField = 'tag' . $field[0];
 				$classField = 'class' . $field[0];
 				if (isset($this->{$tagField}))
 					$tag = $this->{$tagField};
 				if (isset($this->{$classField}))
 					$this->addClass($attr, $this->{$classField});
-			} else {
+			}
+			else {
 				// 以下为试行
-				$tagField         = 'tag' . $field[0];
-				$classField       = 'class' . $field[0];
+				$tagField = 'tag' . $field[0];
+				$classField = 'class' . $field[0];
 				$detailClassField = 'class' . $field[1];
 				if (isset($this->{$tagField}))
 					$tag = $this->{$tagField};
@@ -657,7 +729,8 @@ class Html
 				return "<{$tag}{$attr}/>";
 			else
 				return "<{$tag}{$attr}>";
-		} else {
+		}
+		else {
 			return "<{$tag}{$attr}>{$content}</{$tag}>";
 		}
 	}
@@ -679,22 +752,24 @@ class Html
 			$attr = $this->attr2array($attr);
 		if (empty($type))
 			$attr['type'] = $type;
-		elseif ($type !== 'button' || $type !== 'submit' || $type !== 'reset') {
+		elseif ($type !== 'button' && $type !== 'submit' && $type !== 'reset') {
 			// 这里其实主要是应对各大css框架，生成一个button like like
 			$attr['href'] = $type;
-			$attr['type'] = 'link'; // tagButtonLink, classButtonLink
-		} else
+			return $this->tag('button-link', $text, $attr);
+		}
+		else
 			$attr['type'] = $type;
 		return $this->tag('button', $text, $attr);
 	}
 
-	public function buttons(array $buttons, $attr = null)
+	public function buttons(array $buttons, $attr = null, $delimiter = null)
 	{
-		$content = '';
+		$content = [];
 		foreach ($buttons as $button) {
-			$content .= $this->button(...(array)$button);
+			$content[] = $this->button(...(array)$button);
 		}
-		return $this->tag('buttons', $content, $attr); // tagButtons, classButtons
+		return $this->tag('buttons', implode($delimiter ?? $this->buttonsDelimiter, $content),
+			$attr); // tagButtons, classButtons
 	}
 
 	public function link(string $text, $href = null, $attr = null)
@@ -748,7 +823,7 @@ class Html
 	) {
 		if (!is_array($options))
 			$options = $this->filterOptions($options);
-		$result     = '';
+		$result = '';
 		$groupLabel = trim($groupLabel);
 		if (isset($defaultOption))
 			$options = ['' => $defaultOption] + $options;
@@ -835,7 +910,8 @@ class Html
 		$input = $this->input($type, null, $attr);
 		if ($type === 'checkbox' || $type === 'radio') {
 			return $input . $label;
-		} else {
+		}
+		else {
 			return $label . $input;
 		}
 	}
@@ -847,10 +923,10 @@ class Html
 		if (!is_array($attr))
 			$attr = $this->attr2array($attr);
 		$attr['type'] = $type;
-		$baseId       = empty($attr['id']) ? $this->autoId($type) : $attr['id'];
-		$baseName     = $attr['name'] ?? '';
-		$count        = count($options);
-		$isMulti      = $type !== 'radio' && $count > 1;
+		$baseId = empty($attr['id']) ? $this->autoId($type) : $attr['id'];
+		$baseName = $attr['name'] ?? '';
+		$count = count($options);
+		$isMulti = $type !== 'radio' && $count > 1;
 		if ($isMulti && !empty($attr['name'])) {
 			if (!preg_match('#\[\]$#', $attr['name'])) {
 				$attr['name'] .= '[]';
@@ -889,12 +965,12 @@ class Html
 		array $prefix = []
 	) {
 		$result = $result ?? '';
-		$index  = 0;
+		$index = 0;
 		foreach ($values as $field => $value) {
 			if (isset($ignores[$field]))
 				continue;
 			if (is_array($value)) {
-				$newPrefix   = $prefix;
+				$newPrefix = $prefix;
 				$newPrefix[] = $field;
 				$this->inputSet($value, $type, $ignores, $result, $newPrefix);
 				continue;
@@ -902,7 +978,8 @@ class Html
 			$name = $prefix;
 			if (is_string($field) || (is_numeric($field) && intval($field) !== $index)) {
 				$name[] = $field;
-			} else {
+			}
+			else {
 				$name[] = '';
 			}
 			$result .= $this->input($type, (string)$value, ['name' => $name]);
@@ -913,7 +990,19 @@ class Html
 
 	public function fieldSet(string $label, $content = null, $attr = null)
 	{
-		$inner = $this->tag('fieldSetLegend', $label) . $this->tag('fieldSetContent', $content);
+		if (!empty($attr['require']))
+			$this->addClass($attr, $this->getBaseClass('fieldSetRequire'));
+		$contentAttr = [];
+		if (!empty($attr['multiFields']))
+			$this->addClass($contentAttr, $this->getBaseClass('fieldSetFields'));
+
+		$inner = $this->tag('fieldSetLegend', $label);
+		$inner .= $this->tag('fieldSetContent', $content, $contentAttr);
+		if (!empty($attr['error'])) {
+//			$inner .= $this->tag('fieldSetError', $attr['error']);
+			$this->addClass($attr, $this->getBaseClass('fieldSetError'));
+		}
+		unset($attr['error'], $attr['multiFields'], $attr['require']);
 		return $this->tag('fieldSet', $inner, $attr);
 	}
 
@@ -935,15 +1024,17 @@ class Html
 			$isRequire = true;
 		/////////////////////////////////////////////////////////
 		$isNumeric = false;
-		$isDouble  = false;
+		$isDouble = false;
 		// 过滤是否数值类型
 		if (!empty($column['numeric'])) {
 			$isNumeric = true;
 			if ($column['numeric'] >= 3)
 				$isDouble = true;
-		} elseif (!empty($column['int']) || !empty($column['bigint'])) {
+		}
+		elseif (!empty($column['int']) || !empty($column['bigint'])) {
 			$isNumeric = true;
-		} elseif (!empty($column['float'])) {
+		}
+		elseif (!empty($column['float'])) {
 			$isNumeric = $isDouble = true;
 		}
 		/////////////////////////////////////////////////////////
@@ -964,7 +1055,7 @@ class Html
 			$fields = [(string)$fields];
 		$fields[] = $field;
 
-		$id   = $this->id($fields);
+		$id = $this->id($fields);
 		$attr = [
 			'type'  => $type,
 			'id'    => $id,
@@ -1006,31 +1097,36 @@ class Html
 		if (!isset($value) && !empty($column['default']))
 			$value = $column['default'];
 		$inputAttr = $this->mkInputAttr($field, $value, $column);
-		$type      = $inputAttr['type'];
+		$type = $inputAttr['type'];
 		$showLabel = true;
 		if (isset($column['showLabel']) && $column['showLabel'] === false)
 			$showLabel = false;
-		$label         = $column['label'] ?? $column['title'] ?? $field;
+		$label = $column['label'] ?? $column['title'] ?? $field;
 		$isMultiFields = false;
 		if ($type === 'hidden') {
 			return $this->input($type, $value, $inputAttr);
-		} else {
+		}
+		else {
 			if ($showLabel && !empty($label)) {
 				$label .= $this->labelColon;
 				$label = $this->label($label, $inputAttr['id']);
-			} else {
+			}
+			else {
 				$label = '';
 			}
 			if ($type === 'select') {
 				$input = $this->select($column['options'] ?? [], $value, $inputAttr,
 					$column['defaultOption'] ?? null);
-			} elseif ($type === 'static') {
+			}
+			elseif ($type === 'static') {
 				$input = $this->tag('form-static', $value, $inputAttr);
-			} else {
+			}
+			else {
 				if (!empty($column['options'])) {
 					$isMultiFields = true;
-					$input         = $this->groupInputs($type, $column['options'], $value, $inputAttr);
-				} else {
+					$input = $this->groupInputs($type, $column['options'], $value, $inputAttr);
+				}
+				else {
 					$input = $this->input($type, $value, $inputAttr);
 				}
 			}
@@ -1080,18 +1176,19 @@ class Html
 		array $mergeColumn = null
 	) {
 		if ($type === self::TABLE_HEAD_FROM_DATA) {
-			$column = ['label' => $field];
-		} else {
+			$column = $mergeColumn ?? ['label' => $field];
+		}
+		else {
 			if (is_string($column))
 				$column = ['label' => $column];
 			elseif (is_object($column))
 				$column = ['label' => (string)$column];
 			elseif (!is_array($column))
 				$column = ['showTable' => !empty($column)];
+			// 附加设定
+			if (!empty($mergeColumn))
+				$column = array_merge($mergeColumn, $column);
 		}
-		// 附加设定
-		if (!empty($mergeColumn))
-			$column = array_merge($mergeColumn, $column);
 		if (!isset($column['label']))
 			$column['label'] = $column['title'] ?? $field;
 		if (isset($column['tableClass']))
@@ -1101,7 +1198,7 @@ class Html
 		return $column;
 	}
 
-	public function filterColumnValue(string $field, $value, array $column = null)
+	public function filterColumnValue($row, string $field, $value, array $column = null)
 	{
 		if (is_string($value)) {
 			$length = strlen($value);
@@ -1113,12 +1210,12 @@ class Html
 				elseif (isset($column['strWidth']) && is_numeric($column['strWidth']) && $column['strWidth'] > 0)
 					$value = $this->label(str_width_cut($value, $column['strWidth']), null, ['title' => $value]);
 			}
-
-		} elseif (!empty($column['timestamp'])) {
+		}
+		elseif (!empty($column['timestamp'])) {
 			if (is_numeric($value) && $value > 0)
 				$value = date('Y-m-d H:i:s', $value);
 			else
-				$value = '';
+				$value = $this->getText(self::TEXT_NONE);
 		}
 
 		if (isset($column['options'])) {
@@ -1128,9 +1225,13 @@ class Html
 		if (isset($column['before']) || isset($column['after'])) {
 			$value = $this->wrap($value, $column['before'], $column['after'], $column['wrap'] ?? [], 'div');
 		}
+		if ($row instanceof Model) {
+			if (isset($column['getter']) && is_callable([$row, $column['getter']]))
+				$value = call_user_func([$row, $column['getter']]);
+		}
 		// todo: 这里会增加一些Model默认属性的处理
 		if (isset($column['onShow']) && is_callable($column['onShow'])) {
-			$value = call_user_func($column['onShow'], $this, $value, $column);
+			$value = call_user_func($column['onShow'], $this, $row, $value, $column);
 		}
 		return $value;
 	}
@@ -1153,12 +1254,12 @@ class Html
 			return '';
 
 		$linksCount = intval($this->pageLinks);
-		$prevNext   = !empty($this->pagePrevNext);
-		$firstLast  = !empty($this->pageFirstLast);
-		$goto       = $this->pageGoto;
+		$prevNext = !empty($this->pagePrevNext);
+		$firstLast = !empty($this->pageFirstLast);
+		$goto = $this->pageGoto;
 
-		$field       = $pagination->field;
-		$pageTotal   = $pagination->total;
+		$field = $pagination->field;
+		$pageTotal = $pagination->total;
 		$pageCurrent = $pagination->current;
 
 		$els = [
@@ -1173,22 +1274,23 @@ class Html
 		];
 
 		if ($pageTotal > $linksCount) {
-			$half  = (int)($linksCount / 2);
+			$half = (int)($linksCount / 2);
 			$start = $pageCurrent - $half;
 			if ($start < 1) $start = 1;
 			$over = $start + $linksCount;
 //				$over = $start + $linksCount - ($firstLast ? ($start == 1 ? 2 : 3) : 1);
 			if ($over > $pageTotal) {
-				$over  = $pageTotal;
+				$over = $pageTotal;
 				$start = $over - $linksCount;
 				if ($start <= 1) $start = 1;
 			}
-		} else {
+		}
+		else {
 			$start = 1;
-			$over  = $pageTotal;
+			$over = $pageTotal;
 		}
 
-		$uri      = Web::getWeb()->http->newUri();
+		$uri = Web::getWeb()->http->newUri();
 		$ellipsis = $this->paginationLink(self::PAGE_ELLIPSIS, 0);
 
 		if ($linksCount > 0) {
@@ -1198,7 +1300,8 @@ class Html
 					$start += 1;
 					if ($start > 2)
 						$els['links'] .= $ellipsis;
-				} else {
+				}
+				else {
 					$els['links'] .= $ellipsis;
 				}
 			}
@@ -1212,7 +1315,8 @@ class Html
 					if ($over < $pageTotal - 1)
 						$els['links'] .= $ellipsis;
 					$els['links'] .= $this->paginationLink(self::PAGE_ITEM, $pageTotal, $uri, $field, false);
-				} else {
+				}
+				else {
 					$els['links'] .= $ellipsis;
 				}
 			}
@@ -1220,7 +1324,7 @@ class Html
 
 		if ($firstLast) {
 			$els['first'] = $this->paginationLink(self::PAGE_FIRST, 1, $uri, $field, $pageCurrent);
-			$els['last']  = $this->paginationLink(self::PAGE_LAST, $pageTotal, $uri, $field, $pageCurrent);
+			$els['last'] = $this->paginationLink(self::PAGE_LAST, $pageTotal, $uri, $field, $pageCurrent);
 		}
 
 		if ($prevNext) {
@@ -1236,21 +1340,23 @@ class Html
 					'max'  => $pageTotal,
 					'name' => $field,
 				]);
-			} else {
+			}
+			else {
 				$pages = range(1, $pageTotal);
-				$el    = $this->select(array_combine($pages, $pages), $pageCurrent, [
+				$el = $this->select(array_combine($pages, $pages), $pageCurrent, [
 					'name' => $field,
 				]);
 			}
 			$els['current'] = $this->tag('page-span:input', sprintf($this->getText(self::PAGE_CUR), $el));
-			$els['button']  = $this->tag('page-button', $this->getText(self::PAGE_GOTO));
-		} else {
+			$els['button'] = $this->tag('page-button', $this->getText(self::PAGE_GOTO));
+		}
+		else {
 			$els['current'] = sprintf($this->getText(self::PAGE_CUR), $pageCurrent);
 		}
 
 		$els['total'] = sprintf($this->getText(self::PAGE_TOTAL), $pageTotal);
 
-		$row = substitute($this->getText(self::PAGE_ROW), $els);
+		$row = substitute($this->pageRow, $els);
 
 		if (!empty($goto)) {
 			$row .= $this->inputSet($uri->getQueryData(), 'hidden', [$field => 1]);
@@ -1269,13 +1375,93 @@ class Html
 		}
 		if ($item === self::PAGE_ELLIPSIS) {
 			$tag = 'page-span:ellipsis';
-		} elseif (isset($uri) && ($compare === false || !equals($compare, $number))) {
+		}
+		elseif (isset($uri) && ($compare === false || !equals($compare, $number))) {
 			$tag = 'page-link';
 			//
 			$attr['href'] = $uri->setQuery([$field => $number <= 1 ? null : $number]);
-		} else {
-			$tag = 'page-span';
+		}
+		else {
+			if ($item === self::PAGE_ITEM)
+				$tag = 'page-span:active';
+			else
+				$tag = 'page-span';
 		}
 		return $this->tag($tag, $text, $attr);
 	}
+
+	public $tagIcon   = 'i';
+	public $classIcon = 'fa';
+
+	public function preIcon(string $icon, $attr = null): array
+	{
+		if (!is_array($attr))
+			$attr = $this->attr2array($attr);
+		$class = "fa-{$icon}";
+		if (isset($attr['size'])) {
+			if ($attr['size'] === 'lg')
+				$class .= ' fa-lg';
+			elseif ($attr['size'] >= 2 && $attr['size'] <= 5)
+				$class .= ' fa-' . $attr['size'] . 'x';
+			unset($attr['size']);
+		}
+		if (isset($attr['spin'])) {
+			$class .= ' fa-spin';
+			unset($attr['spin']);
+		}
+		if (isset($attr['fw'])) {
+			$class .= ' fa-fw';
+			unset($attr['fw']);
+		}
+		if (isset($attr['li'])) {
+			$class .= ' fa-li';
+			unset($attr['li']);
+		}
+		if (isset($attr['rotate'])) {
+			if ($attr['rotate'] == 90 || $attr['rotate'] === 180 || $attr['rotate'] === 270)
+				$class .= ' fa-rotate-' . $attr['rotate'];
+			unset($attr['rotate']);
+		}
+		elseif (isset($attr['flip'])) {
+			if ($attr['flip'] === self::HORIZONTAL)
+				$class .= ' fa-flip-horizontal';
+			elseif ($attr['flip'] === self::VERTICAL)
+				$class .= ' fa-flip-vertical';
+			unset($attr['flip']);
+		}
+		$this->addClass($attr, $class);
+		return $attr;
+	}
+
+	public function icon(string $icon, $attr = null): string
+	{
+		return $this->tag('icon', null, $this->preIcon($icon, $attr));
+	}
+
+	public $tagListItem = 'li';
+
+	public function ol($items, $attr = null, $itemAttr = null): string
+	{
+		if (!is_array($items))
+			$items = (array)$items;
+		$content = [];
+		foreach ($items as $item) {
+			if (is_array($item))
+				$item = $this->tag(...$item);
+			$content[] = $this->tag('list-item', $item, $itemAttr);
+		}
+		return $this->tag('ol', $content, $attr);
+	}
+
+	public function ul($items, $attr = null, $itemAttr = null): string
+	{
+		if (!is_array($items))
+			$items = (array)$items;
+		$content = [];
+		foreach ($items as $item) {
+			$content[] = $this->tag('list-item', $item, $itemAttr);
+		}
+		return $this->tag('ul', $content, $attr);
+	}
+
 }
