@@ -453,10 +453,16 @@ class Query
 		return $this;
 	}
 
+	public function newPagination()
+	{
+		if (!isset($this->pagination)) {
+			$this->pagination = new Pagination();
+		}
+		return $this->pagination;
+	}
+
 	public function getPagination()
 	{
-		if (!isset($this->pagination))
-			$this->pagination = new Pagination();
 		return $this->pagination;
 	}
 
@@ -473,7 +479,7 @@ class Query
 	 */
 	public function paginate($options)
 	{
-		$this->getPagination()->setOptions($options);
+		$this->newPagination()->setOptions($options);
 		return $this;
 	}
 
