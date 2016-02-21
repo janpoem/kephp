@@ -26,7 +26,8 @@
 这里主要借鉴了Java的项目机制。
 
 1. 一个项目所有php源代码，都基于src目录下，而不再基于app或application目录。
-2. src下必须声明一个命名空间，如：\MyTest，那么Controller（\MyTest\Controller）、Model（\MyTest\Model）等代码都基于这个命名空间下。
+2. src下必须声明一个命名空间，如：\MyTest，那么Controller（\MyTest\Controller）、
+3. （\MyTest\Model）等代码都基于这个命名空间下。
 
 假定我有一个项目，叫做X-ERP，这个项目的命名空间基于：\xErp，然后我需要创建一个新项目（\MyErp），这里我希望能重用X-ERP的代码，于是我可以有几个做法：
 
@@ -634,6 +635,165 @@ class User extends Model {
 User::query('logs')->where('tb1.id', '>', 100)->limit(20); // 这里会clone一个新的查询，而不会污染原来的查询构造。
 
 ```
+
+### TreeSort和TreeSortImpl
+
+TreeSort是实现无限分类的辅助类，TreeSortImpl用于说明一个对象或者数据模型，具有无限分类的特征。
+
+一般在使用上，是将TreeSortImpl实现在Model数据模型上：
+
+以下这个示例，是将一个无限分类的辅助类放入缓存进行装载。
+
+```php
+<?php
+
+namespace xErp\Model\Dept;
+
+use Ke\Adm\Model;
+use Ke\Adm\TreeSort;
+use Ke\Adm\TreeSortImpl;
+
+class Dept extends Model implements TreeSortImpl
+{
+
+	protected static $cacheSource = null;
+
+	public static function getTreeSort(): TreeSort
+	{
+		if (!isset(self::$treeSort)) {
+			$key = static::class . '.TreeSort';
+			$ttl = static::$cacheTTL;
+			$adapter = static::getCacheAdapter();
+			$cache = $adapter->get($key);
+			if ($cache === false) {
+				$data = (new \Ke\Adm\Query())->from(static::getTable())->select('id', 'parent_id', 'position')->find();
+				$tree = new TreeSort($data);
+				$tree->prepare();
+				$adapter->set($key, $tree, $ttl);
+				self::$treeSort = $tree;
+			}
+			else {
+				self::$treeSort = $cache;
+			}
+		}
+		return self::$treeSort;
+	}
+
+	public static function updateTreeSort()
+	{
+		$key = static::class . '.TreeSort';
+		$ttl = static::$cacheTTL;
+		static::getCacheAdapter()->set($key, static::getTreeSort(), $ttl);
+	}
+
+	protected function afterSave($process, array &$data)
+	{
+		// 在数据本身变更的时候，更新无限分类的缓存结构
+		static::getTreeSort()->updateData($this, $data);
+		static::updateTreeSort();
+	}
+
+	protected function afterDestroy()
+	{
+		// 在数据被删除的时候，将相关的数据从无限分类中删除掉
+		static::getTreeSort()->deleteData($this);
+		static::updateTreeSort();
+	}
+
+	// 取得当前数据在整个无限分类数中的深度
+	public function getDepth(): int
+	{
+		if ($this->isNew())
+			return -1;
+		$treeSort = static::getTreeSort();
+		return $treeSort->getDepth($this->id);
+	}
+
+	// 取得直系上级的数据对象
+	public function getParent(): Dept
+	{
+		return static::loadCache($this->parent_id ?? 0);
+	}
+
+	// 取得所有上级对象，并将相关数据保存在$_parents变量中
+	public function getParents(bool $includeSelf = false): array
+	{
+		if ($this->_parents === false) {
+			$treeSort = static::getTreeSort();
+			$parents = $treeSort->getParents($this->id, 'id', false);
+			if (empty($parents))
+				$this->_parents = [];
+			else {
+				foreach ($parents as $id) {
+					$this->_parents[$id] = static::loadCache($id);
+				}
+			}
+		}
+		if ($includeSelf) {
+			$parents = $this->_parents;
+			$parents[] = $this;
+			return $parents;
+		}
+		return $this->_parents;
+	}
+
+	// 取得当前直系的子节点数据
+	public function getChildren(): array
+	{
+		if ($this->_children === false) {
+			$treeSort = static::getTreeSort();
+			$children = $treeSort->getChildren($this->id, 'id');
+			if (empty($children))
+				$this->_children = [];
+			else {
+				foreach ($children as $id) {
+					$this->_children[$id] = static::loadCache($id);
+				}
+			}
+		}
+		return $this->_children;
+	}
+}
+```
+
+目前，透过TreeSort可以查询任意指定的id相关的parent、parents、children（当前的所有子节点）、allChildren（所有子孙节点）。
+
+相应的，绑定到数据模型，也是可以透过相关的方法取得相关的数据的。
+
+本来应该对TreeSortImpl进行一些强制性的接口要求，包括了上述的getParent、getParents、getChildren、getAllChildren，但目前不对TreeSortImpl的接口做硬性规定，交给Model自己去做实现吧。TreeSortImpl只确保`getTreeSort`返回有效的TreeSort实例。
+
+#### 无限分类的数据查询分页
+
+这个其实是比较麻烦的一个东西，一般做法会将无限分类作为Ajax方式异步获取，或者直接将整个树展开。当然，如果你的数据结构是左右值的请走开，这里讨论的不是这种方案。
+
+目前仍未完全彻底的自动去绑定无限分类的数据查询分页，还是需要用户在执行查询时，去指定一些参数：
+
+```php
+<?php
+
+$tree = Dept::getTreeSort();
+$tree->paginate(5, $this->http->query('page', 1));
+Dept::query()->in('id', $tree->getPaginateIds());
+$dataList = $query->find();
+$dataList->setTreeSort($tree);
+```
+
+在输出时，就不需要对输出的参数做任何特别的指定或控制了，这部分已经在component/table_list中自动处理了。
+
+```php
+<?php
+print $html->tableList($dataList); // 这里$dataList已经绑定了TreeSort了，剩下的就自动处理了。
+```
+
+如上的操作，会输出类似如下的结果：
+
+![TreeSort](http://git.oschina.net/kephp/kephp/raw/master/misc/images/treesort01.gif)
+
+对于如Category、上下级部门、公司架构，这个TreeSort基本能满足。也测试过如国家-省市-城市-行政区的数据，5000多个数据，排序也很快，关键是排序完成后的数据存放，缓存引擎是一个地方，其实也可以将这个对象序列化了，存在数据库，要用就取出来，直接从某个节点进入就好。
+
+对于更大的数据结构，其实可以做一个稍微的优化，就是从二级、乃至三级以下，另外由一个TreeSort来管理1-3级之间的内容。
+
+同样的，你可以使用`CacheModelTrait`做更加严厉的缓存控制。
 
 ### DocMen
 
