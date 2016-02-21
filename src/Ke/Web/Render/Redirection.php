@@ -38,6 +38,9 @@ class Redirection extends Renderer
 	protected function rendering()
 	{
 		header_remove();
+		header("Cache-Control: no-cache, must-revalidate");
+		header("Cache-Control: post-check=0, pre-check=0", false);
+		header("Pragma: no-cache");
 		header("Location: {$this->uri->toUri()}", true, 301);
 		exit();
 	}
