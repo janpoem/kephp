@@ -19,6 +19,9 @@ class DataList extends ArrayObject
 	/** @var null|Pagination */
 	protected $pagination = null;
 
+	/** @var null|TreeSort */
+	protected $treeSort = null;
+
 	protected $model = null;
 
 	public function __construct(array $data = null)
@@ -41,6 +44,17 @@ class DataList extends ArrayObject
 	public function getPagination()
 	{
 		return $this->pagination;
+	}
+
+	public function setTreeSort(TreeSort $treeSort)
+	{
+		$this->treeSort = $treeSort;
+		return $this;
+	}
+
+	public function getTreeSort()
+	{
+		return $this->treeSort;
 	}
 
 	public function setModel($model)
