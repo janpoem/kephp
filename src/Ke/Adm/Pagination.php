@@ -12,6 +12,7 @@ namespace Ke\Adm;
 
 /**
  * 分页类
+ *
  * @package Ke\Adm
  * @property string $field
  * @property int    $size
@@ -32,6 +33,8 @@ class Pagination
 
 	protected $recordCount = 0;
 
+	protected $treeSort = null;
+
 	public function __construct($options = null)
 	{
 		if (isset($options)) {
@@ -51,6 +54,8 @@ class Pagination
 				$this->setCurrent($options['current']);
 			if (isset($options['field']))
 				$this->setField($options['field']);
+			if (isset($options['total']))
+				$this->setTotal($options['total']);
 		}
 		return $this;
 	}
@@ -75,6 +80,12 @@ class Pagination
 		if ($current < 0)
 			$current = 1;
 		$this->current = $current;
+		return $this;
+	}
+
+	public function setTotal(int $total)
+	{
+		$this->total = $total;
 		return $this;
 	}
 
