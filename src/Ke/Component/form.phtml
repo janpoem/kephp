@@ -33,9 +33,11 @@ $prefix = $prefix ?? '';
 
 $columns = $columns ?? [];
 $errors = $errors ?? [];
+$status = $status ?? null;
 
-if ($errors instanceof \Ke\Utils\Status) {
-	$errors = $errors->data['errors'] ?? [];
+if ($status instanceof \Ke\Utils\Status) {
+	if (!empty($status->data['errors']) && is_array($status->data['errors']))
+		$errors = array_merge($errors, $status->data['errors']);
 }
 
 /** @var \Ke\Adm\Model $model */
@@ -98,13 +100,14 @@ if (empty($return))
 
 $isUpload = $isUpload ?? false;
 
-$buttons = [
+$buttons = $buttons ?? null;
+$formButtons = [
 	[$submit, 'submit'],
-    [$reset, 'reset'],
+	[$reset, 'reset'],
 ];
 
 if (!empty($return)) {
-	$buttons[] = [$html->getText(Html::RETURN), $return];
+	$formButtons[] = [$html->getText(Html::RETURN), $return];
 }
 
 $formAttr = [
@@ -135,8 +138,7 @@ foreach ($columns as $field => $column) {
 	if (empty($column['edit']))
 		continue;
 	$column['prefix'] = [$prefix];
-	if (isset($errors[$field]))
-		$column['error'] = $errors[$field];
+	$column['error'] = $errors[$field] ?? null;
 	$value = $postData[$field] ?? $data[$field] ?? null;
 	$form .= $html->mkFormColumn($field, $value, $column);
 }
@@ -147,7 +149,19 @@ if ($isForm) {
 			'name' => KE_HTTP_SECURITY_FIELD,
 		]);
 	}
-	$form .= $html->buttons($buttons);
+	if (!empty($errors) || (isset($status) && $status->isFailure())) {
+		$messages = [];
+		if (isset($status))
+			$messages[] = '<div class="header">' . $status->message . '</div>';
+		else
+			$messages[] = '<div class="header">表单输入有误！</div>';
+		foreach ($errors as $error) {
+			$messages[] = "<li>{$error}</li>";
+		}
+		$form .= $html->error('<ul class="list">' . implode('', $messages) . '</ul>');
+		$html->addClass($formAttr, 'error');
+	}
+	$form .= $html->buttons($formButtons);
 	$form = $html->tag('form', $form, $formAttr);
 }
 
