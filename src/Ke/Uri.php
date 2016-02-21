@@ -110,7 +110,7 @@ class Uri
 			$split      = explode('/', $path);
 			$segments   = [];
 			foreach ($split as $index => $segment) {
-				if (empty($segment) || $segment === KE_DS_UNIX || $segment === KE_DS_WIN) {
+				if (strlen($segment) <= 0 || $segment === KE_DS_UNIX || $segment === KE_DS_WIN) {
 					if ($index === 0)
 						$isAbsolute = true;
 					continue;
@@ -664,7 +664,7 @@ class Uri
 		$path       = static::filterPath($path);
 		$isAbsolute = isset($path[0]) && $path[0] === '/';
 		if (!$isAbsolute) {
-			if (!empty($path)) {
+			if (strlen($path) > 0) {
 				$len = strlen($this->data['path']);
 				if ($len === 0 || ($len > 0 && $this->data['path'][$len - 1] !== '/'))
 					$this->data['path'] .= '/';

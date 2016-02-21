@@ -699,12 +699,13 @@ if (!function_exists('parse_path')) {
 	function parse_path(string $path, bool $parseFormat = true): array
 	{
 		$return = [null, null];
-		if (!empty($path)) {
+		if ($path !== '') {
 			if (preg_match('#^(?:(.*)[\/\\\\])?([^\/\\\\]+)?$#', $path, $matches)) {
 				if (!empty($matches[1])) {
+//					$return[0] = preg_replace('#(\/+)$#', '', $matches[1]);
 					$return[0] = rtrim($matches[1], KE_PATH_NOISE);
 				}
-				if (!empty($matches[2])) {
+				if (isset($matches[2]) && $matches[2] !== '') {
 					if ($parseFormat && ($pos = strrpos($matches[2], '.')) > 0) {
 						$return[1] = substr($matches[2], 0, $pos);
 						$return[2] = strtolower(substr($matches[2], $pos + 1));
