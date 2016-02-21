@@ -43,6 +43,8 @@ trait CacheModelTrait
 
 	protected $cacheKey = '';
 
+	protected $cacheHash = '';
+
 	protected $cacheStatus = false;
 
 	protected $cacheUpdateAt = 0;
@@ -143,6 +145,15 @@ trait CacheModelTrait
 		return new static();
 	}
 
+	public static function isCacheModelImpl($cache)
+	{
+		if (!is_object($cache))
+			return false;
+		if (!(($cache instanceof CacheModelImpl) || isset(class_uses($cache)[CacheModelTrait::class])))
+			return false;
+		return true;
+	}
+
 	/**
 	 * @param array ...$args
 	 * @return static
@@ -152,19 +163,26 @@ trait CacheModelTrait
 		global $KE_CACHES;
 		$key = static::makeCacheKey(...$args);
 		$cache = $KE_CACHES[$key] ?? static::getCacheAdapter()->get($key);
+		if ($cache !== false) {
+			if (!static::isCacheModelImpl($cache) || !$cache->verifyCacheHash($cache->cacheHash ?? null)) {
+				$cache = false;
+			}
+		}
 		if ($cache === false) {
 			$args = static::makeCacheArgs(...$args);
 			$cache = static::makeCacheInstance($key, $args);
 			// 如果一个class use trait，那么判断这个class实例，要用class_uses
 			// 如果先一个class use trait，然后class1 extends class，那么就需要判断实例是不是指定类的实例，这也太绕了。
 			if (!is_object($cache) ||
-			    !(($cache instanceof CacheModelImpl) || isset(class_uses($cache)[CacheModelTrait::class])) // PHP你有没有觉得自己垢了？
+			    !(($cache instanceof CacheModelImpl) ||
+			      isset(class_uses($cache)[CacheModelTrait::class])) // PHP你有没有觉得自己垢了？
 			) {
 				$cache = new static();
 			}
 			$cache->cacheKey = $key;
 			$cache->cacheArgs = $args;
 			$cache->onPrepareCache($key, $args);
+			$cache->cacheHash = $cache->makeCacheHash();
 			// 无效的对象，不保存，也不放入全局的变量中，直接返回这个对象
 			if (!$cache->isValidCache()) {
 				return $cache;
@@ -182,6 +200,15 @@ trait CacheModelTrait
 
 	abstract public function isValidCache();
 
+	abstract public function makeCacheHash(): string;
+
+	public function verifyCacheHash(string $hash = null): bool
+	{
+		return $hash === $this->makeCacheHash();
+	}
+
+//	abstract public function getCacheHash(): string;
+
 	public function isCached()
 	{
 		return $this->cacheStatus !== false;
@@ -195,6 +222,11 @@ trait CacheModelTrait
 	public function getCacheArgs(): array
 	{
 		return $this->cacheArgs;
+	}
+
+	public function getCacheHash(): string
+	{
+		return $this->cacheHash;
 	}
 
 	public function getCacheArg($field, $default = null)
